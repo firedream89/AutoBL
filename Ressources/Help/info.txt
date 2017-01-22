@@ -1,0 +1,4 @@
+<a href='Help/accueil.txt'>Accueil</a><br/>
+<a href='Help/general.txt'>Général</a><br/>
+<a href='Help/info.txt'>Information</a><br/>
+<a href='Help/config.txt'>Configuration</a>

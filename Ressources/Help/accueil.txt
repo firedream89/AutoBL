@@ -1,0 +1,27 @@
+<a href='Help/accueil.txt'>Accueil</a><br/>
+<a href='Help/general.txt'>Général</a><br/>
+<a href='Help/info.txt'>Information</a><br/>
+<a href='Help/config.txt'>Configuration</a>
+
+<h3>
+Cette application est gratuite et développée sur temps libre.<br/>
+Si vous rencontrez des bugs durant l'utilisation de application vous pouvez les signaler via la fenêtre 'report de bugs',
+ils seront corrigés plus ou moins rapidement suivant leurs importance.<br/><br/>
+
+IMPORTANT :<br/><br/>
+Cette application fonctionne uniquement avec Esabora.elec et Rexel.fr.<br/>
+
+L'application ce base sur la 'référence commande' du bon de commande Rexel.<br/></h3>
+<img src="Help/rexel.PNG" alt="rexel" width="700" height="300"><br/><h3>
+lors d'une commande chez rexel donner le numéro de chantier d'Esabora ex : 150253<br/></h3>
+<img src="Help/esabora.PNG" alt="esabora"><br/><h3>
+vous pouvez donner également une 'référence chantier', celle-ci sera juste indicatif.</h3>
+
+<h3>Fonctionnement de l'application</h3><h4>
+IMPORTANT : avant d'utiliser l'application vous devez créer l'interlocuteur "AutoBL"(sur la fenêtre de création de Bon de commande)<br/>
+Une fois démarré l'icone de l'application s'affiche dans la barre des tâches windows, il vous suffit de cliquez droit sur l'icone pour afficher un menu contextuel<br/>
+Description du menu contextuel :<br/>
+Temps Restant : affiche le temps restant avant le prochain cycle d'ajout de bons de commande<br/>
+Lancer l'ajout de BL : Démarre le cycle de recherche/ajout de bons de commande, cette option n'est disponible qu'une fois connecté<br/>
+Ouvrir : ouvre la fenêtre de l'application<br/>
+Quitter : Ferme l'application<br/></h4>

@@ -1,0 +1,37 @@
+<a href='Help/accueil.txt'>Accueil</a><br/>
+<a href='Help/general.txt'>Général</a><br/>
+<a href='Help/info.txt'>Information</a><br/>
+<a href='Help/config.txt'>Configuration</a>
+
+<h3>Menu</h3><h4>
+Connection : ouvre une fenêtre permettant de saisir le mot de passe administrateur de l'application, une fois connecté l'onglet 'Configuration' et l'option 'Supprimer' du menu contextuel seront disponible, fermer la fenêtre de l'application vous déconnectera automatiquement<br/><br/>
+Rapport d'erreur : ouvre une fenêtre d'envoie de rapport d'erreur, les rapports d'erreurs sont anonyme et aucune information personnelle n'est envoyer<br/><br/>
+About Qt : information concernant la librairie Qt<br/><br/>
+About : information concernant l'application<br/><br/>
+Quitter : Ferme la fenêtre de l'application, celle-ci reste en service dans la barre des tâches<br/><br/>
+</h4>
+<h3>Onglet général</h3><h4>
+Description de chaque colonne :<br/><br/>
+Date d'ajout : date de la commande<br/><br/>
+Etat Esabora : plusieurs états sont possible :<br/>
+-Téléchargé : Bon de commande récupéré et prêt à être ajouté à Esabora<br/>
+-Bon ajouté : Bon de commande créé sur Esabora<br/>
+-Erreur : Bon de commande dont la Référence est incorrecte<br/>
+-Ok : Bon de commande validé et ajouté au chantier<br/><br/>
+Référence : Référence de chantier Esabora, si 'Etat Esabora' est en erreur vérifier et modifier la référence en double cliquant dessus<br/><br/>
+Nom : Nom du chantier donné lors de la commande Rexel, cette colonne est juste informative<br/><br/>
+Numéro BL : Numéro du/des bon(s) de livraison, saisie automatiquement par l'application<br/><br/>
+Numéro BC : Numéro de la commande sur Rexel.fr<br/><br/>
+Etat Rexel : Deux état sont possible :<br/><br/>
+-En cours : Commande non livrée/partiellement livrée<br/><br/>
+-fermée : Commande livrée<br/><br/>
+Validation BL : une case à cochée est disponible si la commande est totalement livrée, cochez la et l'application validera la commande au prochain cycle<br/><br/>
+Numéro Esab : Référence chantier sur Esabora<br/><br/><br/></h4>
+
+<h3>Menu contextuel</h3><h4>
+En cliquant droit sur une des cases du tableau un menu contextuel apparait.<br/><br/>
+Description de ce menu :<br/><br/>
+Trier par :<br/>
+-Date : Réorganise le tableau par 'Date d'ajout' décroissant<br/>
+-Etat : Réorganise le tableau par 'Etat Esabora' décroissant<br/><br/>
+Supprimer : Passe l'état du bon en 'Ok' celui-ci ne sera pas ajouter à Esabora ou non Validé si déjà ajouté, supprimer n'est disponible qu'une fois connecté<br/></h4>

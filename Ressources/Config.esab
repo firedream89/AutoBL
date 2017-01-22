@@ -1,0 +1,107 @@
+[Open]
+Pause 5
+=Saisie du mot de passe Focus
+{LOGIN}
+Tab
+{MDP}
+Entrée
+Pause 2
+=%2 - SESSION : 1 - REPERTOIRE : %1 Focus
+[/Open]
+
+[Liste_BC]
+Alt+G+A+C non
+Pause 2
+=Liste des commandes Focus
+[/Liste_BC]
+
+[New_BC]
+Alt+A oui
+Pause 2
+=Création d'une commande en cours - session: 1 - %1 Focus
+Copier Numero_BC_Esabora
+Alt+F oui
+{FOURNISSEUR}
+=Création d'une commande en cours - session: 1 - %1 Focus
+Alt+I oui
+{INTERLOCUTEUR}
+=Création d'une commande en cours - session: 1 - %1 Focus
+Alt+C oui
+{CHANTIER}
+Alt+F
+=Création d'une commande en cours - session: 1 - %1 Focus
+Entrée
+Entrée
+| 1
+=commande %0 - session : 1 - %1 Focus
+Pause 5
+Souris 80 220 oui
+Souris 80 220 oui
+Pause 2
+{BOUCLE}
+=commande %0 - session : 1 - %1 Focus
+Echap
+Echap
+Entrée
+| 2
+[/New_BC]
+
+[Valid_BL]
+=%2 - SESSION : 1 - REPERTOIRE : %1 Focus
+Alt+G+K+é
+Pause 2
+=Réception des commandes magasinier Focus
+{NUMERO_COMMANDE_ESABORA}
+Alt+m oui
+{COMMENTAIRE}
+Tab
+{BL}
+Pause 2
+Alt+L oui
+=Réception des commandes magasinier
+Entrée
+Alt+T oui
+=Réception des commandes magasinier
+Entrée
+=Réception des commandes magasinier Focus
+Echap
+Echap
+[/Valid_BL]
+
+[Semi_Auto]
+Alt+G+A+C non
+Pause 2
+=Liste des commandes Focus
+Alt+A oui
+Pause 2
+=Création d'une commande en cours - session: 1 - %1 Focus
+Copier Numero_BC_Esabora
+Alt+F oui
+{FOURNISSEUR}
+=Création d'une commande en cours - session: 1 - %1 Focus
+Alt+I oui
+{INTERLOCUTEUR}
+=Création d'une commande en cours - session: 1 - %1 Focus
+Alt+C oui
+{CHANTIER}
+Alt+F
+=Création d'une commande en cours - session: 1 - %1 Focus
+Entrée
+Entrée
+Pause 5
+=commande %0 - session : 1 - %1 Focus
+Souris 80 220 oui
+Souris 80 220 oui
+Pause 2
+{BOUCLE}
+[/Semi_Auto]
+
+[Cancel]
+Echap
+Echap
+Echap
+Echap
+Echap
+Echap
+[/Cancel]
+--END FILE--

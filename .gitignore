@@ -45,3 +45,12 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+#
+*.db
+*.autosave
+Archives
+*.iss
+build-AutoBL2-Desktop_Qt_5_0_2_MinGW_32bit-Release
+build-AutoBL2-Desktop_Qt_5_1_1_MinGW_32bit-Release
+licence.txt

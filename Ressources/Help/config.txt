@@ -1,0 +1,31 @@
+<a href='Help/accueil.txt'>Accueil</a><br/>
+<a href='Help/general.txt'>Général</a><br/>
+<a href='Help/info.txt'>Information</a><br/>
+<a href='Help/config.txt'>Configuration</a>
+
+<h3>Configuration</h3>
+<h3>Général</h3>
+<h4>Description des options :<br/>
+NOTE : les descriptions des options sont également disponible en survolant celle-ci avec la souris.<br/>
+Lorsque vous changer de répertoire et si vous avez créer un utilisateur spécifique pour l'ajout des bons pensez à changer le répertoire pour celui-ci.<br/><br/>
+Démarrer avec windows : Démarre AutoBL au démarrage de windows<br/><br/>
+Ajout Automatique : Démarre le cycle d'ajout de bon tous les jours à horaire fixe(Maintenance Rexel entre 23h et 4h)<br/><br/>
+Mot de passe application : définie le mot de passe permettant de ce connecter sur AutoBL<br/><br/>
+Emplacement Esabora : Cliquer sur le bouton et sélectionner le raccourci vers Esabora(se trouvant sur le Bureau)<br/><br/>
+Login Esabora : Saisir un nom d'utilisateur Esabora(Celui-ci doit avoir accès au stock et la possibilité de créer/valider des bons de commande)<br/><br/>
+Mot de passe Esabora : Saisir le mot de passe utilisateur Esabora<br/><br/>
+Nom du répertoire Esabora : Saisir le nom du répertoire, visible dans le titre de la fenêtre principal d'Esabora<br/><br/>
+Nom de l'entreprise Esabora : Saisir le nom de l'entreprise, visible dans le titre de la fenêtre principal d'Esabora<br/><br/>
+Email Rexel : Saisir l'adresse email servant pour la connexion sur le site de Rexel.fr<br/><br/>
+Mot de passe Rexel : Saisir le mot de passe servant pour la connexion sur le site de Rexel.fr<br/><br/>
+Nom d'utilisateur Rexel : Saisir le nom d'utilisateur inscrit en haut de page une fois connecté<br/><br/>
+</h4>
+<h3>Avancé</h3>
+<h4>
+Temps entre chaque commande : Défini le temps entre action sur Esabora(Défaut 500ms)<br/><br/>
+Temps entre chaque boucle Rexel : Non utilisé<br/><br/>
+Ajout des BL Automatiquement : Valide les bons de commande automatiquement une fois que les BL sont disponible<br/><br/>
+Envoyer rapport d'erreur automatiquement : Envoie les Rapports d'erreur pour permettre l'amélioration du logiciel(aucune données personnelle n'est envoyé)<br/><br/>
+Purge automatique de la BDD : nettoie automatiquement tous les bons validé ayant plus de 2 mois de la base de données d'AutoBL<br/><br/>
+Ajout semi automatique : fonction non activé<br/>
+</h4>

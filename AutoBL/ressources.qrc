@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/icone">
+        <file>Doc.png</file>
+        <file alias="Danger">Signal attention.png</file>
+        <file>Orb help.png</file>
+    </qresource>
+</RCC>

@@ -1,0 +1,18 @@
+<a href='Help/accueil.txt'>Accueil</a><br/>
+<a href='Help/general.txt'>Général</a><br/>
+<a href='Help/info.txt'>Information</a><br/>
+<a href='Help/config.txt'>Configuration</a>
+
+<h1>MERCI DE LIRE CE QUI SUIT.</h1><br/><br/>
+<h3>
+Cette application est gratuite et développée sur temps libre.<br/>
+Si vous rencontrez des bugs durant l'utilisation de application vous pouvez les signaler via la fenêtre 'report de bugs'<br/><br/>
+
+IMPORTANT :<br/><br/>
+Cette application fonctionne uniquement avec Esabora.elec et Rexel.fr.<br/>
+
+L'application ce base sur la 'référence commande' du bon de commande Rexel.<br/></h3>
+<img src="Help/rexel.PNG" alt="rexel" width="700" height="300"><br/><h3>
+lors d'une commande chez rexel donner le numéro de chantier d'Esabora ex : 150253<br/></h3>
+<img src="Help/esabora.PNG" alt="esabora"><br/><h3>
+vous pouvez donner également une 'référence chantier', celle-ci sera juste indicatif.</h3>
