@@ -1,8 +1,7 @@
 #include "db.h"
 ///////////MAJ///////////////
 ///
-/// Sav :
-/// -Modification des noms de DB
+///
 ///
 /////////////////////////////
 QString key = "ODBABL";//Clé ouverture BDD
