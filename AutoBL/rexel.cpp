@@ -1,19 +1,8 @@
 #include "rexel.h"
 ///////////MAJ///////////////
 ///
-/// Connexion :
-/// -correction problème de connexion
-///
-/// Navigation :
-/// -Correction de bug de chargement du script AJAX
-/// -Correction d'un bug de chargement infini
-///
-/// Recuperation_BL :
-/// -Correction d'un bug de chargement infini
-///
-/// Affichage_Tableau :
-/// -Correction du code si la référence n'est pas trouvé par Rexel
-/// -Correction du code suivant la mise à jour du site Rexel.fr
+/// VerificationEtatBC :
+/// -Ajout mise à jour partiellement livrée
 ///
 ///////Script////////////////
 ///
@@ -417,8 +406,13 @@ bool Rexel::VerificationEtatBC(QString numeroCommande)
 
     if(Verification("Livrée en totalité","Etat BC",true))
     {
-        qDebug() << "VerificationEtatBC - Mise à jour de l'état du BC";
+        qDebug() << "VerificationEtatBC - Mise à jour de l'état du BC " + numeroCommande + "=" + "Livrée en totalité";
         m_db.Requete("UPDATE En_Cours SET Etat='Livrée en totalité' WHERE Numero_Commande='" + numeroCommande + "'");
+    }
+    else if(Verification("Partiellement livrée","Etat BC",true))
+    {
+        qDebug() << "VerificationEtatBC - Mise à jour de l'état du BC " + numeroCommande + "=" + "Partiellement livrée";
+        m_db.Requete("UPDATE En_Cours SET Etat='Partiellement livrée' WHERE Numero_Commande='" + numeroCommande + "'");
     }
     emit InfoFen("Info","");
     qDebug() << "Fin Rexel::VerificationEtatBC()";
