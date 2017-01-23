@@ -2,29 +2,14 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.36"); //Version De L'application
+QString version("1.37"); //Version De L'application
 QString maj("http://37.187.104.80/");//Serveur MAJ
 /////////////////////////////////
 
 /// ///////////MAJ///////////////
 ///
-/// Modifier_Nom_Chantier :
-/// -Ajout du retour à la dernière ligne utilisée
-/// -regroupement de plusieurs fonctions en une seule
-///
-/// Affichage_Fichier_Excel :
-/// -Ajout de la couleur 1 ligne sur 2
-///
-/// Demarrage :
-/// -Ajout de l'apprentissage Esabora si echec démarrage, vérification de modification du répertoire
-/// -Modification des règles de récupération des BL(Désormait suivant Rexel.fr)
-/// -Modification des variables Etat(Suivant Rexel.fr)
-/// -Ajout de la fonction de mise au Stock
-///
-/// -Ajout du traitement en multi threads
-/// -Ajout de commande d'arret anticipé de procédure
-/// -Ajout d'un affichage d'erreur de procédure sur l'onglet information
-/// -Changement du titre de la fenêtre
+/// Post_Report :
+/// -Ajout du log Debug
 ///
 ////////////////////////////////
 Principal::Principal(QWidget *parent) :
@@ -45,11 +30,8 @@ Principal::Principal(QWidget *parent) :
     //Création des Dossiers
     QDir dir;
     dir.mkdir(m_Lien_Work);
-    dir.mkdir(m_Lien_Work + "/Pj");
     dir.mkdir(m_Lien_Work + "/Config");
     dir.mkdir(m_Lien_Work + "/Logs");
-    dir.mkdir("imgMessageBox");
-    dir.mkdir("Help");
 
     //Ouverture des fichiers logs et errors
     m_Logs.setFileName(m_Lien_Work + "/Logs/logs.txt");
@@ -1280,6 +1262,10 @@ bool Principal::Post_Report()
             f.open(QIODevice::ReadOnly);
             flux << "- Erreurs -\r\n" << f.readAll() << "\r\n";
             f.close();
+            f.setFileName(m_Lien_Work + "/Logs/debug.log");
+            f.open(QIODevice::ReadOnly);
+            flux << "- Debug -\r\n" << f.readAll() << "\r\n";
+            f.close();
 
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Envoi du rapport...");
             rapport.close();
@@ -1312,6 +1298,10 @@ bool Principal::Post_Report()
         f.setFileName(m_Lien_Work + "/Logs/errors.txt");
         f.open(QIODevice::ReadOnly);
         flux << "- Erreurs -\r\n" << f.readAll() << "\r\n";
+        f.close();
+        f.setFileName(m_Lien_Work + "/Logs/debug.log");
+        f.open(QIODevice::ReadOnly);
+        flux << "- Debug -\r\n" << f.readAll() << "\r\n";
         f.close();
 
         rapport.close();
