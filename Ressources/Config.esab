@@ -46,6 +46,36 @@ Entrée
 | 2
 [/New_BC]
 
+[Ajout_Stock]
+Alt+A oui
+Pause 2
+=Création d'une commande en cours - session: 1 - %1 Focus
+Copier Numero_BC_Esabora
+Alt+F oui
+{FOURNISSEUR}
+=Création d'une commande en cours - session: 1 - %1 Focus
+Alt+I oui
+{INTERLOCUTEUR}
+=Création d'une commande en cours - session: 1 - %1 Focus
+Alt+T oui
+-Stock
+Alt+F
+=Création d'une commande en cours - session: 1 - %1 Focus
+Entrée
+Entrée
+| 1
+=commande %0 - session : 1 - %1 Focus
+Pause 5
+Souris 80 220 oui
+Souris 80 220 oui
+Pause 2
+{BOUCLE}
+=commande %0 - session : 1 - %1 Focus
+Echap
+Echap
+Entrée
+[/Ajout_Stock]
+
 [Valid_BL]
 =%2 - SESSION : 1 - REPERTOIRE : %1 Focus
 Alt+G+K+é
