@@ -2,24 +2,8 @@
 
 ///////////MAJ///////////////
 ///
-/// Semi_Auto :
-/// -Création de la fonction pour ajout manuel des BC en cas défaillance du site Rexel.fr
-///
-/// Set_Var_Esabora :
-/// -Création de la fonction pour mise à jour des variables de la classe suivant sauvegarde Options
-///
-/// Ajout_BC :
-/// -Modification pour fonctionnement sans fichier Excel
-///
-/// Traitement_Fichier_Config :
-/// -Modification de la partie {BOUCLE} pour focntionnement automatique et référence type LEG XXXXXX
-/// -{BOUCLE} : correction de la condition désignation absente
-/// -{BOUCLE} : Ajout de boucle d'évenement supplémentaire entre les Clear/Copier et réduction du temps(500ms)
-///
 /// Verification_Fenetre :
-/// -Ajout de la fermeture de la fenêtre AVERTISSEMENT si affiché
-///
-/// -Rassemblement des fichiers de configs en un seul
+/// -Correction bug fenêtre AVERTISSEMENT sur Esabora
 ///
 /////////////////////////////
 Esabora::Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail):
@@ -657,6 +641,11 @@ bool Esabora::Verification_Fenetre(QString fenetre)
         else
         {
             Clavier("Entrée");
+            QEventLoop loop;
+            QTimer t;
+            connect(&t,SIGNAL(timeout()),&loop,SLOT(quit()));
+            t.start(2000);
+            loop.exec();
             if(Verification_Fenetre(fenetre)) return true;
             else return false;
         }
