@@ -29,6 +29,7 @@ Rexel::~Rexel()
 bool Rexel::Connexion(QString login, QString MDP)
 {
     qDebug() << "Rexel::Connexion()";
+    emit InfoFen("Info","Chargement...");
     if(!webLoad("https://www.rexel.fr/frx"))
     {
         EmitErreur(001,0);

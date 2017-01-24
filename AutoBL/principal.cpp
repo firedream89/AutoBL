@@ -1326,16 +1326,22 @@ bool Principal::Post_Report()
 
 void Principal::LoadWeb(int valeur)
 {
-    if(this->findChildren<QDialog *>().count() > 0)
-        if(this->findChildren<QDialog *>().at(0)->objectName() == "Chargement")
-        {
-            QLabel *l = this->findChildren<QDialog *>().at(0)->findChildren<QLabel *>().at(0);
+    if(this->findChild<QDialog *>("Chargement") != NULL)
+    {
+            QLabel *l = this->findChild<QDialog *>("Chargement")->findChildren<QLabel *>().at(0);
             QString s = l->text();
             if(l->text().contains("%"))
                 s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
-
             l->setText(s + " " + QString::number(valeur) + "%");
-        }
+    }
+    else if(this->findChild<QDialog *>("traitement") != NULL)
+    {
+        QLabel *l = this->findChild<QDialog *>("traitement")->findChild<QLabel *>("Info");
+        QString s = l->text();
+        if(l->text().contains("%"))
+            s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
+        l->setText(s + " " + QString::number(valeur) + "%");
+    }
 }
 
 void Principal::InfoTraitementBL()
