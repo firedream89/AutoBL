@@ -6,12 +6,6 @@ QString version("1.37"); //Version De L'application
 QString maj("http://37.187.104.80/");//Serveur MAJ
 /////////////////////////////////
 
-/// ///////////MAJ///////////////
-///
-/// Post_Report :
-/// -Ajout du log Debug
-///
-////////////////////////////////
 Principal::Principal(QWidget *parent) :
     QMainWindow(parent),
     ui(new Ui::Principal)
@@ -1192,7 +1186,7 @@ void Principal::MAJ()
 {
     QTimer *timer = new QTimer;
     QNetworkAccessManager manager;
-    QNetworkReply *reply = manager.get(QNetworkRequest(QUrl(maj + "/MAJ/AutoBL/MAJ.txt"))); // Url vers le fichier version.txt
+    QNetworkReply *reply = manager.get(QNetworkRequest(QUrl(maj))); // Url vers le fichier version.txt
     QEventLoop loop;
     QObject::connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
     timer->start(10000);
@@ -1203,6 +1197,7 @@ void Principal::MAJ()
     timer->stop();
     QString retour1 = reply->readAll();
     QStringList retour = retour1.split("\n");
+    qDebug() << "MAJ - Dernière version = " << retour;
     QStringList MAJDispo;
     for(int cpt=0;cpt<retour.count();cpt++)
         if(retour.at(cpt).toDouble() > version.toDouble())
@@ -1211,9 +1206,10 @@ void Principal::MAJ()
     req.next();
     if(MAJDispo.count() == 1 && MAJDispo.at(0) != req.value("Valeur").toString())
     {
+        qDebug() << "MAJ - Une mise à jour est disponible !";
         m_DB.Requete("UPDATE Options SET Valeur='" + MAJDispo.at(0) + "' WHERE ID='21'");
         MAJDispo.append("API=" + QCoreApplication::applicationDirPath() + "/" + "AutoBL.exe");
-        MAJDispo.append("ftp=" + maj + "/MAJ/AutoBL/");
+        MAJDispo.append("ftp=" + maj);
         MAJDispo.append("RA=oui");
         QProcess MAJ;
         MAJ.start(QCoreApplication::applicationDirPath() + "/" + "MAJ.exe",MAJDispo);

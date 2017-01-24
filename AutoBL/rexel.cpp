@@ -1,15 +1,5 @@
 #include "rexel.h"
-///////////MAJ///////////////
-///
-/// VerificationEtatBC :
-/// -Ajout mise à jour partiellement livrée
-///
-///////Script////////////////
-///
-/// Exportation :
-/// -Return true;
-///
-/////////////////////////////
+
 Rexel::Rexel(QString lien_Travail):
     m_Lien_Work(lien_Travail)
 {
