@@ -172,10 +172,10 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                 QTimer t;
                 connect(&t,SIGNAL(timeout()),&lp,SLOT(quit()));
                 pp->clear();
-                t.start(500);
+                t.start(1000);
                 lp.exec();
                 Clavier("Ctrl+C");
-                t.start(500);
+                t.start(1000);
                 lp.exec();
                 emit Info(pp->text());
                 if(pp->text() != "")//Si D3E, passé à la ligne suivante
@@ -192,19 +192,19 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                 Clavier("-" + liste_Matos.at(cpt+1));//Ref
                 Clavier("Tab");
                 pp->clear();
-                t.start(500);
+                t.start(1000);
                 lp.exec();
                 Clavier("Ctrl+C");
-                t.start(500);
+                t.start(1000);
                 lp.exec();
                 if(pp->text() == "" || pp->text() == liste_Matos.at(cpt+1))//Si La désignation n'a pas été trouvé
                 {
                     EmitErreur(513,10,"Ref=" + liste_Matos.at(cpt+1) + " Chantier=" + req.value("Nom_Chantier").toString());
                     pp->clear();
-                    t.start(500);
+                    t.start(1000);
                     lp.exec();
                     pp->setText(liste_Matos.at(cpt));
-                    t.start(500);
+                    t.start(1000);
                     lp.exec();
                     Clavier("Ctrl+V");
                 }
