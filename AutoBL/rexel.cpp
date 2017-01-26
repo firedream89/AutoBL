@@ -395,7 +395,7 @@ bool Rexel::VerificationEtatBC(QString numeroCommande)
         return false;
     }
 
-    if(Verification("Livrée en totalité","Etat BC",true))
+    if(Verification("Livrée en totalité","Etat BC",true) || Verification("Livrée et facturée","Etat BC",true))
     {
         qDebug() << "VerificationEtatBC - Mise à jour de l'état du BC " + numeroCommande + "=" + "Livrée en totalité";
         m_db.Requete("UPDATE En_Cours SET Etat='Livrée en totalité' WHERE Numero_Commande='" + numeroCommande + "'");
@@ -553,7 +553,8 @@ QStringList Rexel::AffichageTableau()
             var = flux2.readLine();
             if(!var.contains("span class"))
                 var = flux2.readLine();
-            l.append(var.split(">").at(1).split("/").at(0).split(" ").at(1));
+            var.replace(" ","");
+            l.append(var.split(">").at(1).split("/").at(0));
             etat = 4;
         }
         else if(var.contains("header5") && etat == 4)//Quantité

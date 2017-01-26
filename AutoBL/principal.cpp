@@ -18,7 +18,7 @@ Principal::Principal(QWidget *parent) :
     m_Lien_Work = QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0);
     ui->e_Path->setText("Work Path : " + QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0));
     qDebug() << "Lien dossier de travail : " <<m_Lien_Work;
-    this->setFixedWidth(1000);
+    //this->setFixedWidth(1000);
     premierDemarrage = false;
 
     //Création des Dossiers
@@ -879,6 +879,14 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
     ui->tNomFichier->blockSignals(false);
     ui->tNomFichier->resizeColumnsToContents();
     ui->tNomFichier->resizeRowsToContents();
+    ui->tNomFichier->resize(ui->tNomFichier->columnWidth(0) + ui->tNomFichier->columnWidth(1) +
+                            ui->tNomFichier->columnWidth(2) + ui->tNomFichier->columnWidth(3) +
+                            ui->tNomFichier->columnWidth(4) + ui->tNomFichier->columnWidth(5) +
+                            ui->tNomFichier->columnWidth(6) + ui->tNomFichier->columnWidth(7) +
+                            ui->tNomFichier->columnWidth(8) +75,ui->tNomFichier->size().height());
+    qDebug() << "Affichage tableau - redimensionnement l=" << ui->tNomFichier->size().width()+75;
+
+    this->resize(ui->tNomFichier->size());
 }
 
 void Principal::Purge_Bl()
