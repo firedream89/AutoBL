@@ -257,7 +257,7 @@ Principal::~Principal()
 
 bool Principal::test()
 {
-
+    Post_Report();
 }
 
 void Principal::Sauvegarde_Parametres()
@@ -1274,16 +1274,22 @@ bool Principal::Post_Report()
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Envoi du rapport...");
             rapport.close();
             rapport.open(QIODevice::ReadOnly);
-            QNetworkAccessManager manager;
-            QEventLoop loop;
-            QNetworkRequest requete(QUrl(maj + "/Rapport/" + rapport.fileName().split("/").last()));
-            QNetworkReply *reply = manager.put(requete,rapport.readAll());
-            connect(&manager,SIGNAL(finished(QNetworkReply*)),&loop,SLOT(quit()));
-            loop.exec();
-            if(reply->error() == QNetworkReply::NoError)
-                this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Rapport envoyé !");
-            else
-                this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Echec envoi !");
+
+            QWebView w;
+            QEventLoop l;
+            QNetworkRequest request;
+            request.setUrl(QUrl(maj + "mail.php"));
+            request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+            QByteArray array;
+            array.append("sj=" + rapport.fileName().split(".").at(0)+"&");
+            array.append("msg=" + rapport.readAll());
+
+            w.load(request, QNetworkAccessManager::PostOperation, array);
+            connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+            l.exec();
+
+            this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Rapport envoyé !");
 
             rapport.close();
             rapport.remove();
@@ -1310,17 +1316,21 @@ bool Principal::Post_Report()
 
         rapport.close();
         rapport.open(QIODevice::ReadOnly);
-        QNetworkAccessManager manager;
-        QEventLoop loop;
-        QNetworkRequest requete(QUrl(maj + "/Rapport/" + rapport.fileName().split("/").last()));
-        QNetworkReply *r = manager.put(requete,rapport.readAll());
-        connect(&manager,SIGNAL(finished(QNetworkReply*)),&loop,SLOT(quit()));
-        loop.exec();
+        QWebView w;
+        QEventLoop l;
+        QNetworkRequest request;
+        request.setUrl(QUrl(maj + "mail.php"));
+        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
+
+        QByteArray array;
+        array.append("sj=" + rapport.fileName().split(".").at(0)+"&");
+        array.append("msg=" + rapport.readAll());
+
+        w.load(request, QNetworkAccessManager::PostOperation, array);
+        connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+        l.exec();
         rapport.close();
         rapport.remove();
-
-        if(r->error()!= QNetworkReply::NoError)
-            return false;
     }
     m_Logs.resize(0);
     m_Errors.resize(0);
