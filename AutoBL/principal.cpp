@@ -257,7 +257,7 @@ Principal::~Principal()
 
 bool Principal::test()
 {
-    Post_Report();
+
 }
 
 void Principal::Sauvegarde_Parametres()
@@ -572,7 +572,7 @@ void Principal::Demarrage()
                 {
                     m_Rexel->VerificationEtatBC(req2.value("Numero_Commande").toString());
                 }
-                req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée en totalité'");
+                req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée en totalité' OR Etat='Livrée et facturée'");
                 while(req2.next() && !m_Arret)
                 {
                     if(req2.value("Numero_Livraison").toString().isEmpty())
@@ -854,8 +854,10 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
     {
         ui->tNomFichier->item(cpt,0)->setFlags(flag);
         ui->tNomFichier->item(cpt,1)->setFlags(flag);
-        if(ui->tNomFichier->item(cpt,6)->text() == "Livrée en totalité")
+        if(ui->tNomFichier->item(cpt,6)->text() == "Livrée en totalité" || ui->tNomFichier->item(cpt,6)->text() == "Livrée et facturée")
             ui->tNomFichier->item(cpt,6)->setTextColor(QColor(0,255,0));
+        else if(ui->tNomFichier->item(cpt,6)->text() == "Partiellement livrée")
+            ui->tNomFichier->item(cpt,6)->setTextColor(QColor(200,200,0));
         else
             ui->tNomFichier->item(cpt,6)->setTextColor(QColor(255,0,0));
         if(ui->tNomFichier->item(cpt,1)->text() == "Erreur")

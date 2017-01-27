@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     a.installTranslator(&translate);
 
     qDebug();
-    if(QApplication::arguments().contains("dvp"))
+    if(!QApplication::arguments().contains("dvp"))
         qInstallMessageHandler(myMessageOutput);
 
     Principal w;
