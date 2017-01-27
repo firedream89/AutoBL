@@ -679,12 +679,12 @@ qDebug() << "Demarrage 2";
             ///Verif modification DB
             QString entreprise,BDD;
             m_Esabora->Apprentissage(entreprise,BDD);
-            if(ui->nBDDEsab->text() != BDD || ui->nEntrepriseEsab->text() != entreprise)
-            {
+            if(ui->nBDDEsab->text() != BDD && BDD != "")
                 ui->nBDDEsab->setText(BDD);
+            if(ui->nEntrepriseEsab->text() != entreprise && entreprise != "")
                 ui->nEntrepriseEsab->setText(entreprise);
-                Sauvegarde_Parametres();
-            }
+            Sauvegarde_Parametres();
+
         }
     }
 
@@ -963,10 +963,11 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
                         tbl->setItem(0,4,new QTableWidgetItem(list.at(cpt)));//Quantité
                         cpt++;
                         tbl->setItem(0,5,new QTableWidgetItem(list.at(cpt)));//Quantité restante
-                        double v = tbl->item(0,3)->text().replace(",",".").toDouble();
+                        QString p = tbl->item(0,3)->text().replace("€","");
+                        double v = p.replace(",",".").toDouble();
                         double v2 = tbl->item(0,4)->text().replace(",",".").toDouble();
                         double tmp = v * v2;
-                        tbl->setItem(0,6,new QTableWidgetItem(QString::number(tmp).replace(".",",")));//Prix total
+                        tbl->setItem(0,6,new QTableWidgetItem(QString::number(tmp).replace(".",",") + "€"));//Prix total
                     }
                 }
                 tbl->resizeColumnsToContents();
@@ -1221,6 +1222,9 @@ void Principal::MAJ()
         MAJDispo.append("API=" + QCoreApplication::applicationDirPath() + "/" + "AutoBL.exe");
         MAJDispo.append("ftp=" + maj);
         MAJDispo.append("RA=oui");
+        MAJDispo.append("name=AutoBL");
+        MAJDispo.append("icon=");
+        MAJDispo.append("webSite=https://github.com/firedream89/AutoBL/releases");
         QProcess MAJ;
         MAJ.start(QCoreApplication::applicationDirPath() + "/" + "MAJ.exe",MAJDispo);
         exit(0);

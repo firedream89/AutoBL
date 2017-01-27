@@ -16,6 +16,8 @@
 #include "rexel.h"
 #include "esabora.h"
 
+#define DEBUG qDebug()
+
 namespace Ui {
 class Principal;
 }

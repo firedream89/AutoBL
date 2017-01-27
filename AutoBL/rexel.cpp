@@ -554,6 +554,7 @@ QStringList Rexel::AffichageTableau()
             if(!var.contains("span class"))
                 var = flux2.readLine();
             var.replace(" ","");
+            var.replace("&nbsp;","");
             l.append(var.split(">").at(1).split("/").at(0));
             etat = 4;
         }
