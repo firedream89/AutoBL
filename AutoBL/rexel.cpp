@@ -1,14 +1,13 @@
 #include "rexel.h"
 
-Rexel::Rexel(QString lien_Travail):
-    m_Lien_Work(lien_Travail)
+Rexel::Rexel(QString lien_Travail,QString login,QString mdp):
+    m_Lien_Work(lien_Travail),m_Login(login),m_MDP(mdp)
 {
     qDebug() << "Init Class Rexel";
     cookieJar = new QNetworkCookieJar;
     web = new QWebView;
     web->page()->setForwardUnsupportedContent(true);
     web->page()->networkAccessManager()->setCookieJar(cookieJar);
-    connect(web->page(),SIGNAL(unsupportedContent(QNetworkReply*)),this,SLOT(Telechargement(QNetworkReply*)));
 }
 Rexel::~Rexel()
 {
@@ -204,26 +203,6 @@ bool Rexel::Navigation()
     qDebug() << "Fin Rexel::Navigation()";
     return true;
 }
-///Erreur 2xx
-bool Rexel::Exportation(QString lien)
-{
-    return true;
-
-    if(!webLoad("https://www.rexel.fr/frx/my-account/orders"))
-    {
-        EmitErreur(201,0);
-        return false;
-    }
-    if(!Verification("L'export est limité à 100 commandes.","Ouverture de la page d'exportation"))
-    {
-        EmitErreur(202,0);
-        return false;
-    }
-    m_NomExcel = lien.split("=").last();
-    QWebFrame *frame = web->page()->mainFrame();
-    frame->evaluateJavaScript("var x = document.getElementsByClassName('prd-form'); x[0].submit()");
-    return true;
-}
 ///Erreur 3xx
 bool Rexel::Verification(QString texte, QString reponse, bool bloquer)
 {
@@ -235,21 +214,6 @@ bool Rexel::Verification(QString texte, QString reponse, bool bloquer)
     if(!bloquer)
         EmitErreur(301,3,reponse);
     return false;
-}
-///Erreur 4xx
-void Rexel::Telechargement(QNetworkReply *reply)
-{
-    QEventLoop loop;
-    connect(reply,SIGNAL(finished()),&loop,SLOT(quit()));
-    loop.exec();
-    QFile fichier(m_Lien_Work + "/Pj/" + m_NomExcel + ".xlsx");
-    if(!fichier.open(QIODevice::WriteOnly))
-    {
-        EmitErreur(401,1,fichier.fileName());
-        return;
-    }
-    fichier.write(reply->readAll());
-    emit TelechargementTerminer();
 }
 ///Erreur 5xx
 void Rexel::Affichage()
@@ -415,13 +379,14 @@ bool Rexel::webLoad(QString lien)
     qDebug() << "Rexel::webLoad()";
     QEventLoop loop;
     QTimer timer;
+    connect(&timer,SIGNAL(timeout()),&loop,SLOT(quit()));
+    connect(&timer,SIGNAL(timeout()),&timer,SLOT(stop()));
+    connect(web,SIGNAL(loadFinished(bool)),&loop,SLOT(quit()));
+    connect(web,SIGNAL(loadProgress(int)),this,SIGNAL(LoadProgress(int)));
+
     for(int cpt=0;cpt<2;cpt++)
     {
-        qDebug() << "webLoad - Chargement de la page " << lien;
-        connect(&timer,SIGNAL(timeout()),&loop,SLOT(quit()));
-        connect(&timer,SIGNAL(timeout()),&timer,SLOT(stop()));
-        connect(web,SIGNAL(loadFinished(bool)),&loop,SLOT(quit()));
-        connect(web,SIGNAL(loadProgress(int)),this,SLOT(Load(int)));
+        qDebug() << "webLoad - Chargement de la page " << lien;        
         web->load(QUrl(lien));
         timer.start(15000);
         loop.exec();
@@ -445,13 +410,6 @@ void Rexel::ResetWeb()
     qDebug() << "Fin Rexel::webLoad()";
 }
 
-void Rexel::LectureSeule(bool lecture)
-{
-    if(lecture)
-        web->blockSignals(true);
-    else
-        web->blockSignals(false);
-}
 ///Erreur 9xx
 QStringList Rexel::AffichageTableau()
 {
@@ -614,7 +572,62 @@ void Rexel::EmitErreur(int codeErreur,int stringErreur,QString info)
     emit Erreur("Rexel | E" + QString::number(codeErreur) + " | " + ret + " : " + info);
 }
 
-void Rexel::Load(int valeur)
+bool Rexel::Start(QString &error, QStringList &list, int option, QString numeroBC)
 {
-    emit LoadProgress(valeur);
+    //0 = navigation + verifBC + RecupBL
+    //1 = Récupération du tableau BC
+    QSqlQuery req;
+    if(option == 1 && numeroBC == "")
+        return false;
+    if(!Connexion(m_Login,m_MDP))
+    {
+        error.append("Echec de connexion au site Rexel.fr");
+        return false;
+    }
+
+    switch (option) {
+    case 0:
+        if(!Navigation())
+            error.append(tr("Echec de récupération des données"));
+        //Véfification des numéro de chantier
+        req = m_db.Requete("SELECT * FROM En_Cours WHERE Ajout=''");
+        while(req.next())
+        {
+            if(req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
+                m_db.Requete("UPDATE En_Cours SET Ajout='Telecharger' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+            else
+                m_db.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+        }
+        //Vérification état BC
+        req = m_db.Requete("SELECT * FROM En_Cours WHERE Etat='En préparation' OR Etat='Partiellement livrée'");
+        while(req.next())
+            if(VerificationEtatBC(req.value("Numero_Commande").toString()))
+                error.append(tr("Vérification état du bon de commande %0 échoué").arg(req.value("Numero_Commande").toString()));
+        //Récupération des BL
+        req = m_db.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée en totalité' OR Etat='Livrée et facturée'");
+        while(req.next())
+            if(req.value("Numero_Livraison").toString().isEmpty())
+                if(!Recuperation_BL(req.value("Numero_Commande").toString()))
+                    error.append(tr("Récupération du bon de livraison %0 échoué").arg(req.value("Numero_Livraison").toString()));
+        break;
+    case 1:
+        if(!webLoad("https://www.rexel.fr/frx/my-account/orders/" + numeroBC))
+        {
+            error.append(tr("Chargement du bon de commande %0 échoué").arg(numeroBC));
+            return false;
+        }
+        list = AffichageTableau();
+        break;
+    default:
+        error.append(tr("option %0 inconnue").arg(option));
+        return false;
+        break;
+    }
+    return true;
+}
+
+void Rexel::Set_Var(QString login, QString mdp)
+{
+    m_Login = login;
+    m_MDP = mdp;
 }

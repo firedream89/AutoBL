@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.37"); //Version De L'application
+QString version("1.38"); //Version De L'application
 QString maj("http://37.187.104.80/");//Serveur MAJ
 /////////////////////////////////
 
@@ -45,7 +45,6 @@ Principal::Principal(QWidget *parent) :
     m_DB.Init();
     m_Tache = new Tache(version);
     m_Tache->Affichage_Info("AutoBL V" + version);
-    m_Rexel = new Rexel(m_Lien_Work);
     m_Tri = 0;
     Afficher_Fichiers_Excel();
     mdp = new QLineEdit;
@@ -156,10 +155,10 @@ Principal::Principal(QWidget *parent) :
 
     m_Arret = true;
     login = false,
-    Chargement_Parametres();
     ui->tNomFichier->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    //Préparation Esabora
+    //Préparation Esabora + Rexel
+    m_Rexel = new Rexel(m_Lien_Work,ui->eNUR->text(),ui->eMDPR->text());
     m_Esabora = new Esabora(this,ui->eLogin->text(),ui->eMDP->text(),ui->lienEsabora->text(),m_Lien_Work);
     QThread *thread = new QThread;
     ///Déplacement des classes dans un thread séparé
@@ -167,6 +166,8 @@ Principal::Principal(QWidget *parent) :
     m_Esabora->moveToThread(thread);
     //m_Rexel->moveToThread(thread);
     qDebug() << m_Esabora->thread() << m_Rexel->thread();
+
+    Chargement_Parametres();
 
     //Création des connect
     connect(&m_DB,SIGNAL(CreateTable()),this,SLOT(PurgeError()));
@@ -348,14 +349,22 @@ void Principal::Sauvegarde_Parametres()
 
 void Principal::Chargement_Parametres()
 {
-    QString aAuto("false"),PC("false");
-    if(ui->gAjoutAuto->isChecked())
-        aAuto = "true";
-    Affichage_Info("Auto=" + aAuto + ",PConfig=" + PC);
     if(ui->gAjoutAuto->isChecked())
         Demarrage_Auto_BC(true);
     else
         m_Temps.stop();
+
+    //Affichage colonne BL
+    QSqlQuery val = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='13'");
+    val.next();
+    if(val.value("Valeur").toInt() == 1)
+        ui->tNomFichier->hideColumn(7);
+    else
+        ui->tNomFichier->showColumn(7);
+
+    //Mise à jour des variables membres
+    m_Esabora->Set_Var_Esabora(ui->lienEsabora->text(),ui->eLogin->text(),ui->eMDP->text());
+    m_Rexel->Set_Var(ui->eNUR->text(),ui->eMDPR->text());
 
     Etat_Ajout_Auto();
 }
@@ -543,27 +552,13 @@ void Principal::Demarrage()
                 QTimer timer;
                 connect(&timer,SIGNAL(timeout()),&loop,SLOT(quit()));
                 connect(m_Rexel,SIGNAL(TelechargementTerminer()),&loop,SLOT(quit()));
-                while(req.next() && !m_Arret)
+                while(req.next() && !m_Arret)//Vérification des numéro de BC
                 {
                     m_Tache->Affichage_En_Cours();
-                    if(m_Rexel->Exportation(req.value("Numero_Commande").toString()))
-                    {
-                        timer.start(10000);
-                        //loop.exec();
-                        if(timer.isActive())
-                        {
-                            timer.stop();
-                            if(req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
-                                m_DB.Requete("UPDATE En_Cours SET Ajout='Telecharger' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                            else
-                                m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                        }
-                        else
-                        {
-                            timer.stop();
-                            Affichage_Erreurs(tr("Téléchargement de %0 échoué(temps écoulé)").arg(req.value("Numero_Commande").toString()));
-                        }
-                    }
+                    if(req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
+                        m_DB.Requete("UPDATE En_Cours SET Ajout='Telecharger' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    else
+                        m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                 }
                 m_Tache->Affichage_En_Cours();qDebug() << "Demarrage 1";
 
@@ -1340,6 +1335,8 @@ bool Principal::Post_Report()
     }
     m_Logs.resize(0);
     m_Errors.resize(0);
+    QFile f(m_Lien_Work + "/Logs/debug.log");
+    f.resize(0);
     ui->e_Erreur2->setText("0");
     return true;
 }
