@@ -6,7 +6,6 @@ Rexel::Rexel(QString lien_Travail,QString login,QString mdp):
     qDebug() << "Init Class Rexel";
     cookieJar = new QNetworkCookieJar;
     web = new QWebView;
-    web->page()->setForwardUnsupportedContent(true);
     web->page()->networkAccessManager()->setCookieJar(cookieJar);
 }
 Rexel::~Rexel()
@@ -95,22 +94,33 @@ bool Rexel::Navigation()
     r.next();
     connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
     connect(&t2,SIGNAL(timeout()),&t2,SLOT(stop()));
-    int nbPage(0),tPage(2);
-    t.start(r.value("Valeur").toInt()*1000);
+    int nbPage(0),tPage(5);
+    t.start(r.value("Valeur").toInt()*2000);
+    DEBUG << r.value(0) << "Début tempo navigation";
     l.exec();
+    DEBUG << "Fin tempo navigation";
+    t2.start(r.value(0).toInt()*2000);
+
+    do
+    {
+        t.start(1000);
+        l.exec();
+        DEBUG << web->page()->mainFrame()->evaluateJavaScript("$('#accountHistoryPageLoader').is(':visible')").toBool();
+    }while(web->page()->mainFrame()->evaluateJavaScript("$('#accountHistoryPageLoader').is(':visible')").toBool() && t2.isActive());
     while(nbPage < tPage-1)
     {
-        t2.start(10000);
-        qDebug() << "Navigation - Chargement AJAX " << nbPage << "/" << tPage;
-        nbPage = web->page()->mainFrame()->evaluateJavaScript("ACC.orderHistoryPage.currentPageNo;").toInt();
-        tPage = web->page()->mainFrame()->evaluateJavaScript("ACC.orderHistoryPage.totalPageNo;").toInt();
-        emit InfoFen("Info","Chargement page " + QString::number(nbPage) + "/" + QString::number(tPage));
+        t2.start(r.value(0).toInt()*2000);
         web->page()->mainFrame()->evaluateJavaScript("var nextPage=ACC.orderHistoryPage.currentPageNo+1;ACC.orderHistoryPage.ajaxOrderHistoryReq(nextPage,ACC.orderHistoryPage.sortCriteria,ACC.orderHistoryPage.isAscendingVal);");
         do
         {
             t.start(1000);
             l.exec();
+            DEBUG << web->page()->mainFrame()->evaluateJavaScript("$('#accountHistoryPageLoader').is(':visible')").toBool();
         }while(web->page()->mainFrame()->evaluateJavaScript("$('#accountHistoryPageLoader').is(':visible')").toBool() && t2.isActive());
+        nbPage = web->page()->mainFrame()->evaluateJavaScript("ACC.orderHistoryPage.currentPageNo;").toInt();
+        tPage = web->page()->mainFrame()->evaluateJavaScript("ACC.orderHistoryPage.totalPageNo;").toInt();
+        qDebug() << "Navigation - Chargement AJAX " << nbPage << "/" << tPage;
+        emit InfoFen("Info","Chargement page " + QString::number(nbPage) + "/" + QString::number(tPage));
     }
     web->page()->triggerAction(QWebPage::SelectAll);
     emit InfoFen("Info","Traitement des informations");
@@ -148,28 +158,45 @@ bool Rexel::Navigation()
 
         infoChantier = "";
         QString ligne = flux.readLine();
-        if(ligne.contains("N° commande Rexel"))
+        if(ligne.contains("N° de commande Rexel"))
         {
+            bool error(false);
             qDebug() << id;
-            numeroCommande = flux.readLine();
+            numeroCommande = ligne.split(" ").last();
             lienChantier = "https://www.rexel.fr/frx/my-account/orders/" + numeroCommande;
-            etat = flux.readLine();
-            flux.readLine();
-            flux.readLine();
-            if(flux.readLine() == "Date de commande :")
-                date = flux.readLine().replace(".","/");
+            ligne = flux.readLine();
+            if(ligne.contains("Date :"))
+                date = ligne.split(" ").last().replace(".","/");
             else
+            {
                 EmitErreur(106,6,numeroCommande + " Date");
-            if(flux.readLine() == "Votre référence commande :")
-                nomChantier = flux.readLine();
+                error = true;
+            }
+            ligne = flux.readLine();
+            if(ligne.contains("Réf. cde :"))
+                nomChantier = ligne.replace("Réf. cde : ","");
             else
+            {
                 EmitErreur(107,6,numeroCommande + " Référence");
-            if(flux.readLine() == "Référence chantier :")
-                infoChantier = flux.readLine();
+                error = true;
+            }
+            ligne = flux.readLine();
+            if(ligne.contains("Réf. chantier :"))
+                infoChantier = ligne.replace("Réf. chantier : ","");
+            ligne = flux.readLine();
+            if(ligne.contains("Total:"))
+                ligne = flux.readLine();
+            if(ligne.contains("Status:"))
+                etat = ligne.replace("Status: ","");
+            else
+            {
+                EmitErreur(108,6,ligne + " Etat");
+                error = true;
+            }
 
             req = m_db.Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "'");
             req.next();
-            if(req.value("Numero_Commande").isNull())
+            if(req.value("Numero_Commande").isNull() && !error)
             {
                 if(date.split("/").count() != 3)///Si la date n'a pas été trouvé
                 {
@@ -403,7 +430,6 @@ void Rexel::ResetWeb()
     qDebug() << "Rexel::ReseWeb()";
     web->close();
     web = new QWebView;
-    web->page()->setForwardUnsupportedContent(true);
     web->page()->networkAccessManager()->setCookieJar(cookieJar);
     //web->page()->settings()->setAttribute(QWebSettings::JavaEnabled,false);
     connect(web->page(),SIGNAL(unsupportedContent(QNetworkReply*)),this,SLOT(Telechargement(QNetworkReply*)));
@@ -442,7 +468,7 @@ QStringList Rexel::AffichageTableau()
         var = flux2.readLine();
         if(var.contains("<th class=\"offscreen\" headers=\"header1\" scope=\"row\">") && !var.contains("APPAREIL DE CHAUFFAGE ELECTRIQUE") &&
                 !var.contains("TAXE DE BASE") && !var.contains("EQUIPEMENT POUR LA VENTILATION") &&
-                !var.contains("PRODUIT RELEVANT DU DECRET") && !var.contains("EQUIPEMENT DE CONTROLE ET DE SURVEILLANCE") &&
+                !var.contains("PROduIT RELEVANT du DECRET") && !var.contains("EQUIPEMENT DE CONTROLE ET DE SURVEILLANCE") &&
                 !var.contains("PETIT OUTILLAGE (HORS PERCEUSE ET VISSEUSE)") && etat == 6)
         {
             etat = 0;
@@ -450,7 +476,7 @@ QStringList Rexel::AffichageTableau()
         if(etat == 0)//Designation
         {
             qDebug() << "AffichageTableau - Désignation";
-            l.append(var.split(">").at(1).split("<").at(0));
+            l.append(var.split(">").at(1).split("</th>").at(0));
             etat = 1;
         }
         else if((var.contains("<a href=\"/frx/") || var.contains("missing-product-96x96.jpg")) && etat == 1)//Reference
@@ -466,6 +492,7 @@ QStringList Rexel::AffichageTableau()
                 s2.append(s[2]);
                 s.replace(s2,s2 + " ");
                 s.replace("%2C",",");
+                s.replace("%3C","<");
                 l.append(s);
             }
             else

@@ -305,44 +305,51 @@ void Principal::Sauvegarde_Parametres()
 
     Affichage_Info("Sauvegarde des paramètres terminés",true);
 
-    InfoTraitementBL();
+    QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='7'");
+    QSqlQuery r2 = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='8'");
+    r.next();
+    r2.next();
     bool connexionRexel(false);
-    if(!m_Rexel->Connexion(ui->eNUR->text(),ui->eMDPR->text()))
-        Afficher_Message_Box("Erreur","Echec de connexion au site Rexel.fr, veuillez vérifier vos identifiants saisie",true);
-    else
+    if(ui->eNUR->text() != r.value(0) || ui->eMDPR->text() != r2.value(0))
     {
-        ModifInfoTraitementBL("Info","Test de connexion...");
-        Afficher_Message_Box("","Connexion au site de Rexel.fr réussis");
-        connexionRexel = true;
-    }
-    if(premierDemarrage && connexionRexel)
-    {
-        ModifInfoTraitementBL("connexion","Réussis");
-        ModifInfoTraitementBL("Info","Préparation de la base de données...");
-        if(!m_Rexel->Navigation())
+        InfoTraitementBL();
+        if(!m_Rexel->Connexion(ui->eNUR->text(),ui->eMDPR->text()))
+            Afficher_Message_Box("Erreur","Echec de connexion au site Rexel.fr, veuillez vérifier vos identifiants saisie",true);
+        else
         {
-            Afficher_Message_Box("","Echec de chargement de la page",true);
-            Sauvegarde_Parametres();
-            return;
+            ModifInfoTraitementBL("Info","Test de connexion...");
+            Afficher_Message_Box("","Connexion au site de Rexel.fr réussis");
+            connexionRexel = true;
         }
-        Afficher_Message_Box("","Le dernier bon de commande est sauvegardé et considéré comme ajouté à Esabora(il permettra d'éviter les doublons de bon de commande)");
+        if(premierDemarrage && connexionRexel)
+        {
+            ModifInfoTraitementBL("connexion","Réussis");
+            ModifInfoTraitementBL("Info","Préparation de la base de données...");
+            if(!m_Rexel->Navigation())
+            {
+                Afficher_Message_Box("","Echec de chargement de la page",true);
+                Sauvegarde_Parametres();
+                return;
+            }
+            Afficher_Message_Box("","Le dernier bon de commande est sauvegardé et considéré comme ajouté à Esabora(il permettra d'éviter les doublons de bon de commande)");
 
-        if(!ui->ajoutAutoBL->isChecked())
-            if(QMessageBox::question(this,"","Souhaitez-vous que les bons de livraisons soit ajoutés automatiquement ?") == QMessageBox::Yes)
-                ui->ajoutAutoBL->setChecked(true);
-        if(!ui->autoPurgeDB->isChecked())
-            if(QMessageBox::question(this,"","Souhaitez-vous que la base de données d'AutoBL supprime les bons validés de plus de 2 mois ?") == QMessageBox::Yes)
-                ui->autoPurgeDB->setChecked(true);
-        if(!ui->rapport_Erreur->isChecked())
-            if(QMessageBox::question(this,"","Souhaitez-vous qu'AutoBL envoie les rapports d'erreurs pour faciliter le débuggage(aucune information personnel n'est transmise) ?") == QMessageBox::Yes)
-                ui->rapport_Erreur->setChecked(true);
-        premierDemarrage = false;
-        ModifInfoTraitementBL("BL","Réussis");
-        Sauvegarde_Parametres();
-        Afficher_Fichiers_Excel();
+            if(!ui->ajoutAutoBL->isChecked())
+                if(QMessageBox::question(this,"","Souhaitez-vous que les bons de livraisons soit ajoutés automatiquement ?") == QMessageBox::Yes)
+                    ui->ajoutAutoBL->setChecked(true);
+            if(!ui->autoPurgeDB->isChecked())
+                if(QMessageBox::question(this,"","Souhaitez-vous que la base de données d'AutoBL supprime les bons validés de plus de 2 mois ?") == QMessageBox::Yes)
+                    ui->autoPurgeDB->setChecked(true);
+            if(!ui->rapport_Erreur->isChecked())
+                if(QMessageBox::question(this,"","Souhaitez-vous qu'AutoBL envoie les rapports d'erreurs pour faciliter le débuggage(aucune information personnel n'est transmise) ?") == QMessageBox::Yes)
+                    ui->rapport_Erreur->setChecked(true);
+            premierDemarrage = false;
+            ModifInfoTraitementBL("BL","Réussis");
+            Sauvegarde_Parametres();
+            Afficher_Fichiers_Excel();
+        }
+        else
+            ModifInfoTraitementBL("BL","Réussis");
     }
-    else
-        ModifInfoTraitementBL("BL","Réussis");
 
     Chargement_Parametres();
 }

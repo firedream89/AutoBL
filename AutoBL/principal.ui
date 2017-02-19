@@ -466,7 +466,7 @@
                  </size>
                 </property>
                 <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Saisir le nom d'utilisateur du compte Rexel se trouvant en haut à droite sur la page d'accueil.&lt;/p&gt;&lt;p&gt;ex : MARTIN DUPONT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Saisir le nom d'utilisateur du compte Rexel se trouvant en haut à droite sur la page d'accueil.&lt;/p&gt;&lt;p&gt;ex : MARTIN duPONT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
                 </property>
                 <property name="text">
                  <string/>
