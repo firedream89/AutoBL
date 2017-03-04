@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.38"); //Version De L'application
+QString version("1.381"); //Version De L'application
 QString maj("http://37.187.104.80/");//Serveur MAJ
 /////////////////////////////////
 

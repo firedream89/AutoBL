@@ -174,7 +174,10 @@ bool Rexel::Navigation()
             }
             ligne = flux.readLine();
             if(ligne.contains("Réf. cde :"))
+            {
                 nomChantier = ligne.replace("Réf. cde : ","");
+                nomChantier.replace(" ","");
+            }
             else
             {
                 EmitErreur(107,6,numeroCommande + " Référence");
@@ -468,7 +471,7 @@ QStringList Rexel::AffichageTableau()
         var = flux2.readLine();
         if(var.contains("<th class=\"offscreen\" headers=\"header1\" scope=\"row\">") && !var.contains("APPAREIL DE CHAUFFAGE ELECTRIQUE") &&
                 !var.contains("TAXE DE BASE") && !var.contains("EQUIPEMENT POUR LA VENTILATION") &&
-                !var.contains("PROduIT RELEVANT du DECRET") && !var.contains("EQUIPEMENT DE CONTROLE ET DE SURVEILLANCE") &&
+                !var.contains("PRODUIT RELEVANT DU DECRET") && !var.contains("EQUIPEMENT DE CONTROLE ET DE SURVEILLANCE") &&
                 !var.contains("PETIT OUTILLAGE (HORS PERCEUSE ET VISSEUSE)") && etat == 6)
         {
             etat = 0;
@@ -476,7 +479,7 @@ QStringList Rexel::AffichageTableau()
         if(etat == 0)//Designation
         {
             qDebug() << "AffichageTableau - Désignation";
-            l.append(var.split(">").at(1).split("</th>").at(0));
+            l.append(var.split(">").at(1).split("</").at(0));
             etat = 1;
         }
         else if((var.contains("<a href=\"/frx/") || var.contains("missing-product-96x96.jpg")) && etat == 1)//Reference
@@ -540,7 +543,7 @@ QStringList Rexel::AffichageTableau()
                 var = flux2.readLine();
             var.replace(" ","");
             var.replace("&nbsp;","");
-            l.append(var.split(">").at(1).split("/").at(0));
+            l.append(var.split(">").at(1).split("€").at(0));
             etat = 4;
         }
         else if(var.contains("header5") && etat == 4)//Quantité
@@ -564,6 +567,7 @@ QStringList Rexel::AffichageTableau()
         EmitErreur(902,5,l.at(l.count()-1) + " Etat=" + QString::number(etat));
         l.clear();
     }
+    qDebug() << l;
     qDebug() << "Fin Rexel::AffichageTableau()";
     return l;
 }

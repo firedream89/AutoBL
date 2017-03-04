@@ -52,7 +52,7 @@ Temporary Items
 Archives
 *.iss
 build-AutoBL2-Desktop_Qt_5_0_2_MinGW_32bit-Release
-build-AutoBL2-Desktop_Qt_5_1_1_MinGW_32bit-Release
+build-AutoBL2-Desktop_Qt_5_0_2_MinGW_32bit-Debug
 licence.txt
 *.user
 *.95cd6ef
@@ -60,3 +60,4 @@ AutoBL/AutoBL2.pro.user
 *.user
 *.user
 AutoBL/AutoBL2.pro.user
+Output
