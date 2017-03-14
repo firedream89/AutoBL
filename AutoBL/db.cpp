@@ -105,6 +105,9 @@ void DB::Init()
     }
     Requete("UPDATE En_Cours SET Etat='En préparation' WHERE Etat='En cours'");
     Requete("UPDATE En_Cours SET Etat='Livrée en totalité' WHERE Etat='Fermée'");
+    Requete("UPDATE En_Cours SET Etat='Livrée Et Facturée' WHERE Etat='Livrée et facturée'");
+    Requete("UPDATE En_Cours SET Etat='Livrée En Totalité' WHERE Etat='Livrée en totalité'");
+    Requete("UPDATE En_Cours SET Etat='Partiellement Livrée' WHERE Etat='Partiellement livrée'");
 }
 
 void DB::Sav()

@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.381"); //Version De L'application
+QString version("1.382"); //Version De L'application
 QString maj("http://37.187.104.80/");//Serveur MAJ
 /////////////////////////////////
 
@@ -569,12 +569,12 @@ void Principal::Demarrage()
                 }
                 m_Tache->Affichage_En_Cours();qDebug() << "Demarrage 1";
 
-                QSqlQuery req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='En préparation' OR Etat='Partiellement livrée'");
+                QSqlQuery req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='En préparation' OR Etat='Partiellement livrée' OR Etat=''");
                 while(req2.next() && !m_Arret)
                 {
                     m_Rexel->VerificationEtatBC(req2.value("Numero_Commande").toString());
                 }
-                req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée en totalité' OR Etat='Livrée et facturée'");
+                req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée en totalité' OR Etat='Livrée Et Facturée'");
                 while(req2.next() && !m_Arret)
                 {
                     if(req2.value("Numero_Livraison").toString().isEmpty())
@@ -856,9 +856,9 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
     {
         ui->tNomFichier->item(cpt,0)->setFlags(flag);
         ui->tNomFichier->item(cpt,1)->setFlags(flag);
-        if(ui->tNomFichier->item(cpt,6)->text() == "Livrée en totalité" || ui->tNomFichier->item(cpt,6)->text() == "Livrée et facturée")
+        if(ui->tNomFichier->item(cpt,6)->text() == "Livrée En Totalité" || ui->tNomFichier->item(cpt,6)->text() == "Livrée Et Facturée")
             ui->tNomFichier->item(cpt,6)->setTextColor(QColor(0,255,0));
-        else if(ui->tNomFichier->item(cpt,6)->text() == "Partiellement livrée")
+        else if(ui->tNomFichier->item(cpt,6)->text() == "Partiellement Livrée")
             ui->tNomFichier->item(cpt,6)->setTextColor(QColor(200,200,0));
         else
             ui->tNomFichier->item(cpt,6)->setTextColor(QColor(255,0,0));
