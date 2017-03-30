@@ -158,6 +158,8 @@ bool Rexel::Navigation()
             QString ligne = flux.readLine();
             if(ligne.contains("N° de commande Rexel"))
             {
+                etat.clear();
+
                 bool error(false);
                 qDebug() << id;
                 numeroCommande = ligne.split(" ").last();

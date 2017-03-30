@@ -569,12 +569,13 @@ void Principal::Demarrage()
                 }
                 m_Tache->Affichage_En_Cours();qDebug() << "Demarrage 1";
 
-                QSqlQuery req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='En préparation' OR Etat='Partiellement livrée' OR Etat=''");
+                QSqlQuery req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat!='Livrée En Totalité' AND Etat!='Livrée Et Facturée'");
                 while(req2.next() && !m_Arret)
                 {
+                    DEBUG << "Valeur trouvée";
                     m_Rexel->VerificationEtatBC(req2.value("Numero_Commande").toString());
                 }
-                req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée en totalité' OR Etat='Livrée Et Facturée'");
+                req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée En Totalité' OR Etat='Livrée Et Facturée'");
                 while(req2.next() && !m_Arret)
                 {
                     if(req2.value("Numero_Livraison").toString().isEmpty())
