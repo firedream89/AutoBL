@@ -6,8 +6,10 @@
 
 QT       += core gui
 QT       += network
-QT       += webkitwidgets
+QT       += webenginewidgets
 QT       += sql
+
+LIBS     += User32.Lib
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -18,16 +20,22 @@ TRANSLATIONS = AutoBL_fr.ts
 
 SOURCES += main.cpp\
         principal.cpp \
-    rexel.cpp \
     esabora.cpp \
     tache.cpp \
-    db.cpp
+    db.cpp \
+    fournisseur.cpp \
+    rexelfr.cpp \
+    fctfournisseur.cpp \
+    error.cpp
 
 HEADERS  += principal.h \
-    rexel.h \
     esabora.h \
     tache.h \
-    db.h
+    db.h \
+    fournisseur.h \
+    rexelfr.h \
+    fctfournisseur.h \
+    error.h
 
 FORMS    += principal.ui
 

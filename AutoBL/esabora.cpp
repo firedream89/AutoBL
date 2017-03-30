@@ -1,4 +1,5 @@
 #include "esabora.h"
+#include <Windows.h>
 
 Esabora::Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail):
     m_fen(fen),m_Login(Login),m_MDP(MDP),m_Lien_Esabora(Lien_Esabora),m_Lien_Work(Lien_Travail)

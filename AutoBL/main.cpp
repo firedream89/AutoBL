@@ -4,6 +4,7 @@
 
 void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
+
     QFile file(QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0)+"/Logs/debug.log");
     file.open(QIODevice::WriteOnly | QIODevice::Append);
     file.write(QString("[").toLatin1()+QDateTime::currentDateTime().toString().toLatin1()+QString("] ").toLatin1());
@@ -21,6 +22,7 @@ void myMessageOutput(QtMsgType type, const QMessageLogContext &context, const QS
         file.write(QString("Critical: ").toLatin1()+msg.toLatin1()+QString("\r\n").toLatin1());
         break;
     }
+
 }
 
 int main(int argc, char *argv[])
@@ -34,7 +36,6 @@ int main(int argc, char *argv[])
     translate.load("AutoBL_fr");
     a.installTranslator(&translate);
 
-    qDebug();
     if(!QApplication::arguments().contains("dvp"))
         qInstallMessageHandler(myMessageOutput);
 

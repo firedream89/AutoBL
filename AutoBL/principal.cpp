@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.38"); //Version De L'application
+QString version("1.40"); //Version De L'application
 QString maj("http://37.187.104.80/");//Serveur MAJ
 /////////////////////////////////
 
@@ -11,14 +11,13 @@ Principal::Principal(QWidget *parent) :
     ui(new Ui::Principal)
 {
     ui->setupUi(this);
-
+    DEBUG << "Load API";
     MAJ();
-
+DEBUG << PKEY;
     //Traitement des variables de l'application
     m_Lien_Work = QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0);
     ui->e_Path->setText("Work Path : " + QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0));
     qDebug() << "Lien dossier de travail : " <<m_Lien_Work;
-    //this->setFixedWidth(1000);
     premierDemarrage = false;
 
     //Création des Dossiers
@@ -50,6 +49,7 @@ Principal::Principal(QWidget *parent) :
     mdp = new QLineEdit;
     mdp->setEchoMode(QLineEdit::Password);
     Login_False();
+
     //Premier démarrage
     if(!QFile::exists(m_Lien_Work + "/Config/Config.esab"))
     {
@@ -57,7 +57,7 @@ Principal::Principal(QWidget *parent) :
         qDebug() << "Premier démarrage initialisé";
         premierDemarrage = true;
     }
-
+    DEBUG << "Premier démarrage" << premierDemarrage;
     //Chargement des paramètres
     ///Démarrage automatique
     QSqlQuery req = m_DB.Requete("SELECT * FROM Options WHERE Nom='Auto'");
@@ -81,27 +81,19 @@ Principal::Principal(QWidget *parent) :
     ///Variable login Esabora
     req = m_DB.Requete("SELECT * FROM Options WHERE Nom='Login'");
     req.next();
-    ui->eLogin->setText(req.value("Valeur").toString());
+    ui->eLogin->setText(m_DB.Decrypt(req.value("Valeur").toString()));
     ///Variable MDP Esabora
     req = m_DB.Requete("SELECT * FROM Options WHERE Nom='MDP'");
     req.next();
-    ui->eMDP->setText(req.value("Valeur").toString());
+    ui->eMDP->setText(m_DB.Decrypt(req.value("Valeur").toString()));
     ///Variable Emplacement Esabora
     req = m_DB.Requete("SELECT * FROM Options WHERE Nom='LienEsabora'");
     req.next();
     ui->lienEsabora->setText(req.value("Valeur").toString());
-    ///Variable Mail Rexel
-    req = m_DB.Requete("SELECT * FROM Options WHERE Nom='NUR'");
-    req.next();
-    ui->eNUR->setText(req.value("Valeur").toString());
     ///Variable MDP Application
     req = m_DB.Requete("SELECT * FROM Options WHERE Nom='MDPA'");
     req.next();
     ui->mDPA->setText(req.value("Valeur").toString());
-    ///Variable MDP Rexel
-    req = m_DB.Requete("SELECT * FROM Options WHERE Nom='MDPR'");
-    req.next();
-    ui->eMDPR->setText(req.value("Valeur").toString());
     ///Variable temps entre chaque commandes Esabora
     req = m_DB.Requete("SELECT * FROM Options WHERE ID='14'");
     req.next();
@@ -110,10 +102,6 @@ Principal::Principal(QWidget *parent) :
     req = m_DB.Requete("SELECT * FROM Options WHERE ID='12'");
     req.next();
     ui->nBDDEsab->setText(req.value("Valeur").toString());
-    ///Variable Nom D'utilisateur Rexel
-    req = m_DB.Requete("SELECT * FROM Options WHERE ID='15'");
-    req.next();
-    ui->eNUR2->setText(req.value("Valeur").toString());
     ///Variable Temps boucle Navigation Rexel
     req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='19'");
     req.next();
@@ -152,20 +140,23 @@ Principal::Principal(QWidget *parent) :
     req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='23'");
     req.next();
     ui->nEntrepriseEsab->setText(req.value("Valeur").toString());
+    Init_Fournisseur();
 
     m_Arret = true;
     login = false,
     ui->tNomFichier->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    //Préparation Esabora + Rexel
-    m_Rexel = new Rexel(m_Lien_Work,ui->eNUR->text(),ui->eMDPR->text());
+    //Préparation Esabora + Fournisseur
+    m_Frn = new Fournisseur(m_Lien_Work);
+    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
+    while(req.next())
+        if(!m_Frn->Add(req.value(0).toString()))
+            Affichage_Erreurs(tr("Ajout du fournisseur %1 échoué").arg(req.value(0).toString()));
+
     m_Esabora = new Esabora(this,ui->eLogin->text(),ui->eMDP->text(),ui->lienEsabora->text(),m_Lien_Work);
     QThread *thread = new QThread;
     ///Déplacement des classes dans un thread séparé
-    qDebug() << m_Esabora->thread() << m_Rexel->thread();
     m_Esabora->moveToThread(thread);
-    //m_Rexel->moveToThread(thread);
-    qDebug() << m_Esabora->thread() << m_Rexel->thread();
 
     Chargement_Parametres();
 
@@ -179,11 +170,12 @@ Principal::Principal(QWidget *parent) :
     connect(m_Tache,SIGNAL(Ouvrir()),this,SLOT(Affichage_Temps_Restant()));
     connect(m_Tache,SIGNAL(Quitter()),this,SLOT(Quitter()));
 
-    connect(m_Rexel,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
-    connect(m_Rexel,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
-    connect(m_Rexel,SIGNAL(Erreur(QString)),this,SLOT(AddError(QString)));
-    connect(m_Rexel,SIGNAL(LoadProgress(int)),this,SLOT(LoadWeb(int)));
-    connect(m_Rexel,SIGNAL(InfoFen(QString,QString)),this,SLOT(ModifInfoTraitementBL(QString,QString)));
+    connect(m_Frn,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
+    connect(m_Frn,SIGNAL(Info(QString)),this,SLOT(Update_Fen_Info(QString)));
+    connect(m_Frn,SIGNAL(LoadProgress(int)),this,SLOT(LoadWeb(int)));
+    connect(m_Frn,SIGNAL(En_Cours_Info(QString)),this,SLOT(Update_Fen_Info(QString)));
+    connect(m_Frn,SIGNAL(En_Cours_Fournisseur(QString)),this,SLOT(Fournisseur_Actuel(QString)));
+    connect(m_Frn,SIGNAL(Change_Load_Window(QString)),this,SLOT(Update_Load_Window(QString)));
 
     connect(m_Esabora,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
     connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
@@ -212,6 +204,13 @@ Principal::Principal(QWidget *parent) :
     connect(ui->tNomFichier,SIGNAL(customContextMenuRequested(QPoint)),this,SLOT(menu_TNomFichier(QPoint)));
     connect(ui->mDPA,SIGNAL(textChanged(QString)),this,SLOT(Verif_MDP_API()));
     connect(ui->bEffacer,SIGNAL(clicked(bool)),this,SLOT(PurgeError()));
+    connect(ui->bMAJRepertoire,SIGNAL(clicked(bool)),this,SLOT(MAJ_Repertoire_Esabora()));
+    connect(ui->bFrnAjouter,SIGNAL(clicked(bool)),this,SLOT(Add_Fournisseur()));
+    connect(ui->bFrnRetirer,SIGNAL(clicked(bool)),this,SLOT(Del_Fournisseur()));
+    connect(ui->listFrnAjouter,SIGNAL(currentRowChanged(int)),this,SLOT(Load_Param_Fournisseur()));
+    connect(ui->bFrnSave,SIGNAL(clicked(bool)),this,SLOT(Save_Param_Fournisseur()));
+    connect(ui->bFrnTest,SIGNAL(clicked(bool)),this,SLOT(Test_Fournisseur()));
+    connect(ui->listFrnAjouter,SIGNAL(clicked(QModelIndex)),this,SLOT(Load_Param_Fournisseur()));
 
     qApp->setQuitOnLastWindowClosed(false);
 
@@ -227,10 +226,6 @@ Principal::Principal(QWidget *parent) :
         ui->eMDP->setEchoMode(QLineEdit::Normal);
         ui->eMDP->setText("2");
         ui->lienEsabora->setText("<-3");
-        ui->eNUR->setText("4");
-        ui->eNUR2->setText("6");
-        ui->eMDPR->setEchoMode(QLineEdit::Normal);
-        ui->eMDPR->setText("5");
     }
 
     req = m_DB.Requete("SELECT * FROM Options WHERE ID='16'");
@@ -258,7 +253,7 @@ Principal::~Principal()
 
 bool Principal::test()
 {
-
+    return true;
 }
 
 void Principal::Sauvegarde_Parametres()
@@ -270,15 +265,12 @@ void Principal::Sauvegarde_Parametres()
 
     m_DB.Requete("UPDATE Options SET Valeur='" + ui->Heure->time().toString("HH") + "' WHERE Nom='Heure'");
     m_DB.Requete("UPDATE Options SET Valeur='" + ui->Heure->time().toString("mm") + "' WHERE Nom='Minutes'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->eLogin->text() + "' WHERE Nom='Login'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->eMDP->text() + "' WHERE Nom='MDP'");
+    m_DB.Requete("UPDATE Options SET Valeur='" + m_DB.Encrypt(ui->eLogin->text()) + "' WHERE Nom='Login'");
+    m_DB.Requete("UPDATE Options SET Valeur='" + m_DB.Encrypt(ui->eMDP->text()) + "' WHERE Nom='MDP'");
     m_DB.Requete("UPDATE Options SET Valeur='" + ui->lienEsabora->text() + "' WHERE Nom='LienEsabora'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->eNUR->text() + "' WHERE Nom='NUR'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->eMDPR->text() + "' WHERE Nom='MDPR'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->mDPA->text() + "' WHERE Nom='MDPA'");
+    m_DB.Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'");
     m_DB.Requete("UPDATE Options SET Valeur='" + ui->nBDDEsab->text() + "' WHERE ID='12'");
     m_DB.Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpCmd->value()) + "' WHERE ID='14'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->eNUR2->text() + "' WHERE ID='15'");
     m_DB.Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpBoucleRexel->value()) + "' WHERE ID='19'");
     if(ui->autoPurgeDB->isChecked())
         m_DB.Requete("UPDATE Options SET Valeur='1' WHERE ID='17'");
@@ -302,55 +294,29 @@ void Principal::Sauvegarde_Parametres()
     }
     else
         settings2.remove("AutoBL");
-
-    Affichage_Info("Sauvegarde des paramètres terminés",true);
-
+qDebug() << 0;
     QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='7'");
     QSqlQuery r2 = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='8'");
     r.next();
     r2.next();
-    bool connexionRexel(false);
-    if(ui->eNUR->text() != r.value(0) || ui->eMDPR->text() != r2.value(0))
-    {
-        InfoTraitementBL();
-        if(!m_Rexel->Connexion(ui->eNUR->text(),ui->eMDPR->text()))
-            Afficher_Message_Box("Erreur","Echec de connexion au site Rexel.fr, veuillez vérifier vos identifiants saisie",true);
-        else
-        {
-            ModifInfoTraitementBL("Info","Test de connexion...");
-            Afficher_Message_Box("","Connexion au site de Rexel.fr réussis");
-            connexionRexel = true;
-        }
-        if(premierDemarrage && connexionRexel)
-        {
-            ModifInfoTraitementBL("connexion","Réussis");
-            ModifInfoTraitementBL("Info","Préparation de la base de données...");
-            if(!m_Rexel->Navigation())
-            {
-                Afficher_Message_Box("","Echec de chargement de la page",true);
-                Sauvegarde_Parametres();
-                return;
-            }
-            Afficher_Message_Box("","Le dernier bon de commande est sauvegardé et considéré comme ajouté à Esabora(il permettra d'éviter les doublons de bon de commande)");
 
-            if(!ui->ajoutAutoBL->isChecked())
-                if(QMessageBox::question(this,"","Souhaitez-vous que les bons de livraisons soit ajoutés automatiquement ?") == QMessageBox::Yes)
-                    ui->ajoutAutoBL->setChecked(true);
-            if(!ui->autoPurgeDB->isChecked())
-                if(QMessageBox::question(this,"","Souhaitez-vous que la base de données d'AutoBL supprime les bons validés de plus de 2 mois ?") == QMessageBox::Yes)
-                    ui->autoPurgeDB->setChecked(true);
-            if(!ui->rapport_Erreur->isChecked())
-                if(QMessageBox::question(this,"","Souhaitez-vous qu'AutoBL envoie les rapports d'erreurs pour faciliter le débuggage(aucune information personnel n'est transmise) ?") == QMessageBox::Yes)
-                    ui->rapport_Erreur->setChecked(true);
-            premierDemarrage = false;
-            ModifInfoTraitementBL("BL","Réussis");
-            Sauvegarde_Parametres();
-            Afficher_Fichiers_Excel();
-        }
-        else
-            ModifInfoTraitementBL("BL","Réussis");
+    if(premierDemarrage)
+    {
+        if(!ui->ajoutAutoBL->isChecked())
+            if(QMessageBox::question(this,"","Souhaitez-vous que les bons de livraisons soit ajoutés automatiquement ?") == QMessageBox::Yes)
+                ui->ajoutAutoBL->setChecked(true);
+        if(!ui->autoPurgeDB->isChecked())
+            if(QMessageBox::question(this,"","Souhaitez-vous que la base de données d'AutoBL supprime les bons validés de plus de 2 mois ?") == QMessageBox::Yes)
+                ui->autoPurgeDB->setChecked(true);
+        if(!ui->rapport_Erreur->isChecked())
+            if(QMessageBox::question(this,"","Souhaitez-vous qu'AutoBL envoie les rapports d'erreurs pour faciliter le débuggage(aucune information personnel n'est transmise) ?") == QMessageBox::Yes)
+                ui->rapport_Erreur->setChecked(true);
+        premierDemarrage = false;
+        Sauvegarde_Parametres();
+        Afficher_Fichiers_Excel();
     }
 
+    Affichage_Info("Sauvegarde des paramètres terminés",true);
     Chargement_Parametres();
 }
 
@@ -371,7 +337,6 @@ void Principal::Chargement_Parametres()
 
     //Mise à jour des variables membres
     m_Esabora->Set_Var_Esabora(ui->lienEsabora->text(),ui->eLogin->text(),ui->eMDP->text());
-    m_Rexel->Set_Var(ui->eNUR->text(),ui->eMDPR->text());
 
     Etat_Ajout_Auto();
 }
@@ -456,12 +421,7 @@ void Principal::Emplacement_Esabora()
         if((ui->nBDDEsab->text() == "" || ui->nEntrepriseEsab->text() == "") && ui->eLogin->text() != "" && ui->eMDP->text() != "")
             if(QMessageBox::question(this,"","Souhaitez vous qu'AutoBL tente de remplir les champs Répertoire et nom d'entreprise automatiquement ?") ==
                     QMessageBox::Yes)
-            {
-                QString entreprise,BDD;
-                m_Esabora->Apprentissage(entreprise,BDD);
-                ui->nBDDEsab->setText(BDD);
-                ui->nEntrepriseEsab->setText(entreprise);
-            }
+                MAJ_Repertoire_Esabora();
     }
 }
 
@@ -524,10 +484,8 @@ void Principal::Demarrage()
 {
     m_DB.Sav();
     Affichage_Info("Recherche de nouveau BL...",true);
-    InfoTraitementBL();
     m_Temps.stop();
     m_Arret = false;///Début d'ajout BC
-    m_Rexel->ResetWeb();
 
     ///Verif Affichage popup TV
     HWND hWnds = FindWindow(NULL,L"Sessions sponsorisées");
@@ -535,62 +493,16 @@ void Principal::Demarrage()
     {
         SetForegroundWindow(hWnds);
         keybd_event(VK_EXECUTE,0,0,0);
+        keybd_event(VK_EXECUTE,0,KEYEVENTF_KEYUP,0);
     }
 
-    ///Récuperation des BC sur rexel.fr
-    m_Tache->Affichage_En_Cours();
-    qDebug() << "Demarrage 0";
-    if(ui->eNUR2->text() == "")
-    {
-        QMessageBox::information(this,"Erreur","Le nom d'utilisateur Rexel est nécéssaire pour le fonctionnement de l'application !");
-        return;
-    }
-    if(ui->activ_Rexel->isChecked() && !m_Arret)
-    {
-        if(m_Rexel->Connexion(ui->eNUR->text(),ui->eMDPR->text()))
-        {
-            ModifInfoTraitementBL("connexion","Réussi");
-            m_Tache->Affichage_En_Cours();
-            if(m_Rexel->Navigation() && !m_Arret)
-            {
-                qDebug() << "Demarrage 0.1";
-                QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Ajout=''");
-                QEventLoop loop;
-                QTimer timer;
-                connect(&timer,SIGNAL(timeout()),&loop,SLOT(quit()));
-                connect(m_Rexel,SIGNAL(TelechargementTerminer()),&loop,SLOT(quit()));
-                while(req.next() && !m_Arret)//Vérification des numéro de BC
-                {
-                    m_Tache->Affichage_En_Cours();
-                    if(req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
-                        m_DB.Requete("UPDATE En_Cours SET Ajout='Telecharger' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                    else
-                        m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                }
-                m_Tache->Affichage_En_Cours();qDebug() << "Demarrage 1";
+    ///Récuperation des BC
+    Create_Fen_Info("Fournisseur","Info");
+    if(!m_Frn->Start())
+        Affichage_Erreurs("Des erreurs se sont produites durant la recherche de bons");
+    Update_Fen_Info();
 
-                QSqlQuery req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='En préparation' OR Etat='Partiellement livrée'");
-                while(req2.next() && !m_Arret)
-                {
-                    m_Rexel->VerificationEtatBC(req2.value("Numero_Commande").toString());
-                }
-                req2 = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée en totalité' OR Etat='Livrée et facturée'");
-                while(req2.next() && !m_Arret)
-                {
-                    if(req2.value("Numero_Livraison").toString().isEmpty())
-                    {
-                        m_Rexel->Recuperation_BL(req2.value("Numero_Commande").toString());
-                    }
-                }
-                ModifInfoTraitementBL("navigation","Réussi");
-            }
-            else
-                ModifInfoTraitementBL("navigation","Echouée");
-        }
-        else
-            ModifInfoTraitementBL("connexion","Echouée");
-    }
-qDebug() << "Demarrage 2";
+    qDebug() << "Demarrage 2";
     int nbBC(0),nbBL(0);
     ///Démarrage d'esabora
     if(ui->activ_Esab->isChecked() && !m_Arret)
@@ -770,7 +682,7 @@ void Principal::About()
 
 void Principal::Test_Rexel()
 {
-    m_Rexel->Affichage();
+    m_Frn->Show_Web();
 }
 
 void Principal::Afficher_Message_Box(QString header,QString texte, bool warning)
@@ -786,6 +698,7 @@ void Principal::Afficher_Message_Box(QString header,QString texte, bool warning)
 void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
 {
     ui->tNomFichier->blockSignals(true);
+    ui->tNomFichier->clearContents();
     QFlag flag = ~Qt::ItemIsEditable;
     QSqlQuery req;
     if(tri == 10)
@@ -804,6 +717,7 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
         ui->tNomFichier->removeRow(0);
 
     //Affichage de la colonne numéro BC esabora si logué
+    //if(ui->tNomFichier->horizontalHeaderItem(8)->text() != "Fournisseur") ;
     if(login) ui->tNomFichier->showColumn(8);
     else ui->tNomFichier->hideColumn(8);
 
@@ -830,6 +744,7 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
             ui->tNomFichier->setItem(0,3,new QTableWidgetItem(req.value("Info_Chantier").toString()));
             ui->tNomFichier->setItem(0,7,new QTableWidgetItem());
             ui->tNomFichier->setItem(0,8,new QTableWidgetItem(req.value("Numero_BC_Esabora").toString()));
+            ui->tNomFichier->setItem(0,9,new QTableWidgetItem(req.value("Fournisseur").toString()));
             if(ui->tNomFichier->item(0,4)->text() != "" && ui->tNomFichier->item(0,1)->text() == "Bon Ajouté")
             {
                 if(req.value("Ajout_BL").toInt() == 0)
@@ -856,9 +771,9 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
     {
         ui->tNomFichier->item(cpt,0)->setFlags(flag);
         ui->tNomFichier->item(cpt,1)->setFlags(flag);
-        if(ui->tNomFichier->item(cpt,6)->text() == "Livrée en totalité" || ui->tNomFichier->item(cpt,6)->text() == "Livrée et facturée")
+        if(ui->tNomFichier->item(cpt,6)->text() == "Livrée En Totalité" || ui->tNomFichier->item(cpt,6)->text() == "Livrée Et Facturée")
             ui->tNomFichier->item(cpt,6)->setTextColor(QColor(0,255,0));
-        else if(ui->tNomFichier->item(cpt,6)->text() == "Partiellement livrée")
+        else if(ui->tNomFichier->item(cpt,6)->text() == "Partiellement Livrée")
             ui->tNomFichier->item(cpt,6)->setTextColor(QColor(200,200,0));
         else
             ui->tNomFichier->item(cpt,6)->setTextColor(QColor(255,0,0));
@@ -887,7 +802,8 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
                             ui->tNomFichier->columnWidth(2) + ui->tNomFichier->columnWidth(3) +
                             ui->tNomFichier->columnWidth(4) + ui->tNomFichier->columnWidth(5) +
                             ui->tNomFichier->columnWidth(6) + ui->tNomFichier->columnWidth(7) +
-                            ui->tNomFichier->columnWidth(8) +75,ui->tNomFichier->size().height());
+                            ui->tNomFichier->columnWidth(8) + ui->tNomFichier->columnWidth(9) +
+                            105,ui->tNomFichier->size().height());
     qDebug() << "Affichage tableau - redimensionnement l=" << ui->tNomFichier->size().width()+75;
 
     this->resize(ui->tNomFichier->size());
@@ -919,74 +835,70 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
     else if(c == 5)//Affichage Tableau matos
     {
         QDialog *d = new QDialog(this);
-        QLabel *label = new QLabel("Connection au site de Rexel\nVeuillez patienter...");
+        QLabel *label = new QLabel(tr("Préparation du tableau\nVeuillez patienter..."));
+        label->setObjectName("Update");
         QGridLayout *gl = new QGridLayout;
         gl->addWidget(label);
         d->setLayout(gl);
         d->setWindowFlags(Qt::Tool | Qt::CustomizeWindowHint);
         d->setObjectName("Chargement");
         d->show();
-        if(m_Rexel->Connexion(ui->eNUR->text(),ui->eMDPR->text()) && d->isVisible())
-        {
-            label->setText("Chargement de la page web\nVeuillez patienter...");
-            if(m_Rexel->webLoad("https://www.rexel.fr/frx/my-account/orders/" + ui->tNomFichier->item(l,c)->text()) && d->isVisible())
-            {
-                d->close();
-                QStringList list = m_Rexel->AffichageTableau();
-                QTableWidget *tbl = new QTableWidget;
-                tbl->insertColumn(0);
-                tbl->insertColumn(0);
-                tbl->insertColumn(0);
-                tbl->insertColumn(0);
-                tbl->insertColumn(0);
-                tbl->insertColumn(0);
-                tbl->insertColumn(0);
-                tbl->setHorizontalHeaderItem(0,new QTableWidgetItem("Marque"));
-                tbl->setHorizontalHeaderItem(1,new QTableWidgetItem("Référence"));
-                tbl->setHorizontalHeaderItem(2,new QTableWidgetItem("Désignation"));
-                tbl->setHorizontalHeaderItem(3,new QTableWidgetItem("Prix unitaire"));
-                tbl->setHorizontalHeaderItem(4,new QTableWidgetItem("Quantité"));
-                tbl->setHorizontalHeaderItem(5,new QTableWidgetItem("Reste à livrer"));
-                tbl->setHorizontalHeaderItem(6,new QTableWidgetItem("Prix total"));
-                tbl->setWindowTitle("");
-                for(int cpt = 0;cpt<list.count();cpt++)
-                {
-                    if(list.count() - cpt >= 7)
-                    {
-                        tbl->insertRow(0);
-                        tbl->setItem(0,2,new QTableWidgetItem(list.at(cpt)));//Designation
-                        cpt++;
-                        tbl->setItem(0,1,new QTableWidgetItem(list.at(cpt)));//reference
-                        cpt++;
-                        tbl->setItem(0,0,new QTableWidgetItem(list.at(cpt)));//fabricant
-                        cpt += 2;
-                        tbl->setItem(0,3,new QTableWidgetItem(list.at(cpt)));//Prix unitaire
-                        cpt++;
-                        tbl->setItem(0,4,new QTableWidgetItem(list.at(cpt)));//Quantité
-                        cpt++;
-                        tbl->setItem(0,5,new QTableWidgetItem(list.at(cpt)));//Quantité restante
-                        QString p = tbl->item(0,3)->text().replace("€","");
-                        double v = p.replace(",",".").toDouble();
-                        double v2 = tbl->item(0,4)->text().replace(",",".").toDouble();
-                        double tmp = v * v2;
-                        tbl->setItem(0,6,new QTableWidgetItem(QString::number(tmp).replace(".",",") + "€"));//Prix total
-                    }
-                }
-                tbl->resizeColumnsToContents();
-                tbl->resizeRowsToContents();
-                tbl->resize(tbl->width(),tbl->height());
-                tbl->show();
-            }
-            else if(d->isVisible())
-                QMessageBox::information(this,"Erreur","Impossible d'accèder au bon de commande !");
-        }
-        else if(d->isVisible())
-            QMessageBox::information(this,"Erreur","Le site de rexel est actuellement indisponible !");
 
+        QStringList list = m_Frn->Get_Invoice_List(ui->tNomFichier->item(l,9)->text(),ui->tNomFichier->item(l,5)->text());
         d->close();
+        QTableWidget *tbl = new QTableWidget;
+        tbl->insertColumn(0);
+        tbl->insertColumn(0);
+        tbl->insertColumn(0);
+        tbl->insertColumn(0);
+        tbl->insertColumn(0);
+        tbl->insertColumn(0);
+        tbl->insertColumn(0);
+        tbl->setHorizontalHeaderItem(0,new QTableWidgetItem("Marque"));
+        tbl->setHorizontalHeaderItem(1,new QTableWidgetItem("Référence"));
+        tbl->setHorizontalHeaderItem(2,new QTableWidgetItem("Désignation"));
+        tbl->setHorizontalHeaderItem(3,new QTableWidgetItem("Prix unitaire"));
+        tbl->setHorizontalHeaderItem(4,new QTableWidgetItem("Quantité"));
+        tbl->setHorizontalHeaderItem(5,new QTableWidgetItem("Reste à livrer"));
+        tbl->setHorizontalHeaderItem(6,new QTableWidgetItem("Prix total"));
+        tbl->setWindowTitle("");
+        for(int cpt = 0;cpt<list.count();cpt++)
+        {
+            if(list.count() - cpt >= 7)
+            {
+                tbl->insertRow(0);
+                tbl->setItem(0,2,new QTableWidgetItem(list.at(cpt)));//Designation
+                cpt++;
+                tbl->setItem(0,1,new QTableWidgetItem(list.at(cpt)));//reference
+                cpt++;
+                tbl->setItem(0,0,new QTableWidgetItem(list.at(cpt)));//fabricant
+                cpt += 2;
+                tbl->setItem(0,3,new QTableWidgetItem(list.at(cpt)));//Prix unitaire
+                cpt++;
+                tbl->setItem(0,4,new QTableWidgetItem(list.at(cpt)));//Quantité
+                cpt++;
+                tbl->setItem(0,5,new QTableWidgetItem(list.at(cpt)));//Quantité restante
+                QString p = tbl->item(0,3)->text().replace("€","");
+                double v = p.replace(",",".").toDouble();
+                double v2 = tbl->item(0,4)->text().replace(",",".").toDouble();
+                double tmp = v * v2;
+                tbl->setItem(0,6,new QTableWidgetItem(QString::number(tmp).replace(".",",") + "€"));//Prix total
+            }
+        }
+        tbl->resizeColumnsToContents();
+        tbl->resizeRowsToContents();
+        tbl->resize(tbl->columnWidth(0)+tbl->columnWidth(1)+tbl->columnWidth(2)+tbl->columnWidth(3)+
+                    tbl->columnWidth(4)+tbl->columnWidth(5)+tbl->columnWidth(6)+100,tbl->height());
         delete label;
         delete gl;
         delete d;
+        QDialog *f = new QDialog(this);
+        f->setObjectName("Chargement");
+        connect(f,SIGNAL(finished(int)),this,SLOT(Destroy_Chargement()));
+        QGridLayout *l = new QGridLayout(f);
+        l->addWidget(tbl);
+        f->resize(tbl->width(),tbl->height());
+        f->show();
     }
     else if(c == 7)//MAJ BDD Ajout Manu BL
     {
@@ -1111,9 +1023,12 @@ void Principal::Login_False()
 
 void Principal::Login_True()
 {
+    QString mdph = mdp->text().split(" ").at(0);
+    QByteArray mdpb = QCryptographicHash::hash(mdph.toLatin1(),QCryptographicHash::Sha256);
+    DEBUG << mdpb.toHex();
     QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='11'");
     req.next();
-    if(req.value("Valeur").toString() != mdp->text().split(" ").at(0))
+    if(req.value("Valeur").toString() != mdpb.toHex())
         QMessageBox::information(this,"Erreur","Mot de passe faux !");
     else
     {
@@ -1255,6 +1170,9 @@ void Principal::Bug_Report()
 bool Principal::Post_Report()
 {
     qDebug() << "Post Report";
+    QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Rexel.fr'");
+    r.next();
+    QString nur = r.value(0).toString().split("|").at(0);
     if(this->findChildren<QDialog *>("rapport de bug").count() > 0)
     {
         if(this->findChildren<QDialog *>().at(0)->windowTitle() == "Rapport de bug")
@@ -1266,7 +1184,7 @@ bool Principal::Post_Report()
             QTextStream flux(&rapport);
             QFile f(m_Lien_Work + "/Logs/logs.txt");
             f.open(QIODevice::ReadOnly);
-            flux << "---------------- Rapport AutoBL " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
+            flux << "---------------- Rapport AutoBL " << nur << " " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
             flux << "Commentaire : " << this->findChildren<QDialog *>().at(0)->findChildren<QTextEdit *>().at(0)->toPlainText();
             flux << "- Logs -\r\n" << f.readAll() << "\r\n";
             f.close();
@@ -1276,14 +1194,20 @@ bool Principal::Post_Report()
             f.close();
             f.setFileName(m_Lien_Work + "/Logs/debug.log");
             f.open(QIODevice::ReadOnly);
-            flux << "- Debug -\r\n" << f.readAll() << "\r\n";
+            flux << "- Debug -\r\n";
+            while(!f.atEnd())
+            {
+                QString v = f.readLine();
+                if(!v.contains("Cannot create accessible interface for object:"))
+                    flux << v << "\r\n";
+            }
             f.close();
 
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Envoi du rapport...");
             rapport.close();
             rapport.open(QIODevice::ReadOnly);
 
-            QWebView w;
+            //QWebView w;
             QEventLoop l;
             QNetworkRequest request;
             request.setUrl(QUrl(maj + "mail.php"));
@@ -1293,8 +1217,8 @@ bool Principal::Post_Report()
             array.append("sj=" + rapport.fileName().split(".").at(0)+"&");
             array.append("msg=" + rapport.readAll());
 
-            w.load(request, QNetworkAccessManager::PostOperation, array);
-            connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+            //w.load(request, QNetworkAccessManager::PostOperation, array);
+            //connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
             l.exec();
 
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Rapport envoyé !");
@@ -1310,7 +1234,7 @@ bool Principal::Post_Report()
         QTextStream flux(&rapport);
         QFile f(m_Lien_Work + "/Logs/logs.txt");
         f.open(QIODevice::ReadOnly);
-        flux << "---------------- Rapport AutoBL " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
+        flux << "---------------- Rapport AutoBL " << nur << " " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
         flux << "- Logs -\r\n" << f.readAll() << "\r\n";
         f.close();
         f.setFileName(m_Lien_Work + "/Logs/errors.txt");
@@ -1319,12 +1243,18 @@ bool Principal::Post_Report()
         f.close();
         f.setFileName(m_Lien_Work + "/Logs/debug.log");
         f.open(QIODevice::ReadOnly);
-        flux << "- Debug -\r\n" << f.readAll() << "\r\n";
+        flux << "- Debug -\r\n";
+        while(!f.atEnd())
+        {
+            QString v = f.readLine();
+            if(!v.contains("Cannot create accessible interface for object:"))
+                flux << v << "\r\n";
+        }
         f.close();
 
         rapport.close();
         rapport.open(QIODevice::ReadOnly);
-        QWebView w;
+        //QWebView w;
         QEventLoop l;
         QNetworkRequest request;
         request.setUrl(QUrl(maj + "mail.php"));
@@ -1334,8 +1264,8 @@ bool Principal::Post_Report()
         array.append("sj=" + rapport.fileName().split(".").at(0)+"&");
         array.append("msg=" + rapport.readAll());
 
-        w.load(request, QNetworkAccessManager::PostOperation, array);
-        connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+        //w.load(request, QNetworkAccessManager::PostOperation, array);
+        //connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
         l.exec();
         rapport.close();
         rapport.remove();
@@ -1361,6 +1291,14 @@ void Principal::LoadWeb(int valeur)
     else if(this->findChild<QDialog *>("traitement") != NULL)
     {
         QLabel *l = this->findChild<QDialog *>("traitement")->findChild<QLabel *>("Info");
+        QString s = l->text();
+        if(l->text().contains("%"))
+            s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
+        l->setText(s + " " + QString::number(valeur) + "%");
+    }
+    else if(this->findChild<QDialog *>("FenInfo") != NULL)
+    {
+        QLabel *l = this->findChild<QDialog *>("FenInfo")->findChild<QLabel *>("Info");
         QString s = l->text();
         if(l->text().contains("%"))
             s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
@@ -1429,36 +1367,21 @@ void Principal::ModifInfoTraitementBL(QString label,QString etat)
 
 void Principal::Get_Tableau_Matos(int l)
 {
-    QStringList list;
-    if(m_Rexel->Connexion(ui->eNUR->text(),ui->eMDPR->text()))
-    {
-        if(m_Rexel->webLoad("https://www.rexel.fr/frx/my-account/orders/" + ui->tNomFichier->item(l,5)->text()))
-            list = m_Rexel->AffichageTableau();
-
-        else
-            QMessageBox::information(this,"Erreur","Impossible d'accèder au bon de commande !");
-    }
-    else
-        QMessageBox::information(this,"Erreur","Le site de rexel est actuellement indisponible !");
-
-    m_Esabora->Set_Liste_Matos(list);
+    m_Esabora->Set_Liste_Matos(m_Frn->Get_Invoice_List(ui->tNomFichier->item(l,9)->text(),ui->tNomFichier->item(l,3)->text()));
 }
 //Erreur 9xx
 void Principal::Get_Tableau_Matos(QString Numero_Commande)
 {
-    QStringList list;
-    if(m_Rexel->Connexion(ui->eNUR->text(),ui->eMDPR->text()))
+    QStringList list = m_DB.Find_Fournisseur_From_Invoice(Numero_Commande);
+    if(list.count() != 1)
     {
-        if(m_Rexel->webLoad("https://www.rexel.fr/frx/my-account/orders/" + Numero_Commande))
-            list = m_Rexel->AffichageTableau();
-
+        if(list.count() == 0)
+            Affichage_Erreurs(tr("Aucun fournisseur trouvé"));
         else
-            Affichage_Erreurs("Principal | 901 | Chargement de la page échouée");
+            Affichage_Erreurs(tr("Plusieurs fournisseurs ont été trouvés"));
+        return;
     }
-    else
-        Affichage_Erreurs("Principal | 902 | Connexion échouée");
-
-    m_Esabora->Set_Liste_Matos(list);
+    m_Esabora->Set_Liste_Matos(m_Frn->Get_Invoice_List(list.at(0),Numero_Commande));
 }
 
 void Principal::menu_TNomFichier(QPoint point)
@@ -1569,16 +1492,265 @@ void Principal::Quitter()
     qApp->exit(0);
 }
 
+void Principal::MAJ_Repertoire_Esabora()
+{
+    QString entreprise,BDD;
+    m_Esabora->Apprentissage(entreprise,BDD);
+    ui->nBDDEsab->setText(BDD);
+    ui->nEntrepriseEsab->setText(entreprise);
+
+    Sauvegarde_Parametres();
+}
+
+void Principal::Init_Fournisseur()
+{
+    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='24'");
+    req.next();
+    if(req.value(0).toString() != "Rexel.fr|")
+        m_DB.Requete("UPDATE Options SET Valeur='Rexel.fr|', Nom='Fournisseurs' WHERE ID='24'");
+
+    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom='FrnADD'");
+
+    req.next();
+    DEBUG << req.value("Valeur");
+    if(req.value("Valeur").toString().split("|").count() > 1)
+    {
+        QStringList list = req.value("Valeur").toString().split("|");
+        while(req.next())
+        {
+            list.removeOne(req.value("Valeur").toString());
+            ui->listFrnAjouter->addItem(req.value("Valeur").toString());
+        }
+        if(list.last().isEmpty() && list.count() > 0)
+            list.removeLast();
+        ui->listFrnDispo->addItems(list);
+    }
+    else
+        DEBUG << "Erreur Liste Fournisseurs non trouvé !";
+    DEBUG << "FIN Init_Fournisseurs";
+}
+
+void Principal::Add_Fournisseur()
+{
+    ui->listFrnAjouter->blockSignals(true);
+    if(ui->listFrnDispo->selectedItems().isEmpty())
+        return;
+    ui->listFrnAjouter->addItem(ui->listFrnDispo->selectedItems().at(0)->text());
+    QSqlQuery req = m_DB.Requete("SELECT MAX(ID) FROM Options");
+    req.next();
+    m_DB.Requete("INSERT INTO Options VALUES('" + req.value(0).toString() + "','FrnADD','" + ui->listFrnDispo->selectedItems().at(0)->text() + "')");
+    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom ='FrnADD' ORDER BY ID ASC");
+    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnDispo->selectedItems().at(0)->text() + "'");
+    QStringList f;
+    if(req.next())
+    {
+        f = m_DB.Decrypt(req.value("Valeur").toString()).split("|");
+        m_Frn->Add(ui->listFrnDispo->selectedItems().at(0)->text(),f.at(0),f.at(1),f.at(2));
+    }
+    else
+    {
+        DEBUG << "ADD Fournisseur : " << ui->listFrnDispo->currentItem()->text() << " : variables non défini";
+    }
+    ui->listFrnDispo->clear();
+    req.next();
+    if(req.value("Valeur").toString().split("|").count() > 1)
+    {
+        QStringList list = req.value("Valeur").toString().split("|");
+        while(req.next())
+            list.removeOne(req.value("Valeur").toString());
+        ui->listFrnDispo->addItems(list);
+    }
+    ui->listFrnAjouter->blockSignals(false);
+}
+
+void Principal::Del_Fournisseur()
+{
+    ui->listFrnAjouter->blockSignals(true);
+    if(ui->listFrnAjouter->selectedItems().isEmpty())
+        return;
+    ui->listFrnDispo->addItem(ui->listFrnAjouter->selectedItems().at(0)->text());
+    m_DB.Requete("DELETE FROM Options WHERE Valeur='" + ui->listFrnAjouter->selectedItems().at(0)->text() + "'");
+    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom ='FrnADD'");
+    m_Frn->Del(ui->listFrnAjouter->selectedItems().at(0)->text());
+    ui->listFrnAjouter->clear();
+
+    QStringList list;
+    while(req.next())
+        list.append(req.value("Valeur").toString());
+    ui->listFrnAjouter->addItems(list);
+    ui->listFrnAjouter->blockSignals(false);
+}
+
+void Principal::Save_Param_Fournisseur()
+{
+    QString r = ui->eFrnUserName->text() + "|" + ui->eFrnMail->text() + "|" + ui->eFrnMDP->text();
+    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
+    if(req.next())
+        m_DB.Requete("UPDATE Options SET Valeur='" + m_DB.Encrypt(r) + "' WHERE Nom ='" + ui->lFrn->text() + "'");
+    else
+    {
+        req = m_DB.Requete("SELECT MAX(ID) FROM Options");
+        req.next();
+        m_DB.Requete("INSERT INTO Options VALUES('" + req.value(0).toString() + "','" + ui->lFrn->text() + "','" + m_DB.Encrypt(r) + "')");
+    }
+    if(m_Frn->Update_Var(ui->lFrn->text(),ui->eFrnUserName->text(),ui->eFrnMail->text(),ui->eFrnMDP->text()))
+        Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour");
+    else
+    {
+        Affichage_Info("Echec de mise à jour " + ui->listFrnAjouter->currentItem()->text());
+        DEBUG << "Echec mise à jour des variables de " + ui->listFrnAjouter->currentItem()->text();
+    }
+}
+
+void Principal::Test_Fournisseur()
+{
+    Create_Fen_Info("Info");
+    if(m_Frn->Test_Connexion(ui->lFrn->text()))
+    {
+        QTimer *t = new QTimer;
+        connect(t,SIGNAL(timeout()),this,SLOT(Update_Fen_Info()));
+        //t->start(5000);
+    }
+}
+
+void Principal::Load_Param_Fournisseur()
+{
+    ui->lFrn->clear();
+    ui->lFrnUserName->clear();
+    ui->lFrnMail->clear();
+    ui->lFrnMDP->clear();
+    ui->eFrnUserName->clear();
+    ui->eFrnMail->clear();
+    ui->eFrnMDP->clear();
+    if(ui->listFrnAjouter->selectedItems().isEmpty())
+        return;
+    QStringList l;
+
+    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Info_" + ui->listFrnAjouter->currentItem()->text() + "'");
+    if(req.next())
+    {
+        l = m_DB.Decrypt(req.value(0).toString()).split("|");
+        if(l.count() == 3)
+        {
+            ui->lFrnUserName->setText(l.at(0));
+            ui->lFrnMail->setText(l.at(1));
+            ui->lFrnMDP->setText(l.at(2));
+        }
+    }
+    if(ui->lFrnUserName->text() == "")
+        ui->lFrnUserName->setText("Nom d'utilisateur");
+    if(ui->lFrnMail->text() == "")
+        ui->lFrnMail->setText("Mail");
+    if(ui->lFrnMDP->text() == "")
+        ui->lFrnMDP->setText("Mot de passe");
 
 
+    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
+    ui->lFrn->setText(ui->listFrnAjouter->currentItem()->text());
+    if(req.next())
+    {
+        l = m_DB.Decrypt(req.value("Valeur").toString()).split("|");
+        if(l.count() == 3)
+        {
+            ui->eFrnUserName->setText(l.at(0));
+            ui->eFrnMail->setText(l.at(1));
+            ui->eFrnMDP->setText(l.at(2));
+        }
+    }
+}
 
+void Principal::Create_Fen_Info(QString label1, QString label2, QString label3, QString label4)
+{
+    QDialog *f = new QDialog(this,Qt::Tool | Qt::CustomizeWindowHint);
+    f->setObjectName("FenInfo");
+    QFormLayout *l = new QFormLayout(f);
+    QLabel *i1 = new QLabel;
+    i1->setObjectName(label1);
+    if(label1 == "Info")
+        l->addRow(i1);
+    else
+        l->addRow(label1,i1);
+    if(!label2.isEmpty())
+    {
+        QLabel *i2 = new QLabel;
+        i2->setObjectName(label2);
+        l->addRow(label2,i2);
+    }
+    if(!label3.isEmpty())
+    {
+        QLabel *i3 = new QLabel;
+        i3->setObjectName(label3);
+        l->addRow(label3,i3);
+    }
+    if(!label4.isEmpty())
+    {
+        QLabel *i4 = new QLabel;
+        i4->setObjectName(label4);
+        l->addRow(label4,i4);
+    }
+    connect(f,SIGNAL(rejected()),f,SLOT(deleteLater()));
+    f->show();
+}
 
+void Principal::Update_Fen_Info(QString label, QString info)
+{
+    if(this->findChild<QDialog*>("FenInfo") != NULL)
+        this->findChild<QDialog*>("FenInfo")->findChild<QLabel*>(label)->setText(info);
+}
 
+void Principal::Update_Fen_Info(QString info)
+{
+    if(this->findChild<QDialog*>("FenInfo") != NULL)
+    {
+        if(info.isEmpty())
+        {
+            this->findChild<QDialog*>("FenInfo")->close();
+            this->findChild<QDialog*>("FenInfo")->deleteLater();
+        }
+        this->findChild<QDialog*>("FenInfo")->findChild<QLabel*>("Info")->setText(info);
+    }
+}
 
+void Principal::Fournisseur_Actuel(QString nom)
+{
+    Update_Fen_Info("Fournisseur",nom);
+}
 
+void Principal::Update_Load_Window(QString text)
+{
+    if(this->findChild<QDialog*>("Chargement") != NULL)
+    {
+        if(this->findChild<QDialog*>("Chargement")->findChild<QLabel*>("Update")->text().split("\n").count() != 2)
+            return;
+        QString l = this->findChild<QDialog*>("Chargement")->findChild<QLabel*>("Update")->text().split("\n").at(1);
+        this->findChild<QDialog*>("Chargement")->findChild<QLabel*>("Update")->setText(text + "\n" + l);
+    }
+}
 
+void Principal::Destroy_Window(QString oName)
+{
 
+}
 
+void Principal::Destroy_Chargement()
+{
+    if(this->findChild<QDialog*>("Chargement") != NULL)
+    {
+        if(this->findChild<QDialog*>("Chargement")->findChild<QLayout*>() != NULL)
+            this->findChild<QDialog*>("Chargement")->findChild<QLayout*>()->deleteLater();
+        else if(this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>() != NULL)
+        {
+            this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>()->clearContents();
+            this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>()->deleteLater();
+        }
+        this->findChild<QDialog*>("Chargement")->findChild<QGridLayout*>()->deleteLater();
+        this->findChild<QDialog*>("Chargement")->deleteLater();
+    }
+}
 
-
+QString Principal::HashMDP(QString mdp)
+{
+    QByteArray mdpb = QCryptographicHash::hash(mdp.toLatin1(),QCryptographicHash::Sha256);
+    return QString(mdpb.toHex());
+}
 

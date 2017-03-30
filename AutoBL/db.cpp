@@ -1,6 +1,7 @@
 #include "db.h"
 
-QString key = "ODBABL";//Clé ouverture BDD
+QString key = "5269856472300456";//Clé ouverture BDD
+
 /////////////////////////////////
 /// Table En_Cours
 /// ---------------
@@ -16,6 +17,7 @@ QString key = "ODBABL";//Clé ouverture BDD
 /// Ajout
 /// Info_Chantier
 /// Ajout_BL
+/// Fournisseur
 /// ---------------
 /// Table Options
 /// ---------------
@@ -45,8 +47,8 @@ QSqlQuery DB::Requete(QString req)
 void DB::Init()
 {
     //Ouverture de la DB
-    QSqlDatabase db = QSqlDatabase::addDatabase("SQLITECIPHER");
-    db.setDatabaseName(qApp->applicationDirPath() + "/bddInfo.db");
+    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+    db.setDatabaseName(qApp->applicationDirPath() + "/bdd.db");
     db.setHostName("127.0.0.1");
 
     if(!db.open())
@@ -59,7 +61,7 @@ void DB::Init()
 
     //test DB
     QSqlQuery req;
-    req.exec("PRAGMA key = '" + key + "';");
+    //req.exec("PRAGMA key = '" + key + "';");
     req = Requete("SELECT * FROM Options");
     if(!req.next())
         emit Error("DB | E002 | DB Inaccessible !");
@@ -100,23 +102,36 @@ void DB::Init()
         Requete("INSERT INTO Options VALUES('21','VersionAPI','')");
         Requete("INSERT INTO Options VALUES('22','SemiAuto','0')");
         Requete("INSERT INTO Options VALUES('23','Nom_Entreprise_Esabora','')");
-        Requete("INSERT INTO Options VALUES('24','','')");
+        Requete("INSERT INTO Options VALUES('24','Fournisseurs','Rexel.fr|')");
         Requete("INSERT INTO Options VALUES('25','','')");
     }
-    Requete("UPDATE En_Cours SET Etat='En préparation' WHERE Etat='En cours'");
-    Requete("UPDATE En_Cours SET Etat='Livrée en totalité' WHERE Etat='Fermée'");
+
+    if(query.prepare("ALTER TABLE En_Cours ADD Fournisseur TEXT"))
+        if(!query.exec())
+        {
+          emit Error("Echec de modification de la base de données");
+        }
+    QSqlQuery r = Requete("SELECT Fournisseur FROM En_Cours");
+    r.next();
+    qDebug() << r.value(0);
+    Requete("UPDATE En_Cours SET Fournisseur='Rexel.fr' WHERE Fournisseur=''");
+    Requete("UPDATE En_Cours SET Etat='En préparation' WHERE Etat='En cours' AND Fournisseur='Rexel.fr'");
+    Requete("UPDATE En_Cours SET Etat='Livrée en totalité' WHERE Etat='Fermée' AND Fournisseur='Rexel.fr'");
+    Requete("UPDATE En_COurs SET Etat='Livrée Et Facturée' WHERE Etat='Livrée et facturée'");
+    Requete("UPDATE En_Cours SET Etat='Livrée En Totalité' WHERE Etat='Livrée en totalité'");
+    Requete("UPDATE En_Cours SET Etat='Partiellement Livrée' WHERE Etat='Partiellement livrée'");
 }
 
 void DB::Sav()
 {
     qDebug() << "Sav";
-    QFile sav(qApp->applicationDirPath() + "/bddInfoSav.db");
-    QFile sav2(qApp->applicationDirPath() + "/bddInfoSav2.db");
-    QFile sav3(qApp->applicationDirPath() + "/bddInfoSav3.db");
+    QFile sav(qApp->applicationDirPath() + "/bddSav.db");
+    QFile sav2(qApp->applicationDirPath() + "/bddSav2.db");
+    QFile sav3(qApp->applicationDirPath() + "/bddSav3.db");
     QFileInfo f(sav);
     QFileInfo f1(sav2);
     QFileInfo f2(sav3);
-    QFileInfo fBDD(qApp->applicationDirPath() + "/bddInfo.db");
+    QFileInfo fBDD(qApp->applicationDirPath() + "/bdd.db");
 
     bool ok(true);
 
@@ -125,17 +140,17 @@ void DB::Sav()
 
     if(!sav.exists())
     {
-        ok = sav.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav.db");
+        ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav.db");
         emit Info("DB | Sauvegarde de la DB(sav)");
     }
     else if(!sav2.exists())
     {
-        ok = sav.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav2.db");
+        ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav2.db");
         emit Info("DB | Sauvegarde de la DB(sav2)");
     }
     else if(!sav3.exists())
     {
-        ok = sav.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav3.db");
+        ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav3.db");
         emit Info("DB | Sauvegarde de la DB(sav3)");
     }
     else
@@ -143,19 +158,19 @@ void DB::Sav()
         if(f.lastModified().operator <(f1.lastModified()) && f.lastModified().operator <(f2.lastModified()))
         {
             sav.remove();
-            ok = sav.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav.db");
+            ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav.db");
             emit Info("DB | Sauvegarde de la DB(sav)");
         }
         else if(f1.lastModified().operator <(f2.lastModified()))
         {
             sav2.remove();
-            ok = sav2.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav2.db");
+            ok = sav2.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav2.db");
             emit Info("DB | Sauvegarde de la DB(sav2)");
         }
         else
         {
             sav3.remove();
-            ok = sav3.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav3.db");
+            ok = sav3.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav3.db");
             emit Info("DB | Sauvegarde de la DB(sav3)");
         }
     }
@@ -172,3 +187,53 @@ void DB::Purge()
     Requete("DELETE FROM En_Cours WHERE Date < '" + t.toString("yyyy-MM-dd") + "' AND Ajout='Ok'");
 }
 
+QStringList DB::Find_Fournisseur_From_Invoice(QString invoice)
+{
+    QStringList list;
+    QSqlQuery req = Requete("SELECT Fournisseur FROM En_Cours WHERE Numero_Commande='" + invoice + "'");
+    while(req.next())
+        list.append(req.value(0).toString());
+    return list;
+}
+
+QString DB::Encrypt(QString text)
+{
+    QString crypt;
+    QStringList k = QString(PKEY).split(" ");
+    int idk(0);
+    for(int i = 0;i<text.count();i++)
+    {
+        if(idk == k.count())
+            idk = 0;
+        int t = text.at(i).unicode();
+        t -= k.at(idk).toInt();
+        if(t > 250)
+            t = t - 250;
+        else if(t < 0)
+            t = t + 250;
+        crypt += QChar(t).toLatin1();
+        idk++;
+    }
+    return crypt;
+}
+
+QString DB::Decrypt(QString text)
+{
+    QString decrypt;
+    QStringList k = QString(PKEY).split(" ");
+    int idk(0);
+    for(int i = 0;i<text.count();i++)
+    {
+        if(idk == k.count())
+            idk = 0;
+        int t = text.at(i).unicode();
+        t += k.at(idk).toInt();
+        if(t < 0)
+            t = t + 250;
+        else if(t > 250)
+            t = t - 250;
+        decrypt += QChar(t).toLatin1();
+        idk++;
+    }
+    return decrypt;
+}

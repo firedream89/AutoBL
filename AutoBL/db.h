@@ -4,6 +4,10 @@
 #include <QtSql>
 #include <QString>
 #include <QObject>
+#include <QDebug>
+#include <QCryptographicHash>
+
+#include <../../../Cle_AutoBL.cpp>
 
 class DB: public QObject
 {
@@ -13,6 +17,9 @@ public:
     QSqlQuery Requete(QString req);
     void Init();
     void Purge();
+    QStringList Find_Fournisseur_From_Invoice(QString invoice);
+    QString Encrypt(QString text);
+    QString Decrypt(QString text);
 
 public slots:
     void Sav();

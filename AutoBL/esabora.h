@@ -9,7 +9,6 @@
 #include <QtWidgets>
 #include <QObject>
 #include <QDebug>
-#include <windows.h>
 #include <QMessageBox>
 
 #include "db.h"

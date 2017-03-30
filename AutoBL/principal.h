@@ -7,23 +7,23 @@
 #include <QtSql>
 #include <QMessageBox>
 #include <QFileDialog>
-#include <windows.h>
+#include <Windows.h>
 #include <tlhelp32.h>
 #include <string.h>
 #include <iostream>
+#include <QNetworkRequest>
+#include <QNetworkReply>
 
 #include "tache.h"
-#include "rexel.h"
 #include "esabora.h"
+#include "fournisseur.h"
+#include <../../Cle_AutoBL.cpp>
 
 #define DEBUG qDebug()
 
 namespace Ui {
 class Principal;
 }
-class Rexel;
-class Tache;
-class Esabora;
 class Principal : public QMainWindow
 {
     Q_OBJECT
@@ -78,6 +78,21 @@ public slots:
     void AddError(QString error);
     void PurgeError();
     void Quitter();
+    void MAJ_Repertoire_Esabora();
+    void Add_Fournisseur();
+    void Del_Fournisseur();
+    void Save_Param_Fournisseur();
+    void Test_Fournisseur();
+    void Init_Fournisseur();
+    void Load_Param_Fournisseur();
+    void Create_Fen_Info(QString label1,QString label2 = 0,QString label3 = 0,QString label4 = 0);
+    void Update_Fen_Info(QString label,QString info);
+    void Update_Fen_Info(QString info = 0);
+    void Fournisseur_Actuel(QString nom);
+    void Update_Load_Window(QString text);
+    void Destroy_Window(QString oName);
+    void Destroy_Chargement();
+    QString HashMDP(QString mdp);
 
 signals:
     void FinAjout();
@@ -92,12 +107,12 @@ private:
     DB m_DB;
     QTimer m_Temps;
     Esabora *m_Esabora;
-    Rexel *m_Rexel;
     int m_Erreurs;
     QString m_Lien_Work;
     bool m_Arret;
     int m_Tri;
     bool premierDemarrage;
+    Fournisseur *m_Frn;
 };
 
 #endif // PRINCIPAL_H
