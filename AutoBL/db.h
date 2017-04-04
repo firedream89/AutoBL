@@ -16,6 +16,7 @@ public:
     DB();
     QSqlQuery Requete(QString req);
     void Init();
+    void Close();
     void Purge();
     QStringList Find_Fournisseur_From_Invoice(QString invoice);
     QString Encrypt(QString text);

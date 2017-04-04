@@ -35,6 +35,7 @@ public:
     void Erreur(int code,int string,QString info);
 
 public slots:
+    void Init_Config();
     void Sauvegarde_Parametres();
     void Chargement_Parametres();
     void Affichage_Info(QString texte,bool visible = 0);
@@ -93,6 +94,8 @@ public slots:
     void Destroy_Window(QString oName);
     void Destroy_Chargement();
     QString HashMDP(QString mdp);
+    void Show_List_Sav();
+    void Restaurer_DB();
 
 signals:
     void FinAjout();

@@ -61,12 +61,7 @@ void DB::Init()
 
     //test DB
     QSqlQuery req;
-    //req.exec("PRAGMA key = '" + key + "';");
-    req = Requete("SELECT * FROM Options");
-    if(!req.next())
-        emit Error("DB | E002 | DB Inaccessible !");
-    else
-        emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());
+
 
     //Création Tableau DB si inexistant
     QSqlQuery query;
@@ -111,15 +106,35 @@ void DB::Init()
         {
           emit Error("Echec de modification de la base de données");
         }
-    QSqlQuery r = Requete("SELECT Fournisseur FROM En_Cours");
-    r.next();
-    qDebug() << r.value(0);
     Requete("UPDATE En_Cours SET Fournisseur='Rexel.fr' WHERE Fournisseur=''");
     Requete("UPDATE En_Cours SET Etat='En préparation' WHERE Etat='En cours' AND Fournisseur='Rexel.fr'");
     Requete("UPDATE En_Cours SET Etat='Livrée en totalité' WHERE Etat='Fermée' AND Fournisseur='Rexel.fr'");
     Requete("UPDATE En_COurs SET Etat='Livrée Et Facturée' WHERE Etat='Livrée et facturée'");
     Requete("UPDATE En_Cours SET Etat='Livrée En Totalité' WHERE Etat='Livrée en totalité'");
     Requete("UPDATE En_Cours SET Etat='Partiellement Livrée' WHERE Etat='Partiellement livrée'");
+
+    //Test DB
+    req = Requete("SELECT * FROM Options");
+    if(!req.next())//si DB inaccessible, lancer la mise à jour de la DB
+    {
+        db.close();
+        QProcess p;
+        p.start("MAJ_BDD.exe");
+        p.waitForFinished();
+        if(p.exitCode() == 1)
+           emit Error("DB | E015 | Echec de mise à jour de la DB");
+        else if(p.exitCode() != 0)
+            emit Error("DB | E002 | DB Inaccessible !");
+        Init();
+        return;
+    }
+    else
+        emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());
+}
+
+void DB::Close()
+{
+    QSqlDatabase::removeDatabase("qt_sql_default_connection");
 }
 
 void DB::Sav()
@@ -155,19 +170,19 @@ void DB::Sav()
     }
     else
     {
-        if(f.lastModified().operator <(f1.lastModified()) && f.lastModified().operator <(f2.lastModified()))
+        if(f.lastModified().operator <(f1.lastModified()) && f.lastModified().operator <(f2.lastModified()) && f.lastModified().toString("dd/MM/yyyy") != QDate::currentDate().toString("dd/MM/yyyy"))
         {
             sav.remove();
             ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav.db");
             emit Info("DB | Sauvegarde de la DB(sav)");
         }
-        else if(f1.lastModified().operator <(f2.lastModified()))
+        else if(f1.lastModified().operator <(f2.lastModified()) && f1.lastModified().toString("dd/MM/yyyy") != QDate::currentDate().toString("dd/MM/yyyy"))
         {
             sav2.remove();
             ok = sav2.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav2.db");
             emit Info("DB | Sauvegarde de la DB(sav2)");
         }
-        else
+        else if(f2.lastModified().toString("dd/MM/yyyy") != QDate::currentDate().toString("dd/MM/yyyy"))
         {
             sav3.remove();
             ok = sav3.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav3.db");

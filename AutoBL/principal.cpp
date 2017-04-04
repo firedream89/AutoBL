@@ -11,9 +11,10 @@ Principal::Principal(QWidget *parent) :
     ui(new Ui::Principal)
 {
     ui->setupUi(this);
-    DEBUG << "Load API";
+
+    //Vérification mise à jour
     MAJ();
-DEBUG << PKEY;
+
     //Traitement des variables de l'application
     m_Lien_Work = QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0);
     ui->e_Path->setText("Work Path : " + QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0));
@@ -57,8 +58,118 @@ DEBUG << PKEY;
         qDebug() << "Premier démarrage initialisé";
         premierDemarrage = true;
     }
+
     DEBUG << "Premier démarrage" << premierDemarrage;
     //Chargement des paramètres
+    Init_Config();
+
+    //Préparation Esabora + Fournisseur
+    QSqlQuery req;
+    m_Frn = new Fournisseur(m_Lien_Work);
+    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
+    while(req.next())
+        if(!m_Frn->Add(req.value(0).toString()))
+            Affichage_Erreurs(tr("Ajout du fournisseur %1 échoué").arg(req.value(0).toString()));
+
+    m_Esabora = new Esabora(this,ui->eLogin->text(),ui->eMDP->text(),ui->lienEsabora->text(),m_Lien_Work);
+    QThread *thread = new QThread;
+    ///Déplacement des classes dans un thread séparé
+    m_Esabora->moveToThread(thread);
+
+    Chargement_Parametres();
+
+    //Création des connect
+    connect(&m_DB,SIGNAL(CreateTable()),this,SLOT(PurgeError()));
+
+    connect(m_Tache,SIGNAL(temps_Restant()),this,SLOT(Affichage_Temps_Restant()));
+    connect(m_Tache,SIGNAL(Ouvrir()),this,SLOT(show()));
+    connect(m_Tache,SIGNAL(ajout_BC()),this,SLOT(Demarrage()));
+    connect(m_Tache,SIGNAL(Arret()),this,SLOT(Arret()));
+    connect(m_Tache,SIGNAL(Ouvrir()),this,SLOT(Affichage_Temps_Restant()));
+    connect(m_Tache,SIGNAL(Quitter()),this,SLOT(Quitter()));
+
+    connect(m_Frn,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
+    connect(m_Frn,SIGNAL(Info(QString)),this,SLOT(Update_Fen_Info(QString)));
+    connect(m_Frn,SIGNAL(LoadProgress(int)),this,SLOT(LoadWeb(int)));
+    connect(m_Frn,SIGNAL(En_Cours_Info(QString)),this,SLOT(Update_Fen_Info(QString)));
+    connect(m_Frn,SIGNAL(En_Cours_Fournisseur(QString)),this,SLOT(Fournisseur_Actuel(QString)));
+    connect(m_Frn,SIGNAL(Change_Load_Window(QString)),this,SLOT(Update_Load_Window(QString)));
+
+    connect(m_Esabora,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
+    connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
+    connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(AddError(QString)));
+    connect(m_Esabora,SIGNAL(Message(QString,QString,bool)),this,SLOT(Afficher_Message_Box(QString,QString,bool)));
+
+    connect(ui->bLienEsabora,SIGNAL(clicked(bool)),this,SLOT(Emplacement_Esabora()));
+    connect(ui->bTestEsabora,SIGNAL(clicked(bool)),this,SLOT(Test_Esabora()));
+    connect(ui->actionAbout_Qt,SIGNAL(triggered(bool)),qApp,SLOT(aboutQt()));
+    connect(ui->actionAbout,SIGNAL(triggered(bool)),this,SLOT(About()));
+    connect(ui->bLogInfo,SIGNAL(clicked(bool)),this,SLOT(Affichage_Dossier_Logs()));
+    connect(ui->bTestRexel,SIGNAL(clicked(bool)),this,SLOT(Test_Rexel()));
+    connect(ui->bDossier_Travail,SIGNAL(clicked(bool)),this,SLOT(Afficher_Dossier_Travail()));
+    connect(ui->bPurge,SIGNAL(clicked(bool)),this,SLOT(Purge_Bl()));
+    connect(ui->tNomFichier,SIGNAL(cellChanged(int,int)),this,SLOT(Modif_Cell_TNomFichier(int,int)));
+    connect(ui->tNomFichier,SIGNAL(cellDoubleClicked(int,int)),this,SLOT(Dble_Clique_tNomFichier(int,int)));
+    connect(ui->bSauvegarder,SIGNAL(clicked(bool)),this,SLOT(Sauvegarde_Parametres()));
+    connect(ui->gAjoutAuto,SIGNAL(clicked(bool)),this,SLOT(Etat_Ajout_Auto()));   
+    connect(ui->b_Help,SIGNAL(clicked(bool)),this,SLOT(Help()));
+    connect(&m_Temps,SIGNAL(timeout()),this,SLOT(Demarrage()));
+    connect(ui->actionConnection,SIGNAL(triggered(bool)),this,SLOT(Login()));
+    connect(qApp,SIGNAL(lastWindowClosed()),this,SLOT(Login_False()));
+    connect(ui->bTestBC,SIGNAL(clicked(bool)),this,SLOT(Test_BC()));
+    connect(ui->bTestBL,SIGNAL(clicked(bool)),this,SLOT(Test_BL()));
+    connect(ui->actionRapport_de_bug,SIGNAL(triggered(bool)),this,SLOT(Bug_Report())); 
+    connect(ui->tNomFichier,SIGNAL(customContextMenuRequested(QPoint)),this,SLOT(menu_TNomFichier(QPoint)));
+    connect(ui->mDPA,SIGNAL(textChanged(QString)),this,SLOT(Verif_MDP_API()));
+    connect(ui->bEffacer,SIGNAL(clicked(bool)),this,SLOT(PurgeError()));
+    connect(ui->bMAJRepertoire,SIGNAL(clicked(bool)),this,SLOT(MAJ_Repertoire_Esabora()));
+    connect(ui->bFrnAjouter,SIGNAL(clicked(bool)),this,SLOT(Add_Fournisseur()));
+    connect(ui->bFrnRetirer,SIGNAL(clicked(bool)),this,SLOT(Del_Fournisseur()));
+    connect(ui->listFrnAjouter,SIGNAL(currentRowChanged(int)),this,SLOT(Load_Param_Fournisseur()));
+    connect(ui->bFrnSave,SIGNAL(clicked(bool)),this,SLOT(Save_Param_Fournisseur()));
+    connect(ui->bFrnTest,SIGNAL(clicked(bool)),this,SLOT(Test_Fournisseur()));
+    connect(ui->listFrnAjouter,SIGNAL(clicked(QModelIndex)),this,SLOT(Load_Param_Fournisseur()));
+    connect(ui->restaurerDB,SIGNAL(clicked(bool)),this,SLOT(Restaurer_DB()));
+
+    qApp->setQuitOnLastWindowClosed(false);
+
+    Affichage_Info(m_Lien_Work);
+
+    if(premierDemarrage)//Init Premier démarrage
+    {
+        this->show();
+        ui->tabWidget->setCurrentIndex(2);
+        ui->eLogin->setText("1");
+        ui->eMDP->setEchoMode(QLineEdit::Normal);
+        ui->eMDP->setText("2");
+        ui->lienEsabora->setText("<-3");
+    }
+
+    req = m_DB.Requete("SELECT * FROM Options WHERE ID='16'");
+    req.next();
+    if(req.value("Valeur").toInt() == 0)
+    {
+        Help(true);
+        m_DB.Requete("UPDATE Options SET Valeur='1' WHERE ID='16'");
+    }
+
+    //Reset MDP API
+    if(qApp->arguments().contains("-RSTMDP"))
+    {
+        m_DB.Requete("UPDATE Options SET Valeur='' WHERE ID='11'");
+        QMessageBox::information(this,"","Le mot de passe de l'application à été réinitialisé !");
+    }
+
+    qDebug() << test();
+}
+
+Principal::~Principal()
+{ 
+    delete ui;
+}
+
+void Principal::Init_Config()
+{
     ///Démarrage automatique
     QSqlQuery req = m_DB.Requete("SELECT * FROM Options WHERE Nom='Auto'");
     req.next();
@@ -146,109 +257,7 @@ DEBUG << PKEY;
     login = false,
     ui->tNomFichier->setContextMenuPolicy(Qt::CustomContextMenu);
 
-    //Préparation Esabora + Fournisseur
-    m_Frn = new Fournisseur(m_Lien_Work);
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
-    while(req.next())
-        if(!m_Frn->Add(req.value(0).toString()))
-            Affichage_Erreurs(tr("Ajout du fournisseur %1 échoué").arg(req.value(0).toString()));
-
-    m_Esabora = new Esabora(this,ui->eLogin->text(),ui->eMDP->text(),ui->lienEsabora->text(),m_Lien_Work);
-    QThread *thread = new QThread;
-    ///Déplacement des classes dans un thread séparé
-    m_Esabora->moveToThread(thread);
-
-    Chargement_Parametres();
-
-    //Création des connect
-    connect(&m_DB,SIGNAL(CreateTable()),this,SLOT(PurgeError()));
-
-    connect(m_Tache,SIGNAL(temps_Restant()),this,SLOT(Affichage_Temps_Restant()));
-    connect(m_Tache,SIGNAL(Ouvrir()),this,SLOT(show()));
-    connect(m_Tache,SIGNAL(ajout_BC()),this,SLOT(Demarrage()));
-    connect(m_Tache,SIGNAL(Arret()),this,SLOT(Arret()));
-    connect(m_Tache,SIGNAL(Ouvrir()),this,SLOT(Affichage_Temps_Restant()));
-    connect(m_Tache,SIGNAL(Quitter()),this,SLOT(Quitter()));
-
-    connect(m_Frn,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
-    connect(m_Frn,SIGNAL(Info(QString)),this,SLOT(Update_Fen_Info(QString)));
-    connect(m_Frn,SIGNAL(LoadProgress(int)),this,SLOT(LoadWeb(int)));
-    connect(m_Frn,SIGNAL(En_Cours_Info(QString)),this,SLOT(Update_Fen_Info(QString)));
-    connect(m_Frn,SIGNAL(En_Cours_Fournisseur(QString)),this,SLOT(Fournisseur_Actuel(QString)));
-    connect(m_Frn,SIGNAL(Change_Load_Window(QString)),this,SLOT(Update_Load_Window(QString)));
-
-    connect(m_Esabora,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
-    connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
-    connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(AddError(QString)));
-    connect(m_Esabora,SIGNAL(Message(QString,QString,bool)),this,SLOT(Afficher_Message_Box(QString,QString,bool)));
-
-    connect(ui->bLienEsabora,SIGNAL(clicked(bool)),this,SLOT(Emplacement_Esabora()));
-    connect(ui->bTestEsabora,SIGNAL(clicked(bool)),this,SLOT(Test_Esabora()));
-    connect(ui->actionAbout_Qt,SIGNAL(triggered(bool)),qApp,SLOT(aboutQt()));
-    connect(ui->actionAbout,SIGNAL(triggered(bool)),this,SLOT(About()));
-    connect(ui->bLogInfo,SIGNAL(clicked(bool)),this,SLOT(Affichage_Dossier_Logs()));
-    connect(ui->bTestRexel,SIGNAL(clicked(bool)),this,SLOT(Test_Rexel()));
-    connect(ui->bDossier_Travail,SIGNAL(clicked(bool)),this,SLOT(Afficher_Dossier_Travail()));
-    connect(ui->bPurge,SIGNAL(clicked(bool)),this,SLOT(Purge_Bl()));
-    connect(ui->tNomFichier,SIGNAL(cellChanged(int,int)),this,SLOT(Modif_Cell_TNomFichier(int,int)));
-    connect(ui->tNomFichier,SIGNAL(cellDoubleClicked(int,int)),this,SLOT(Dble_Clique_tNomFichier(int,int)));
-    connect(ui->bSauvegarder,SIGNAL(clicked(bool)),this,SLOT(Sauvegarde_Parametres()));
-    connect(ui->gAjoutAuto,SIGNAL(clicked(bool)),this,SLOT(Etat_Ajout_Auto()));   
-    connect(ui->b_Help,SIGNAL(clicked(bool)),this,SLOT(Help()));
-    connect(&m_Temps,SIGNAL(timeout()),this,SLOT(Demarrage()));
-    connect(ui->actionConnection,SIGNAL(triggered(bool)),this,SLOT(Login()));
-    connect(qApp,SIGNAL(lastWindowClosed()),this,SLOT(Login_False()));
-    connect(ui->bTestBC,SIGNAL(clicked(bool)),this,SLOT(Test_BC()));
-    connect(ui->bTestBL,SIGNAL(clicked(bool)),this,SLOT(Test_BL()));
-    connect(ui->actionRapport_de_bug,SIGNAL(triggered(bool)),this,SLOT(Bug_Report())); 
-    connect(ui->tNomFichier,SIGNAL(customContextMenuRequested(QPoint)),this,SLOT(menu_TNomFichier(QPoint)));
-    connect(ui->mDPA,SIGNAL(textChanged(QString)),this,SLOT(Verif_MDP_API()));
-    connect(ui->bEffacer,SIGNAL(clicked(bool)),this,SLOT(PurgeError()));
-    connect(ui->bMAJRepertoire,SIGNAL(clicked(bool)),this,SLOT(MAJ_Repertoire_Esabora()));
-    connect(ui->bFrnAjouter,SIGNAL(clicked(bool)),this,SLOT(Add_Fournisseur()));
-    connect(ui->bFrnRetirer,SIGNAL(clicked(bool)),this,SLOT(Del_Fournisseur()));
-    connect(ui->listFrnAjouter,SIGNAL(currentRowChanged(int)),this,SLOT(Load_Param_Fournisseur()));
-    connect(ui->bFrnSave,SIGNAL(clicked(bool)),this,SLOT(Save_Param_Fournisseur()));
-    connect(ui->bFrnTest,SIGNAL(clicked(bool)),this,SLOT(Test_Fournisseur()));
-    connect(ui->listFrnAjouter,SIGNAL(clicked(QModelIndex)),this,SLOT(Load_Param_Fournisseur()));
-
-    qApp->setQuitOnLastWindowClosed(false);
-
-    this->resize(ui->tNomFichier->width(),this->height());
-
-    Affichage_Info(m_Lien_Work);
-
-    if(premierDemarrage)//Init Premier démarrage
-    {
-        this->show();
-        ui->tabWidget->setCurrentIndex(2);
-        ui->eLogin->setText("1");
-        ui->eMDP->setEchoMode(QLineEdit::Normal);
-        ui->eMDP->setText("2");
-        ui->lienEsabora->setText("<-3");
-    }
-
-    req = m_DB.Requete("SELECT * FROM Options WHERE ID='16'");
-    req.next();
-    if(req.value("Valeur").toInt() == 0)
-    {
-        Help(true);
-        m_DB.Requete("UPDATE Options SET Valeur='1' WHERE ID='16'");
-    }
-
-    //Reset MDP API
-    if(qApp->arguments().contains("-RSTMDP"))
-    {
-        m_DB.Requete("UPDATE Options SET Valeur='' WHERE ID='11'");
-        QMessageBox::information(this,"","Le mot de passe de l'application à été réinitialisé !");
-    }
-
-    qDebug() << test();
-}
-
-Principal::~Principal()
-{ 
-    delete ui;
+    Show_List_Sav();
 }
 
 bool Principal::test()
@@ -1028,6 +1037,7 @@ void Principal::Login_True()
     DEBUG << mdpb.toHex();
     QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='11'");
     req.next();
+    DEBUG << req.value(0);
     if(req.value("Valeur").toString() != mdpb.toHex())
         QMessageBox::information(this,"Erreur","Mot de passe faux !");
     else
@@ -1594,10 +1604,10 @@ void Principal::Save_Param_Fournisseur()
         m_DB.Requete("INSERT INTO Options VALUES('" + req.value(0).toString() + "','" + ui->lFrn->text() + "','" + m_DB.Encrypt(r) + "')");
     }
     if(m_Frn->Update_Var(ui->lFrn->text(),ui->eFrnUserName->text(),ui->eFrnMail->text(),ui->eFrnMDP->text()))
-        Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour");
+        Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour",true);
     else
     {
-        Affichage_Info("Echec de mise à jour " + ui->listFrnAjouter->currentItem()->text());
+        Affichage_Info("Echec de mise à jour " + ui->listFrnAjouter->currentItem()->text(),true);
         DEBUG << "Echec mise à jour des variables de " + ui->listFrnAjouter->currentItem()->text();
     }
 }
@@ -1609,7 +1619,7 @@ void Principal::Test_Fournisseur()
     {
         QTimer *t = new QTimer;
         connect(t,SIGNAL(timeout()),this,SLOT(Update_Fen_Info()));
-        //t->start(5000);
+        t->start(5000);
     }
 }
 
@@ -1754,3 +1764,64 @@ QString Principal::HashMDP(QString mdp)
     return QString(mdpb.toHex());
 }
 
+void Principal::Show_List_Sav()
+{
+    ui->listSavDB->clear();
+
+    QFile s(qApp->applicationDirPath() + "/bddSav.db");
+    QFile s2(qApp->applicationDirPath() + "/bddSav2.db");
+    QFile s3(qApp->applicationDirPath() + "/bddSav3.db");
+    QFileInfo i(s);
+    QFileInfo i2(s2);
+    QFileInfo i3(s3);
+    if(i.lastModified().toString("dd/MM/yyyy") != "")
+        ui->listSavDB->addItem(i.lastModified().toString("dd/MM/yyyy"));
+    if(i2.lastModified().toString("dd/MM/yyyy") != "")
+        ui->listSavDB->addItem(i2.lastModified().toString("dd/MM/yyyy"));
+    if(i3.lastModified().toString("dd/MM/yyyy") != "")
+        ui->listSavDB->addItem(i3.lastModified().toString("dd/MM/yyyy"));
+}
+
+void Principal::Restaurer_DB()
+{
+    m_DB.Close();
+
+    bool test(true);
+    QString var;
+    QFile s(qApp->applicationDirPath() + "/bddSav.db");
+    QFile s2(qApp->applicationDirPath() + "/bddSav2.db");
+    QFile s3(qApp->applicationDirPath() + "/bddSav3.db");
+    QFileInfo i(s);
+    QFileInfo i2(s2);
+    QFileInfo i3(s3);
+    QListWidgetItem *item = ui->listSavDB->selectedItems().at(0);
+    if(item->text() == i.lastModified().toString("dd/MM/yyyy"))
+    {
+        var = "/bddSav.db";
+    }
+    else if(item->text() == i2.lastModified().toString("dd/MM/yyyy"))
+    {
+        var = "/bddSav2.db";
+    }
+    else if(item->text() == i3.lastModified().toString("dd/MM/yyyy"))
+    {
+        var = "/bddSav3.db";
+    }
+
+    if(!var.isEmpty())
+    {
+        QDesktopServices::openUrl(QUrl(qApp->applicationDirPath() + "/MAJ_BDD.exe -restore=" + var));
+        qApp->exit(0);
+    }
+    else
+        test = false;
+
+    if(!test)
+        emit Affichage_Erreurs(tr("La restauration à échoué"),true);
+    else
+        Affichage_Info(tr("La sauvegarde à été restauré"),true);
+
+    m_DB.Init();
+    Show_List_Sav();
+    delete[] item;
+}
