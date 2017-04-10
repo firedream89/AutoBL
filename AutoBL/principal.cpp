@@ -2,9 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.40"); //Version De L'application
-QString ver("140");
-QString maj("http://37.187.104.80/");//Serveur MAJ
+QString version("1.40-3"); //Version De L'application
+QString ver("1403");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -13,6 +12,12 @@ Principal::Principal(QWidget *parent) :
     ui(new Ui::Principal)
 {
     ui->setupUi(this);
+
+    //ARG
+    for(int i = 0;i<qApp->arguments().count();i++)
+        if(qApp->arguments().at(i).contains("-UpdateBDD="))
+            if(qApp->arguments().at(i).split("=").at(1) == "1")
+                QMessageBox::warning(0,"AutoBL",tr("Une erreur s'est produite durant la Restauration/mise à jour de la base de données."));
 
     //Vérification mise à jour
     MAJ();
@@ -89,6 +94,7 @@ Principal::Principal(QWidget *parent) :
     connect(m_Tache,SIGNAL(Arret()),this,SLOT(Arret()));
     connect(m_Tache,SIGNAL(Ouvrir()),this,SLOT(Affichage_Temps_Restant()));
     connect(m_Tache,SIGNAL(Quitter()),this,SLOT(Quitter()));
+    connect(m_Tache,SIGNAL(MAJ_BC()),this,SLOT(Demarrer_Frn()));
 
     connect(m_Frn,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
     connect(m_Frn,SIGNAL(Info(QString)),this,SLOT(Update_Fen_Info(QString)));
@@ -800,6 +806,15 @@ void Principal::Demarrage()
     Demarrage_Auto_BC();
 }
 
+void Principal::Demarrer_Frn()
+{
+    Create_Fen_Info("Fournisseur","Info");
+    if(!m_Frn->Start())
+        Affichage_Erreurs("Des erreurs se sont produites durant la recherche de bons");
+    Update_Fen_Info();
+    Afficher_Fichiers_Excel();
+}
+
 void Principal::Arret()
 {
     qDebug() << "Arret demandé !";
@@ -1124,11 +1139,13 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
         QGridLayout *gl = new QGridLayout;
         gl->addWidget(label);
         d->setLayout(gl);
-        d->setWindowFlags(Qt::Tool | Qt::CustomizeWindowHint);
         d->setObjectName("Chargement");
+        d->setWindowFlags(Qt::Tool | Qt::CustomizeWindowHint);
         d->show();
 
         QStringList list = m_Frn->Get_Invoice_List(ui->tNomFichier->item(l,9)->text(),ui->tNomFichier->item(l,5)->text());
+        DEBUG << list;
+
         d->close();
         QTableWidget *tbl = new QTableWidget;
         tbl->insertColumn(0);
@@ -1177,12 +1194,20 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
         delete gl;
         delete d;
         QDialog *f = new QDialog(this);
-        f->setObjectName("Chargement");
-        connect(f,SIGNAL(finished(int)),this,SLOT(Destroy_Chargement()));
         QGridLayout *l = new QGridLayout(f);
         l->addWidget(tbl);
         f->resize(tbl->width(),tbl->height());
-        f->show();
+        f->exec();
+        while(!f->isHidden())
+        {
+            QTimer t;
+            QEventLoop l;
+            connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
+            t.start(500);
+            l.exec();
+        }
+        tbl->clearContents();
+        f->deleteLater();
     }
     else if(c == 7)//MAJ BDD Ajout Manu BL
     {
@@ -1325,7 +1350,7 @@ void Principal::MAJ()
 {
     QTimer *timer = new QTimer;
     QNetworkAccessManager manager;
-    QNetworkReply *reply = manager.get(QNetworkRequest(QUrl(maj))); // Url vers le fichier version.txt
+    QNetworkReply *reply = manager.get(QNetworkRequest(QUrl(MAJLINK))); // Url vers le fichier version.txt
     QEventLoop loop;
     QObject::connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
     timer->start(10000);
@@ -1348,7 +1373,7 @@ void Principal::MAJ()
         qDebug() << "MAJ - Une mise à jour est disponible !";
         m_DB.Requete("UPDATE Options SET Valeur='" + MAJDispo.at(0) + "' WHERE ID='21'");
         MAJDispo.append("API=" + QCoreApplication::applicationDirPath() + "/" + "AutoBL.exe");
-        MAJDispo.append("ftp=" + maj);
+        MAJDispo.append("ftp=" + QString(MAJLINK));
         MAJDispo.append("RA=oui");
         MAJDispo.append("name=AutoBL");
         MAJDispo.append("icon=");
@@ -1382,9 +1407,9 @@ void Principal::Bug_Report()
 bool Principal::Post_Report()
 {
     qDebug() << "Post Report";
-    QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Rexel.fr'");
+    QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Nom_BDD'");
     r.next();
-    QString nur = r.value(0).toString().split("|").at(0);
+    QString nur = r.value(0).toString();
     if(this->findChildren<QDialog *>("rapport de bug").count() > 0)
     {
         if(this->findChildren<QDialog *>().at(0)->windowTitle() == "Rapport de bug")
@@ -1404,36 +1429,32 @@ bool Principal::Post_Report()
             f.open(QIODevice::ReadOnly);
             flux << "- Erreurs -\r\n" << f.readAll() << "\r\n";
             f.close();
-            f.setFileName(m_Lien_Work + "/Logs/debug.log");
-            f.open(QIODevice::ReadOnly);
-            flux << "- Debug -\r\n";
-            while(!f.atEnd())
-            {
-                QString v = f.readLine();
-                if(!v.contains("Cannot create accessible interface for object:"))
-                    flux << v << "\r\n";
-            }
-            f.close();
 
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Envoi du rapport...");
             rapport.close();
             rapport.open(QIODevice::ReadOnly);
 
-            //QWebView w;
+            QWebEngineView w;
+            w.load(QString(MAJLINK) + "mail.php");
+            QTimer t;
             QEventLoop l;
-            QNetworkRequest request;
-            request.setUrl(QUrl(maj + "mail.php"));
-            request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-
-            QByteArray array;
-            array.append("sj=" + rapport.fileName().split(".").at(0)+"&");
-            array.append("msg=" + rapport.readAll());
-
-            //w.load(request, QNetworkAccessManager::PostOperation, array);
-            //connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+            connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
+            connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+            t.start(30000);
+            l.exec();
+            w.page()->runJavaScript("document.getElementById('sj').value='" + rapport.fileName().split(".").at(0) + "';",[&l](const QVariant r){l.quit();});
+            l.exec();
+            QString text;
+            while(!rapport.atEnd())
+                text += rapport.readLine();
+            text.replace("\r\n","<br/>");
+            w.page()->runJavaScript("document.getElementById('msg').value='<html><head></head><body>" + text + "</body></html>';",[&l](const QVariant r){l.quit();});
+            l.exec();
+            w.page()->runJavaScript("document.getElementById('frm').submit();",[&l](const QVariant r){l.quit();});
             l.exec();
 
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Rapport envoyé !");
+            l.exec();
 
             rapport.close();
             rapport.remove();
@@ -1466,19 +1487,26 @@ bool Principal::Post_Report()
 
         rapport.close();
         rapport.open(QIODevice::ReadOnly);
-        //QWebView w;
+
+        QWebEngineView w;
+        w.load(QString(MAJLINK) + "mail.php");
+        QTimer t;
         QEventLoop l;
-        QNetworkRequest request;
-        request.setUrl(QUrl(maj + "mail.php"));
-        request.setHeader(QNetworkRequest::ContentTypeHeader, "application/x-www-form-urlencoded");
-
-        QByteArray array;
-        array.append("sj=" + rapport.fileName().split(".").at(0)+"&");
-        array.append("msg=" + rapport.readAll());
-
-        //w.load(request, QNetworkAccessManager::PostOperation, array);
-        //connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+        connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
+        connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+        t.start(30000);
         l.exec();
+        w.page()->runJavaScript("document.getElementById('sj').value=" + rapport.fileName().split(".").at(0) + ";",[&l](const QVariant r){l.quit();});
+        l.exec();
+        QString text;
+        while(!rapport.atEnd())
+            text += rapport.readLine();
+        text.replace("\r\n","<br/>");
+        w.page()->runJavaScript("document.getElementById('msg').value='<html><head></head><body>" + text + "</body></html>';",[&l](const QVariant r){l.quit();});
+        l.exec();
+        w.page()->runJavaScript("document.getElementById('frm').submit();",[&l](const QVariant r){l.quit();});
+        l.exec();
+
         rapport.close();
         rapport.remove();
     }
@@ -1544,9 +1572,10 @@ void Principal::Add_Fournisseur()
     if(ui->listFrnDispo->selectedItems().isEmpty())
         return;
     ui->listFrnAjouter->addItem(ui->listFrnDispo->selectedItems().at(0)->text());
+    ui->listFrnAjouter->setCurrentRow(ui->listFrnAjouter->count()-1);
     QSqlQuery req = m_DB.Requete("SELECT MAX(ID) FROM Options");
     req.next();
-    m_DB.Requete("INSERT INTO Options VALUES('" + req.value(0).toString() + "','FrnADD','" + ui->listFrnDispo->selectedItems().at(0)->text() + "')");
+    m_DB.Requete("INSERT INTO Options VALUES('" + QString::number(req.value(0).toInt()+1) + "','FrnADD','" + ui->listFrnDispo->selectedItems().at(0)->text() + "')");
     req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom ='FrnADD' ORDER BY ID ASC");
     req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnDispo->selectedItems().at(0)->text() + "'");
     QStringList f;
@@ -1558,6 +1587,7 @@ void Principal::Add_Fournisseur()
     else
     {
         DEBUG << "ADD Fournisseur : " << ui->listFrnDispo->currentItem()->text() << " : variables non défini";
+        Load_Param_Fournisseur();
     }
     ui->listFrnDispo->clear();
     req.next();
@@ -1605,20 +1635,20 @@ void Principal::Save_Param_Fournisseur()
         Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour",true);
     else
     {
-        Affichage_Info("Echec de mise à jour " + ui->listFrnAjouter->currentItem()->text(),true);
-        DEBUG << "Echec mise à jour des variables de " + ui->listFrnAjouter->currentItem()->text();
+        m_Frn->Add(ui->lFrn->text(),ui->eFrnMail->text(),ui->eFrnMDP->text(),ui->eFrnUserName->text());
     }
 }
 
 void Principal::Test_Fournisseur()
 {
     Create_Fen_Info("Info");
+    QTimer *t = new QTimer;
+    connect(t,SIGNAL(timeout()),this,SLOT(Update_Fen_Info()));
+    connect(t,SIGNAL(timeout()),t,SLOT(deleteLater()));
     if(m_Frn->Test_Connexion(ui->lFrn->text()))
-    {
-        QTimer *t = new QTimer;
-        connect(t,SIGNAL(timeout()),this,SLOT(Update_Fen_Info()));
         t->start(5000);
-    }
+    else
+        t->start(10000);
 }
 
 void Principal::Load_Param_Fournisseur()
@@ -1698,6 +1728,7 @@ void Principal::Create_Fen_Info(QString label1, QString label2, QString label3, 
         l->addRow(label4,i4);
     }
     connect(f,SIGNAL(rejected()),f,SLOT(deleteLater()));
+    connect(f,SIGNAL(accepted()),f,SLOT(deleteLater()));
     f->show();
 }
 
@@ -1746,9 +1777,9 @@ void Principal::Destroy_Chargement()
         else if(this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>() != NULL)
         {
             this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>()->clearContents();
-            this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>()->deleteLater();
+            //this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>()->deleteLater();
         }
-        this->findChild<QDialog*>("Chargement")->findChild<QGridLayout*>()->deleteLater();
+        //this->findChild<QDialog*>("Chargement")->findChild<QGridLayout*>()->deleteLater();
         this->findChild<QDialog*>("Chargement")->deleteLater();
     }
 }

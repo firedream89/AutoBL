@@ -95,6 +95,7 @@ public slots:
     QString HashMDP(QString mdp);
     void Show_List_Sav();
     void Restaurer_DB();
+    void Demarrer_Frn();
 
 signals:
     void FinAjout();

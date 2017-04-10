@@ -69,10 +69,7 @@ bool RexelFr::Connexion()
 
     DEBUG << "Fin Rexel::Connexion()";
     if(m_Fct->FindTexte(m_UserName))
-    {
-        m_Fct->WebLoad("https://www.rexel.fr/frx/my-account/orders");
         return true;
-    }
 
     m_Fct->FrnError(fail_check,"Connexion échouée");
     return false;
@@ -115,7 +112,7 @@ bool RexelFr::Create_List_Invoice()
         //Mise à jour de la page actuelle
         nbPage = m_Fct->InsertJavaScript("$('#currentPageId').val();").toInt();
         tPage = m_Fct->InsertJavaScript("$('#totalPageId').val();").toInt();
-        m_Fct->Info(tr("Chargement des bons de commandes %1/%2").arg(nbPage,tPage));
+        m_Fct->Info(tr("Chargement des bons de commandes %0/%1").arg(nbPage).arg(tPage));
 
         qDebug() << "Navigation - Chargement AJAX " << nbPage << "/" << tPage;
 
@@ -131,9 +128,8 @@ bool RexelFr::Create_List_Invoice()
             m_Fct->FrnError(open_File,fichier.fileName());
 
         DEBUG << "Navigation - Début du traitement des informations";
-        req = m_DB.Requete("SELECT MAX(ID) FROM En_Cours");
-        req.next();
-        if(req.value(0).toInt() == 0)
+        req = m_DB.Requete("SELECT * FROM En_Cours WHERE Fournisseur='Rexel.fr'");
+        if(!req.next())
             premierDemarrage = true;
 
         while(!flux.atEnd() && !fin)
@@ -147,12 +143,13 @@ bool RexelFr::Create_List_Invoice()
 
             infoChantier = "";
             QString ligne = flux.readLine();
-            if(ligne.contains("N° commande Rexel"))
+            DEBUG << ligne;
+            if(ligne.contains("N° de commande Rexel") && ligne.split(" ").last() != "Rexel")
             {
                 etat.clear();
 
                 bool error(false);
-                qDebug() << id;
+                DEBUG << id;
                 numeroCommande = ligne.split(" ").last();
                 lienChantier = "https://www.rexel.fr/frx/my-account/orders/" + numeroCommande;
                 ligne = flux.readLine();
@@ -177,6 +174,7 @@ bool RexelFr::Create_List_Invoice()
                 ligne = flux.readLine();
                 if(ligne.contains("Total:"))
                     ligne = flux.readLine();
+                DEBUG << ligne;
                 if(ligne.contains("Status:"))
                     etat = ligne.replace("Status: ","");
                 else
@@ -196,7 +194,7 @@ bool RexelFr::Create_List_Invoice()
                     }
                     QStringList l = date.split("/");
                     date = l.at(2) + "-" + l.at(1) + "-" + l.at(0);
-                    DEBUG << "Navigation - Ajout nouveau BC dans la DB : " << req.prepare("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + nomChantier + "','" + numeroCommande + "','','" + lienChantier + "','" + etat + "','','" + infoChantier + "','0','')");
+                    DEBUG << "Navigation - Ajout nouveau BC dans la DB : " << req.prepare("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + nomChantier + "','" + numeroCommande + "','','" + lienChantier + "','" + etat + "','','" + infoChantier + "','0','','Rexel.fr')");
                     if(!req.exec())
                     {
                         m_Fct->FrnError(requete);

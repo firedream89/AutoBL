@@ -9,7 +9,7 @@ MinimalFournisseur::MinimalFournisseur(FctFournisseur *fct, const QString login,
 
 bool MinimalFournisseur::Start()
 {
-
+    //Premier démarrage
 }
 
 ///Error code xxx

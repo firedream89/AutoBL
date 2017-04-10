@@ -126,6 +126,8 @@ bool Fournisseur::Test_Connexion(const QString &nom)
         {
             if(m_fct->FindTexte("Informations invalides, veuillez réessayer"))
                 emit Info(tr("Identifiants incorrect"));
+            else
+                emit Info(tr("Une erreur inconnue s'est produite"));
         }
         else
         {

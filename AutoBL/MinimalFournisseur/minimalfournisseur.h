@@ -20,7 +20,7 @@ private slots:
 
 signals:
     void Info(const QString i);
-    void Error(const QString error);
+    //void Error(const QString error);
     void FindTexte(const QString texte);
 
 private:

@@ -34,6 +34,9 @@ public:
     void Info(QString info);
     void Change_Load_Window(QString text);
 
+public slots:
+    void Stop_Load();
+
 signals:
     void error(QString e);
     void LoadProgress(int p);
@@ -42,13 +45,11 @@ signals:
     void change_Load_Window(QString text);
 
 private slots:
-    void Delete_Web_Page();
+
 
 private:
-    void Launch_Web_Timer();
     QEventLoop *loop;
     QTimer *timer;
-    QTimer *web_Timer;
     QWebEngineView *web;
     QString m_WorkLink;
     Error *m_Error;

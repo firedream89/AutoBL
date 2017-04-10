@@ -3,17 +3,15 @@
 FctFournisseur::FctFournisseur(QString WorkLink):
     m_WorkLink(WorkLink)
 {
-
-
     web = new QWebEngineView;
     timer = new QTimer;
     loop = new QEventLoop;
     m_Error = new Error;
-    web_Timer = new QTimer;
     QObject::connect(timer,SIGNAL(timeout()),loop,SLOT(quit()));
     QObject::connect(web,SIGNAL(loadFinished(bool)),loop,SLOT(quit()));
     QObject::connect(web,SIGNAL(loadProgress(int)),this,SIGNAL(LoadProgress(int)));
-    QObject::connect(web_Timer,SIGNAL(timeout()),this,SLOT(Delete_Web_Page()));
+
+    web->setEnabled(false);
 }
 
 FctFournisseur::~FctFournisseur()
@@ -21,7 +19,6 @@ FctFournisseur::~FctFournisseur()
     delete web;
     delete timer;
     delete loop;
-    delete web_Timer;
     delete m_Error;
 }
 
@@ -40,10 +37,7 @@ bool FctFournisseur::WebLoad(QString lien)
         web->load(QUrl(lien));
         Loop(30000);
         if(timer->isActive())
-        {
-            Launch_Web_Timer();
             return true;
-        }
     }
     return false;
 }
@@ -51,22 +45,30 @@ bool FctFournisseur::WebLoad(QString lien)
 bool FctFournisseur::FindTexte(QString texte)
 {
     bool test(false),end(false);
-    web->page()->findText(texte, QWebEnginePage::FindFlags(), [&test,&end](const bool found){test = found;end = true;});
+    QString t;
+
+    web->page()->toPlainText([&t,&end](const QString result){t = result;end = true;});
     while(!end)
         Loop(500);
+    if(t.contains(texte))
+        test = true;
+
     DEBUG << "find " << test;
     return test;
 }
 
 bool FctFournisseur::SaveText()
 {
+    bool end = false;
+
     QFile fichier(m_WorkLink + "/web_Temp.txt");
     fichier.resize(0);
     if(!fichier.open(QIODevice::WriteOnly))
         return false;
-
-    web->page()->triggerAction(QWebEnginePage::SelectAll);
-    fichier.write(web->page()->selectedText().toUtf8());
+    QTextStream flux(&fichier);
+    web->page()->toPlainText([&flux,&end](const QString result){flux << result;end = true;});
+    while(!end)
+        Loop(500);
     fichier.close();
     return true;
 }
@@ -99,6 +101,7 @@ QVariant FctFournisseur::InsertJavaScript(QString script)
 void FctFournisseur::WebOpen()
 {
     web->show();
+    web->setEnabled(true);
 }
 
 void FctFournisseur::FrnError(int code,QString er)
@@ -162,12 +165,7 @@ void FctFournisseur::Change_Load_Window(QString text)
     emit change_Load_Window(text);
 }
 
-void FctFournisseur::Launch_Web_Timer()
+void FctFournisseur::Stop_Load()
 {
-    web_Timer->start(300000);
-}
-
-void FctFournisseur::Delete_Web_Page()
-{
-    web->page()->deleteLater();
+    web->stop();
 }
