@@ -38,6 +38,7 @@ bool FctFournisseur::WebLoad(QString lien)
         Loop(30000);
         if(timer->isActive())
             return true;
+        web->stop();
     }
     return false;
 }
@@ -106,51 +107,12 @@ void FctFournisseur::WebOpen()
 
 void FctFournisseur::FrnError(int code,QString er)
 {
-    QString e;
-    switch (code) {
-    case 0:
-        e = tr("Echec de connexion");
-        break;
-    case 1:
-        e = tr("Echec de récupération des données");
-        break;
-    case 2:
-        e = tr("Vérification état du bon de commande échouée");
-        break;
-    case 3:
-        e = tr("Récupération du bon de livraison échouée");
-        break;
-    case 4:
-        e = tr("Ouverture du fichier échouée");
-        break;
-    case 5:
-        e = tr("Valeur non trouvée");
-        break;
-    case 6:
-        e = tr("Requête vers la base de données échouée");
-        break;
-    case 7:
-        e = tr("Echec chargement de la page");
-        break;
-    case 8:
-        e = tr("nombre de bon de livraison supérieure à 5");
-        break;
-    case 9:
-        e = tr("Liste de matériels incomplet");
-        break;
-    default:
-        e = tr("Erreur inconnue");
-        break;
-    }
-
     QString frn;
     if(QString::number(code).at(0) == '9')
         frn = "Rexel.fr";
 
-    emit error(frn + " | " + e + ": " + er);
-
     //New Error
-    er = m_Error->Err(code,er);
+    er = m_Error->Err(code,er,frn);
     emit error(er);
    DEBUG << er;
 }

@@ -74,8 +74,8 @@ void DB::Init()
         emit Info("Création BDD");
         emit CreateTable();
         Requete("INSERT INTO Options VALUES('0','Auto','0')");
-        Requete("INSERT INTO Options VALUES('1','Minutes','22')");
-        Requete("INSERT INTO Options VALUES('2','Heure','0')");
+        Requete("INSERT INTO Options VALUES('1','Minutes','0')");
+        Requete("INSERT INTO Options VALUES('2','Heure','22')");
         Requete("INSERT INTO Options VALUES('3','Login','')");
         Requete("INSERT INTO Options VALUES('4','MDP','')");
         Requete("INSERT INTO Options VALUES('5','LienEsabora','')");

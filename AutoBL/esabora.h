@@ -12,6 +12,9 @@
 #include <QMessageBox>
 
 #include "db.h"
+#include "error.h"
+
+#define ESAB QString("Esabora")
 
 class Esabora : public QObject
 {
@@ -21,6 +24,7 @@ private:
 public:
     Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail);
     int GetEtat();
+    bool Start(bool automatic, int &nbBC, int &nbBL);
     ~Esabora();
 
 public slots:
@@ -38,13 +42,13 @@ public slots:
     bool Ajout_Stock(QString numero_Commande);
 
 private slots:
-    bool Clavier(QString commande, bool keyUp = 0);
+    bool Clavier(QString commande);
     bool Souris(QString commande);
     bool Traitement_Fichier_Config(const QString file, const QString bL = 0);
     bool Verification_Fenetre(QString fenetre);
-    void EmitErreur(int code,int string,QString info = 0);
     bool Verification_Focus(QString fen,bool focus);
     bool Verification_Message_Box(QString &message);
+    bool Get_List_Matos(QString invoice);
 
 signals:
     void DemandeListeMatos(QString NumeroCommande);
@@ -62,6 +66,9 @@ private:
     QString m_Tmp;
     QString m_Lien_Work;
     QStringList liste_Matos;
+    QStringList m_List_Cmd;
+    bool m_Arret;
+    Error err;
 };
 
 #endif // ESABORA_H

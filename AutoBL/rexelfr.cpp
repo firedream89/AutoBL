@@ -57,7 +57,6 @@ bool RexelFr::Connexion()
 
     m_Fct->InsertJavaScript("document.getElementById('j_username').value=\"" + m_Login + "\"");
     m_Fct->InsertJavaScript("document.getElementById('j_password').value=\"" + m_MDP + "\"");
-    m_Fct->Loop(500);
     m_Fct->InsertJavaScript("document.getElementById('loginForm').submit()");
     m_Fct->Loop();
 
@@ -135,21 +134,18 @@ bool RexelFr::Create_List_Invoice()
         while(!flux.atEnd() && !fin)
         {
             int id = 0;
-            req.prepare("SELECT MAX(ID) FROM En_Cours");
-            req.exec();
+            req = m_DB.Requete("SELECT MAX(ID) FROM En_Cours");
             req.next();
             id = req.value(0).toInt();
             id++;
 
             infoChantier = "";
             QString ligne = flux.readLine();
-            DEBUG << ligne;
             if(ligne.contains("N° de commande Rexel") && ligne.split(" ").last() != "Rexel")
             {
                 etat.clear();
 
                 bool error(false);
-                DEBUG << id;
                 numeroCommande = ligne.split(" ").last();
                 lienChantier = "https://www.rexel.fr/frx/my-account/orders/" + numeroCommande;
                 ligne = flux.readLine();

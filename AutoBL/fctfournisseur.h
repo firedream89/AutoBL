@@ -16,7 +16,7 @@
 #include "error.h"
 #define DEBUG qDebug()
 
-class FctFournisseur: public QObject
+class FctFournisseur: public QObject,public Error
 {
     Q_OBJECT
 

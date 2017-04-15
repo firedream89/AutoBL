@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.40-3"); //Version De L'application
-QString ver("1403");
+QString version("1.40-B5"); //Version De L'application
+QString ver("1405");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -210,9 +210,7 @@ void Principal::Init_Config()
     req.next();
     ui->lienEsabora->setText(req.value("Valeur").toString());
     ///Variable MDP Application
-    req = m_DB.Requete("SELECT * FROM Options WHERE Nom='MDPA'");
-    req.next();
-    ui->mDPA->setText(req.value("Valeur").toString());
+
     ///Variable temps entre chaque commandes Esabora
     req = m_DB.Requete("SELECT * FROM Options WHERE ID='14'");
     req.next();
@@ -281,7 +279,8 @@ void Principal::Sauvegarde_Parametres()
     m_DB.Requete("UPDATE Options SET Valeur='" + m_DB.Encrypt(ui->eLogin->text()) + "' WHERE Nom='Login'");
     m_DB.Requete("UPDATE Options SET Valeur='" + m_DB.Encrypt(ui->eMDP->text()) + "' WHERE Nom='MDP'");
     m_DB.Requete("UPDATE Options SET Valeur='" + ui->lienEsabora->text() + "' WHERE Nom='LienEsabora'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'");
+    if(!ui->mDPA->text().isEmpty())
+        m_DB.Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'");
     m_DB.Requete("UPDATE Options SET Valeur='" + ui->nBDDEsab->text() + "' WHERE ID='12'");
     m_DB.Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpCmd->value()) + "' WHERE ID='14'");
     m_DB.Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpBoucleRexel->value()) + "' WHERE ID='19'");
@@ -307,7 +306,7 @@ void Principal::Sauvegarde_Parametres()
     }
     else
         settings2.remove("AutoBL");
-qDebug() << 0;
+
     QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='7'");
     QSqlQuery r2 = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='8'");
     r.next();
@@ -667,6 +666,8 @@ void Principal::MAJ_Repertoire_Esabora()
 //Traitement/////////////////////////
 void Principal::Demarrage()
 {
+    QSqlQuery req;
+
     m_DB.Sav();
     Affichage_Info("Recherche de nouveau BL...",true);
     m_Temps.stop();
@@ -690,105 +691,14 @@ void Principal::Demarrage()
     qDebug() << "Demarrage 2";
     int nbBC(0),nbBL(0);
     ///Démarrage d'esabora
-    if(ui->activ_Esab->isChecked() && !m_Arret)
-    {
-        if(m_Esabora->Lancement_API() && !m_Arret)
-        {
-            ///Ajout des BC sur esabora
-            QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
-            m_Esabora->Ouverture_Liste_BC();
-            while(req.next() && !m_Arret)
-            {
-                m_Tache->Affichage_En_Cours();
-                Get_Tableau_Matos(req.value("Numero_Commande").toString());
-                if(req.value("Nom_Chantier").toString() == "0")//Ajout BC au Stock
-                {
-                    if(!m_Esabora->Ajout_Stock(req.value("Numero_Commande").toString()))
-                    {
-                        Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué, BC non créé !").arg(req.value("Numero_Commande").toString()));
-                    }
-                    else
-                    {
-                        m_DB.Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                        nbBC++;
-                    }
-                }
-                else//Ajout BC sur numéro de chantier
-                {
-                    if(!m_Esabora->Ajout_BC(req.value("Numero_Commande").toString()))
-                    {
-                        if(m_Esabora->GetEtat() == 0)
-                        {
-                            Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué, BC non créé !").arg(req.value("Numero_Commande").toString()));
-                        }
-                        if(m_Esabora->GetEtat() == 1)
-                        {
-                            Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué, BC Vide à supprimer !").arg(req.value("Numero_Commande").toString()));
-                            m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                        }
-                    }
-                    else
-                    {
-                        m_DB.Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                        nbBC++;
-                    }
-                }
-            }
-            m_Esabora->Abort();
-            ModifInfoTraitementBL("BC","Terminer");
-            ///Ajout des BL sur esabora
-            Afficher_Fichiers_Excel();///Refresh liste pour validation des bons ajouté sur ce cycle
-            for(int cpt=0;cpt<ui->tNomFichier->rowCount();cpt++)
-            {
-                if(m_Arret)
-                    cpt = ui->tNomFichier->rowCount();
-                if(ui->tNomFichier->item(cpt,7)->checkState() == Qt::Checked)
-                {
-                    QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,5)->text() + "'");
-                    if(req.next())
-                    {
-                        if(!m_Esabora->Ajout_BL(req.value("Numero_BC_Esabora").toString(),ui->tNomFichier->item(cpt,4)->text()))
-                        {
-                            Affichage_Erreurs(tr("Principal | Ajout BL N°%0 échoué").arg(ui->tNomFichier->item(cpt,4)->text()));
-                        }
-                        else
-                        {
-                            nbBL++;
-                            Affichage_Info("Principal | Ajout BL N°" + ui->tNomFichier->item(cpt,4)->text() + " Réussi");
-                            m_DB.Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,5)->text() + "'");
-                        }
-                    }
-                    else
-                    {
-                        Affichage_Erreurs("Principal | BL non trouvé dans la DB !");
-                    }
-                }
-            }
-            ModifInfoTraitementBL("BL","Terminer");
-            //Fermeture d'esabora
-            if(!m_Esabora->Fermeture_API())
-                Affichage_Erreurs("Fermeture d'Esabora échoué");
-        }
-        else
-        {
-            Affichage_Erreurs("Démarrage d'Esabora échoué");
-            ModifInfoTraitementBL("BC","Echouée");
-            ModifInfoTraitementBL("BL","Echouée");
 
-            ///Verif modification DB
-            QString entreprise,BDD;
-            m_Esabora->Apprentissage(entreprise,BDD);
-            if(ui->nBDDEsab->text() != BDD && BDD != "")
-                ui->nBDDEsab->setText(BDD);
-            if(ui->nEntrepriseEsab->text() != entreprise && entreprise != "")
-                ui->nEntrepriseEsab->setText(entreprise);
-            Sauvegarde_Parametres();
+    bool automatic = ui->ajoutAutoBL->isChecked();
+    if(!m_Esabora->Start(automatic,nbBC,nbBL))
+        Affichage_Erreurs(tr("Des erreurs se sont produite durant la procédure d'ajout de bon"));
 
-        }
-    }
 
     Afficher_Fichiers_Excel();
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='20'");
+    req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='20'");
     req.next();
     m_DB.Requete("UPDATE Options SET Valeur='" + QString::number(req.value("Valeur").toInt()+nbBC) + "' WHERE ID='20'");
     ui->totalBCCrees->setText(QString::number(ui->totalBCCrees->text().toInt()+nbBC));

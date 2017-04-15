@@ -6,6 +6,7 @@
 
 #include "fctfournisseur.h"
 #include "rexelfr.h"
+#include "error.h"
 
 #define DEBUG qDebug()
 #define FRN1 "Rexel.fr"
@@ -47,6 +48,7 @@ private:
     QString m_Lien_Travail;
     FctFournisseur *m_fct;
     DB m_DB;
+    Error m_Error;
 };
 
 #endif // FOURNISSEUR_H
