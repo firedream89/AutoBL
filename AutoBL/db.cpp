@@ -119,7 +119,7 @@ void DB::Init()
     {
         db.close();
         QProcess p;
-        p.start("MAJ_BDD.exe");
+        p.start("bin/MAJ_BDD.exe");
         p.waitForFinished();
         if(p.exitCode() == 1)
            emit Error("DB | E015 | Echec de mise à jour de la DB");
