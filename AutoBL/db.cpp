@@ -118,15 +118,8 @@ void DB::Init()
     if(!req.next())//si DB inaccessible, lancer la mise à jour de la DB
     {
         db.close();
-        QProcess p;
-        p.start("bin/MAJ_BDD.exe");
-        p.waitForFinished();
-        if(p.exitCode() == 1)
-           emit Error("DB | E015 | Echec de mise à jour de la DB");
-        else if(p.exitCode() != 0)
-            emit Error("DB | E002 | DB Inaccessible !");
-        Init();
-        return;
+        QDesktopServices::openUrl(QUrl("bin/MAJ_BDD.exe"));
+        qApp->exit(0);
     }
     else
         emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());

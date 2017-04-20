@@ -6,6 +6,7 @@
 #include <QObject>
 #include <QDebug>
 #include <QCryptographicHash>
+#include <QDesktopServices>
 
 #include <../../../Cle_AutoBL.cpp>
 
