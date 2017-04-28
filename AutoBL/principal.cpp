@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.382"); //Version De L'application
+QString version("1.384"); //Version De L'application
 QString maj("http://37.187.104.80/");//Serveur MAJ
 /////////////////////////////////
 
@@ -258,7 +258,12 @@ Principal::~Principal()
 
 bool Principal::test()
 {
-
+    QMessageBox b;
+    b.setWindowTitle("AutoBL");
+    b.setTextFormat(Qt::RichText);
+    b.setText("Une mise à jour d'autoBL est disponible !\nVeuillez vous rendre sur cette "
+              "<a href='https://github.com/firedream89/AutoBL/releases'>page</a> pour la télécharger.");
+    b.exec();
 }
 
 void Principal::Sauvegarde_Parametres()
@@ -708,6 +713,13 @@ qDebug() << "Demarrage 2";
     if(ui->e_Erreur2->text().toInt() > 0)
         Post_Report();
     Demarrage_Auto_BC();
+
+    QMessageBox b;
+    b.setWindowTitle("AutoBL");
+    b.setTextFormat(Qt::RichText);
+    b.setText("Une mise à jour d'autoBL est disponible !\nVeuillez vous rendre sur cette "
+              "<a href='https://github.com/firedream89/AutoBL/releases'>page</a> pour la télécharger.");
+    b.exec();
 }
 
 void Principal::Test_Esabora()

@@ -63,58 +63,57 @@ bool Rexel::Connexion(QString login, QString MDP)
 ///Erreur 1xx
 bool Rexel::Navigation()
 {
-    qDebug() << "Rexel::Navigation()";
-    ///Récuperation de la liste de bon de commandes et enregistrement dans le fichier web_Temp.txt
+
     if(!webLoad("https://www.rexel.fr/frx/my-account/orders"))
     {
         EmitErreur(101,0);
-        qDebug() << "Navigation - Chargement échoué";
         return false;
     }
-    if(!Verification("Suivi de commandes","Accès suivi de commandes"))
+
+    if(!Verification("Suivi de commandes","Suivi"))
     {
         EmitErreur(102,0);
         qDebug() << "Navigation - Echec page";
         return false;
     }
 
-    QFile fichier(m_Lien_Work + "/web_Temp.txt");
     ///Récupération du texte de page de commandes et placement en fichier
-    QTextStream flux(&fichier);
-    QTimer t,t2;
-    QEventLoop l;
+    QTimer t;
     QSqlQuery r = m_db.Requete("SELECT Valeur FROM Options WHERE ID='19'");
     r.next();
-    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
-    connect(&t2,SIGNAL(timeout()),&t2,SLOT(stop()));
+    connect(&t,SIGNAL(timeout()),&t,SLOT(stop()));
     int nbPage(0),tPage(6);
-    t2.start(r.value(0).toInt()*2000);
     bool fin = false;
 
     do
     {
         //Chargement de la page suivante
-        t2.start(r.value(0).toInt()*2000);
+        t.start(r.value(0).toInt()*2000);
         web->page()->mainFrame()->evaluateJavaScript("ACC.orderHistoryPage.ajaxOrderHistoryReq(" + QString::number(nbPage+1) + ",ACC.orderHistoryPage.sortCriteria,ACC.orderHistoryPage.isAscendingVal);");
         web->page()->mainFrame()->evaluateJavaScript("ACC.orderHistoryPage.loadMoreResults(parseInt(" + QString::number(nbPage+1) + "),ACC.orderHistoryPage.sortCriteria,ACC.orderHistoryPage.isAscendingVal,'header');");
 
         while(web->page()->mainFrame()->evaluateJavaScript("$('#accountHistoryPageLoader').is(':visible')").toBool())
         {
-            if(!t2.isActive())
+            if(!t.isActive())
             {
                 emit Erreur("Echec de lecture du site(Script non chargé)");
                 return false;
             }
-            t.start(1000);
+            QTimer t2;
+            QEventLoop l;
+            connect(&t2,SIGNAL(timeout()),&l,SLOT(quit()));
+            t2.start(1000);
             l.exec();
         }
         //Mise à jour de la page actuelle
         nbPage = web->page()->mainFrame()->evaluateJavaScript("$('#currentPageId').val();").toInt();
         tPage = web->page()->mainFrame()->evaluateJavaScript("$('#totalPageId').val();").toInt();
         emit InfoFen("Info","Chargement page " + QString::number(nbPage) + "/" + QString::number(tPage));
+
         qDebug() << "Navigation - Chargement AJAX " << nbPage << "/" << tPage;
 
-        //Enregistrement des informations
+        QFile fichier(m_Lien_Work + "/web_Temp.txt");
+        QTextStream flux(&fichier);
         fichier.resize(0);
         if(!fichier.open(QIODevice::WriteOnly))
         {
@@ -124,44 +123,35 @@ bool Rexel::Navigation()
         }
         web->page()->triggerAction(QWebPage::SelectAll);
         flux <<  web->page()->selectedText();
-        fichier.close();
+        fichier.close()    ;
 
-        qDebug() << "Navigation - Fin de copie dans le fichier " + fichier.fileName();
         ///Traitement des données contenu dans le fichier web_Temp.txt
         QSqlQuery req;
         bool premierDemarrage(false);
         QString nomChantier, lienChantier, numeroCommande, etat, date, infoChantier;
         if(!fichier.open(QIODevice::ReadOnly))
-        {
-            EmitErreur(104,1,fichier.fileName());
-            qDebug() << "Navigation - Echec ouverture du fichier " + fichier.fileName();
-            return false;
-        }
-        flux.seek(0);
+            EmitErreur(103,1,fichier.fileName());
 
-        qDebug() << "Navigation - Début du traitement des informations";
-        req = m_db.Requete("SELECT MAX(ID) FROM En_Cours");
-        req.next();
-        if(req.value(0).toInt() == 0)
+        DEBUG << "Navigation - Début du traitement des informations";
+        req = m_db.Requete("SELECT * FROM En_Cours WHERE Fournisseur='Rexel.fr'");
+        if(!req.next())
             premierDemarrage = true;
-        //Ajout des nouveaux bons dans la DB
+
         while(!flux.atEnd() && !fin)
         {
             int id = 0;
-            req.prepare("SELECT MAX(ID) FROM En_Cours");
-            req.exec();
+            req = m_db.Requete("SELECT MAX(ID) FROM En_Cours");
             req.next();
             id = req.value(0).toInt();
             id++;
 
             infoChantier = "";
             QString ligne = flux.readLine();
-            if(ligne.contains("N° de commande Rexel"))
+            if(ligne.contains("N° de commande Rexel") && ligne.split(" ").last() != "Rexel")
             {
                 etat.clear();
 
                 bool error(false);
-                qDebug() << id;
                 numeroCommande = ligne.split(" ").last();
                 lienChantier = "https://www.rexel.fr/frx/my-account/orders/" + numeroCommande;
                 ligne = flux.readLine();
@@ -169,39 +159,26 @@ bool Rexel::Navigation()
                     date = ligne.split(" ").last().replace(".","/");
                 else
                 {
-                    EmitErreur(106,6,numeroCommande + " Date");
+                    EmitErreur(108,6,ligne + " date");
                     error = true;
                 }
                 ligne = flux.readLine();
                 if(ligne.contains("Réf. cde :"))
-                {
                     nomChantier = ligne.replace("Réf. cde : ","");
-                    nomChantier.replace(" ","");
-                }
                 else
                 {
-                    EmitErreur(107,6,numeroCommande + " Référence");
+                    EmitErreur(108,6,ligne + " Référence");
                     error = true;
                 }
                 ligne = flux.readLine();
                 if(ligne.contains("Réf. chantier :"))
                     infoChantier = ligne.replace("Réf. chantier : ","");
                 ligne = flux.readLine();
-                if(ligne.contains("Total:"))
+                while(!ligne.contains("Statut") && !flux.atEnd())
                     ligne = flux.readLine();
-                if(ligne.contains("Status:"))
-                {
-                    ligne = ligne.replace("Status: ","");
-                    QStringList list = ligne.split(" ");
-                    ligne.clear();
-                    for(int i = 0;i<list.count();i++)
-                    {
-                        ligne= list.at(i);
-                        ligne.replace(0,1,ligne.at(0).toUpper());
-                        etat += ligne + " ";
-                    }
-                    etat.remove(etat.count()-1,etat.count()-1);
-                }
+                DEBUG << ligne;
+                if(ligne.contains("Statut"))
+                    etat = ligne.replace("Statut : ","");
                 else
                 {
                     EmitErreur(108,6,ligne + " Etat");
@@ -210,23 +187,23 @@ bool Rexel::Navigation()
 
                 req = m_db.Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "'");
                 req.next();
-                if(req.value("Numero_Commande").isNull() && !error)
+                if(req.value("Numero_Commande").isNull())
                 {
                     if(date.split("/").count() != 3)///Si la date n'a pas été trouvé
                     {
-                        EmitErreur(108,6,"Date");
+                        EmitErreur(108,6,ligne + " date");
                         return false;
                     }
                     QStringList l = date.split("/");
                     date = l.at(2) + "-" + l.at(1) + "-" + l.at(0);
-                    qDebug() << "Navigation - Ajout nouveau BC dans la DB : " << req.prepare("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + nomChantier + "','" + numeroCommande + "','','" + lienChantier + "','" + etat + "','','" + infoChantier + "','0','')");
+                    DEBUG << "Navigation - Ajout nouveau BC dans la DB : " << req.prepare("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + nomChantier + "','" + numeroCommande + "','','" + lienChantier + "','" + etat + "','','" + infoChantier + "','0','')");
                     if(!req.exec())
                     {
-                        EmitErreur(105,4,req.lastError().text());
-                        qDebug() << "Navigation - Echec Ajout";
+                        EmitErreur(108,6,ligne + " requete");
+                        DEBUG << "Navigation - Echec Ajout";
                         return false;
                     }
-                    else if(premierDemarrage)
+                    else if(premierDemarrage && 0)
                     {
                         m_db.Requete("UPDATE En_Cours SET Ajout='Ok' WHERE ID='1'");
                         fin = true;
@@ -234,15 +211,14 @@ bool Rexel::Navigation()
                 }
                 else
                 {
-                    qDebug() << "Navigation - Fin d'ajout";
+                    DEBUG << "Navigation - Fin d'ajout";
                     fin = true;
                 }
             }
         }
-        fichier.close();
-    }while(nbPage < tPage && !fin);
-    emit InfoFen("Info","");
-    qDebug() << "Fin Rexel::Navigation()";
+    fichier.close();
+    }while(nbPage<tPage && !fin);
+    DEBUG << "Fin Rexel::Navigation()";
     return true;
 }
 ///Erreur 3xx
