@@ -99,6 +99,7 @@ public slots:
 
 signals:
     void FinAjout();
+    void End_Get_Tableau_Matos();
 
 private:
     Ui::Principal *ui;

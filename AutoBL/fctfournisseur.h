@@ -30,7 +30,7 @@ public:
     bool SaveHtml();
     QVariant InsertJavaScript(QString script);
     void WebOpen();
-    void FrnError(int code, QString er = 0);
+    void FrnError(int code, QString frn, QString er = 0);
     void Info(QString info);
     void Change_Load_Window(QString text);
 

@@ -11,6 +11,7 @@
 #include "fctfournisseur.h"
 
 #define DEBUG qDebug()
+#define REXEL "Rexel.fr"
 
 class RexelFr: public QObject
 {

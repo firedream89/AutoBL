@@ -14,14 +14,18 @@ Esabora::~Esabora()
 
 bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
 {
+    m_Arret = false;
+
     if(!Lancement_API())
         return false;
 
     ///Ajout des BC sur esabora
     QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
     Ouverture_Liste_BC();
+    qDebug() << "Liste BC ouverte";
     while(req.next() && !m_Arret)
     {
+        qDebug() << "Ajout BC";
         emit Info(tr("Ajout du bon de commande %0").arg(req.value("Numero_Commande").toString()));
         if(Get_List_Matos(req.value("Numero_Commande").toString()))
         {
@@ -34,28 +38,29 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                     m_DB.Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     nbBC++;
                 }
-            }
-        }
-        else//Ajout BC sur numéro de chantier
-        {
-            if(!Ajout_BC(req.value("Numero_Commande").toString()))
+            }      
+            else//Ajout BC sur numéro de chantier
             {
-                if(GetEtat() == 0)
-                    emit Erreur(err.Err(9,req.value("Numero_Commande").toString(),ESAB));
-                else if(GetEtat() == 1)
+                if(!Ajout_BC(req.value("Numero_Commande").toString()))
                 {
-                    emit Erreur(err.Err(10,req.value("Numero_Commande").toString(),ESAB));
-                    m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    if(GetEtat() == 0)
+                        emit Erreur(err.Err(9,req.value("Numero_Commande").toString(),ESAB));
+                    else if(GetEtat() == 1)
+                    {
+                        emit Erreur(err.Err(10,req.value("Numero_Commande").toString(),ESAB));
+                        m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    }
+                }
+                else
+                {
+                    m_DB.Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    nbBC++;
+                    if(automatic)
+                        m_List_Cmd.append(req.value("Numero_Commande").toString());
                 }
             }
-            else
-            {
-                m_DB.Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                nbBC++;
-                if(automatic)
-                    m_List_Cmd.append(req.value("Numero_Commande").toString());
-            }
         }
+        liste_Matos.clear();
     }
     Abort();
 
@@ -90,33 +95,33 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
     }
 
     return Fermeture_API();
-
-
 }
 
 ///Erreur 2xx
 bool Esabora::Lancement_API()
 {
     qDebug() << "Esabora::Lancement_API()";
-    if(QDesktopServices::openUrl(m_Lien_Esabora))
-    {
-        if(!Traitement_Fichier_Config("Open"))
-        {
-            emit Erreur(err.Err(1,"Config.esab",ESAB));
-            qDebug() << "Lancement_API - Echec du traitement du login sur Esabora.elec";
-            qDebug() << "Fin Esabora::Lancement_API()";
-            return false;
-        }
-        qDebug() << "Fin Esabora::Lancement_API()";
-        return true;
-    }
-    else
+    p.setProgram(m_Lien_Esabora);
+    if(m_Lien_Esabora.contains("Simul_Esabora"))
+        p.start();
+    else if(!QDesktopServices::openUrl(m_Lien_Esabora))
     {
         emit Erreur(err.Err(12,"",ESAB));
         qDebug() << "Lancement_API - Echec ouverture d'Esabora.elec";
         qDebug() << "Fin Esabora::Lancement_API()";
         return false;
     }
+
+    if(!Traitement_Fichier_Config("Open"))
+    {
+        emit Erreur(err.Err(1,"Config.esab",ESAB));
+        qDebug() << "Lancement_API - Echec du traitement du login sur Esabora.elec";
+        qDebug() << "Fin Esabora::Lancement_API()";
+        return false;
+    }
+    qDebug() << "Fin Esabora::Lancement_API()";
+    return true;
+
 }
 ///Erreur 3xx
 
@@ -172,13 +177,13 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
     emit Info("Ouverture fichier Config.esab");
     if(!fichier.exists())
     {
-        emit Erreur(err.Err(1,fichier.fileName(),ESAB));
+        emit Erreur(err.Err(open_File,fichier.fileName(),ESAB));
         qDebug() << "Traitement_Fichier_Config - Echec le fichier " << fichier.fileName() << "n'existe pas";
         return false;
     }
     if(!fichier.open(QIODevice::ReadOnly))
     {
-        emit Erreur(err.Err(1,fichier.fileName(),ESAB));
+        emit Erreur(err.Err(open_File,fichier.fileName(),ESAB));
         qDebug() << "Traitement_Fichier_Config - Echec d'ouverture du fichier " << fichier.fileName();
         return false;
     }
@@ -408,6 +413,7 @@ bool Esabora::Fermeture_API()
     Clavier("Echap");
     Clavier("Alt+F4");
     Clavier("Purge");
+    p.close();
     qDebug() << "Fin Esabora::Fermeture_API()";
     return true;
 }
@@ -432,6 +438,10 @@ bool Esabora::Clavier(QString commande)
         return true;
     }
 
+    QEventLoop l;
+    QTimer t;
+    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
+
     QStringList ligne = commande.split("+");
     if(commande.at(0) == '-' && ligne.count() == 1)
     {
@@ -441,11 +451,10 @@ bool Esabora::Clavier(QString commande)
     }
 
     int nbLigne = 0;
-
     while(ligne.count() > nbLigne)
     {
         QString var = ligne.at(nbLigne);
-        //emit Info(var + " Shift=" + GetKeyState(VK_SHIFT) + " Alt=" + GetKeyState(VK_LMENU) + " Ctrl=" + GetKeyState(VK_LCONTROL));
+
         //Verif majuscule
         if((var.at(0).isUpper() || var.at(0) == '/' || var.at(0) == '.') && GetKeyState(VK_SHIFT) >= 0 && GetKeyState(VK_LMENU) >= 0)
         {
@@ -660,18 +669,20 @@ bool Esabora::Clavier(QString commande)
         }
 
         nbLigne++;
+        t.start(100);
+        l.exec();
+
     }
     nbLigne = 0;
 
-    if(1)
-    {
-        if(GetKeyState(VK_SHIFT) < 0)
-            keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
-        if(GetKeyState(VK_LMENU) < 0)
-            keybd_event(VK_LMENU,0,KEYEVENTF_KEYUP,0);
-        if(GetKeyState(VK_LCONTROL) < 0)
-            keybd_event(VK_LCONTROL,0,KEYEVENTF_KEYUP,0);
-    }
+
+    if(GetKeyState(VK_SHIFT) < 0)
+        keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+    if(GetKeyState(VK_LMENU) < 0)
+        keybd_event(VK_LMENU,0,KEYEVENTF_KEYUP,0);
+    if(GetKeyState(VK_LCONTROL) < 0)
+        keybd_event(VK_LCONTROL,0,KEYEVENTF_KEYUP,0);
+
     qDebug() << "Fin Esabora::Clavier()";
     return true;
 }
@@ -796,8 +807,16 @@ void Esabora::Reset_Liste_Matos()
 
 void Esabora::Apprentissage(QString &entreprise,QString &BDD)
 {
-    qDebug() << "Esabora::Apprentissage()";
-    QDesktopServices::openUrl(m_Lien_Esabora);
+    qDebug() << "Esabora::Apprentissage()";   
+    QProcess p;
+    if(m_Lien_Esabora.contains("Simul_Esabora"))
+    {
+        p.setProgram(m_Lien_Esabora);
+        p.start();
+    }
+    else
+        QDesktopServices::openUrl(m_Lien_Esabora);
+
     QEventLoop l;
     QTimer t;
     connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
@@ -912,10 +931,15 @@ bool Esabora::Get_List_Matos(QString invoice)
     connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
     connect(this,SIGNAL(ReceptionListeMatos()),&l,SLOT(quit()));
     t.start(60000);
-    l.exec();
+    //l.exec();
 
     if(t.isActive())
         return true;
     else
         return false;
+}
+
+void Esabora::Stop()
+{
+    m_Arret = true;
 }

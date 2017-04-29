@@ -13,7 +13,7 @@ bool RexelFr::Start()
     {
         QSqlQuery req;
         if(!Create_List_Invoice())
-            m_Fct->FrnError(1);
+            m_Fct->FrnError(bad_Login,REXEL);
         //Véfification des numéro de chantier
         req = m_DB.Requete("SELECT * FROM En_Cours WHERE Ajout=''");
         while(req.next())
@@ -26,17 +26,23 @@ bool RexelFr::Start()
         //Vérification état BC
         req = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat!='Livrée En Totalité' AND Etat!='Livrée Et Facturée'");
         while(req.next())
-            if(Check_State(req.value("Numero_Commande").toString()))
-                m_Fct->FrnError(2,req.value("Numero_Commande").toString());
+        {
+            m_Fct->Info(tr("Mise à jour état commande %1").arg(req.value("Numero_Commande").toString()));
+            if(!Check_State(req.value("Numero_Commande").toString()))
+                m_Fct->FrnError(fail_check,REXEL,req.value("Numero_Commande").toString());
+        }
         //Récupération des BL
         req = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée En Totalité' OR Etat='Livrée Et Facturée'");
         while(req.next())
             if(req.value("Numero_Livraison").toString().isEmpty())
+            {
+                m_Fct->Info(tr("Récupération des bons de livraison commande %1").arg(req.value("Numero_Commande").toString()));
                 if(!Check_Delivery(req.value("Numero_Commande").toString()))
-                    m_Fct->FrnError(3,req.value("Numero_Livraison").toString());
+                    m_Fct->FrnError(load,REXEL,req.value("Numero_Livraison").toString());
+            }
     }
     else
-        m_Fct->FrnError(901,0);
+        m_Fct->FrnError(bad_Login,REXEL);
     return true;
 }
 
@@ -47,7 +53,7 @@ bool RexelFr::Connexion()
 
     if(!m_Fct->WebLoad("https://www.rexel.fr/frx"))
     {
-        m_Fct->FrnError(load,"https://www.rexel.fr/frx");
+        m_Fct->FrnError(load,REXEL,"https://www.rexel.fr/frx");
         return false;
     }
 
@@ -62,7 +68,7 @@ bool RexelFr::Connexion()
 
     if(m_Fct->FindTexte("Votre compte a été verrouillé, veuillez contacter ladministrateur"))
     {
-        m_Fct->FrnError(fail_check,"Compte verrouillé, réessayez plus tard");
+        m_Fct->FrnError(fail_check,REXEL,"Compte verrouillé, réessayez plus tard");
         return false;
     }
 
@@ -70,7 +76,7 @@ bool RexelFr::Connexion()
     if(m_Fct->FindTexte(m_UserName))
         return true;
 
-    m_Fct->FrnError(fail_check,"Connexion échouée");
+    m_Fct->FrnError(fail_check,REXEL,"Connexion échouée");
     return false;
 }
 ///Error code 92x
@@ -79,10 +85,10 @@ bool RexelFr::Create_List_Invoice()
     ///Récuperation de la liste de bon de commandes et enregistrement dans le fichier web_Temp.txt
     m_Fct->Info(tr("Chargement des bons de commandes"));
     if(!m_Fct->WebLoad("https://www.rexel.fr/frx/my-account/orders"))
-        m_Fct->FrnError(load,"https://www.rexel.fr/frx/my-account/orders");
+        m_Fct->FrnError(load,REXEL,"https://www.rexel.fr/frx/my-account/orders");
 
     if(!m_Fct->FindTexte("Suivi de commandes"))
-        m_Fct->FrnError(fail_check);
+        m_Fct->FrnError(fail_check,REXEL);
 
     ///Récupération du texte de page de commandes et placement en fichier
     QTimer t;
@@ -103,7 +109,7 @@ bool RexelFr::Create_List_Invoice()
         {
             if(!t.isActive())
             {
-                m_Fct->FrnError(1,"Script non chargé");
+                m_Fct->FrnError(load,REXEL,"Script non chargé");
                 return false;
             }
             m_Fct->Loop(1000);
@@ -124,7 +130,7 @@ bool RexelFr::Create_List_Invoice()
         QFile fichier(m_WorkLink + "/web_Temp.txt");
         QTextStream flux(&fichier);
         if(!fichier.open(QIODevice::ReadOnly))
-            m_Fct->FrnError(open_File,fichier.fileName());
+            m_Fct->FrnError(open_File,REXEL,fichier.fileName());
 
         DEBUG << "Navigation - Début du traitement des informations";
         req = m_DB.Requete("SELECT * FROM En_Cours WHERE Fournisseur='Rexel.fr'");
@@ -153,7 +159,7 @@ bool RexelFr::Create_List_Invoice()
                     date = ligne.split(" ").last().replace(".","/");
                 else
                 {
-                    m_Fct->FrnError(variable,"date");
+                    m_Fct->FrnError(variable,REXEL,"date");
                     error = true;
                 }
                 ligne = flux.readLine();
@@ -161,21 +167,21 @@ bool RexelFr::Create_List_Invoice()
                     nomChantier = ligne.replace("Réf. cde : ","");
                 else
                 {
-                    m_Fct->FrnError(variable,"Référence");
+                    m_Fct->FrnError(variable,REXEL,"Référence");
                     error = true;
                 }
                 ligne = flux.readLine();
                 if(ligne.contains("Réf. chantier :"))
                     infoChantier = ligne.replace("Réf. chantier : ","");
                 ligne = flux.readLine();
-                if(ligne.contains("Total:"))
+                while(!ligne.contains("Statut : ") && !flux.atEnd())
                     ligne = flux.readLine();
                 DEBUG << ligne;
-                if(ligne.contains("Status:"))
-                    etat = ligne.replace("Status: ","");
+                if(ligne.contains("Statut : "))
+                    etat = ligne.replace("Statut : ","");
                 else
                 {
-                    m_Fct->FrnError(variable,"Etat");
+                    m_Fct->FrnError(variable,REXEL,"Etat");
                     error = true;
                 }
 
@@ -185,7 +191,7 @@ bool RexelFr::Create_List_Invoice()
                 {
                     if(date.split("/").count() != 3)///Si la date n'a pas été trouvé
                     {
-                        m_Fct->FrnError(variable,"date");
+                        m_Fct->FrnError(variable,REXEL,"date");
                         return false;
                     }
                     QStringList l = date.split("/");
@@ -193,7 +199,7 @@ bool RexelFr::Create_List_Invoice()
                     DEBUG << "Navigation - Ajout nouveau BC dans la DB : " << req.prepare("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + nomChantier + "','" + numeroCommande + "','','" + lienChantier + "','" + etat + "','','" + infoChantier + "','0','','Rexel.fr')");
                     if(!req.exec())
                     {
-                        m_Fct->FrnError(requete);
+                        m_Fct->FrnError(requete,REXEL);
                         DEBUG << "Navigation - Echec Ajout";
                         return false;
                     }
@@ -212,7 +218,6 @@ bool RexelFr::Create_List_Invoice()
         }
     fichier.close();
     }while(nbPage<tPage && !fin);
-    m_Fct->Info("");
     DEBUG << "Fin Rexel::Navigation()";
     return true;
 }
@@ -222,18 +227,18 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
     DEBUG << "Rexel::Recuperation_BL()";
     bool dCharger(false);
     m_Fct->Info(tr("Récupération BL commande %1").arg(InvoiceNumber.split("-").at(1)));
-    if(!m_Fct->FindTexte("Bons de livraison (BL)"))
+    if(!m_Fct->FindTexte("Bons De Livraison (BL)"))
     {
         if(!m_Fct->WebLoad("https://www.rexel.fr/frx/my-account/delivery"))
-            m_Fct->FrnError(load,"https://www.rexel.fr/frx/my-account/delivery");
+            m_Fct->FrnError(load,REXEL,"https://www.rexel.fr/frx/my-account/delivery");
     }
     else
     {
         DEBUG << "Recuperation_BL - Page déjà chargée";
         dCharger = true;
     }
-    if(!m_Fct->FindTexte("Bons de livraison (BL)"))
-        m_Fct->FrnError(fail_check);
+    if(!m_Fct->FindTexte("Bons De Livraison (BL)"))
+        m_Fct->FrnError(fail_check,REXEL);
 
     QTimer t;
     m_Fct->Loop(1000);
@@ -256,7 +261,7 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
     }while(m_Fct->InsertJavaScript("$('#deliveryHistoryPageLoader').is(':visible')").toBool() && t.isActive());
 
     if(!t.isActive())
-        m_Fct->FrnError(fail_check,"Délai écoulé");
+        m_Fct->FrnError(fail_check,REXEL,"Délai écoulé");
 
     ///Traitement des données contenu dans le fichier web_Temp.txt
     /// -------------------------------
@@ -264,7 +269,7 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
     /// -------------------------------
     QFile fichier(m_WorkLink + "/web_Temp.txt");
     if(!fichier.open(QIODevice::ReadOnly))
-        m_Fct->FrnError(open_File,fichier.fileName());
+        m_Fct->FrnError(open_File,REXEL,fichier.fileName());
 
     QString bl;
     bool fin(false);
@@ -300,7 +305,7 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
     DEBUG << "Recuperation_BL - Fin du traitement";
 
     if(bl.split(" ").count() > 5)
-        m_Fct->FrnError(too_many,QString(bl.split(" ").count()));
+        m_Fct->FrnError(too_many,REXEL,QString(bl.split(" ").count()));
     m_DB.Requete("UPDATE En_Cours SET Numero_Livraison='" + bl + "' WHERE Numero_Commande='" + InvoiceNumber + "'");
     DEBUG << "Recuperation_BL - DB mise à jour";
     DEBUG << "Fin Rexel::Recuperation_BL()";
@@ -361,7 +366,7 @@ QStringList RexelFr::Get_Invoice(const QString InvoiceNumber)
     QFile fichier(m_WorkLink + "/web_Temp.txt");
     if(!fichier.open(QIODevice::ReadOnly))
     {
-        m_Fct->FrnError(4,fichier.fileName());
+        m_Fct->FrnError(open_File,REXEL,fichier.fileName());
         DEBUG << "AffichageTableau - Echec ouverture du fichier " + fichier.fileName();
         return QStringList("Erreur");
     }
@@ -406,23 +411,7 @@ QStringList RexelFr::Get_Invoice(const QString InvoiceNumber)
             else
             {
                 DEBUG << "AffichageTableau - Référence inconnue";
-                bool t(false);
-                while(!t && !flux2.atEnd())
-                {
-                    var = flux2.readLine();
-                    if(var.contains("<span class=\"item-Label\"> Réf :"))
-                    {
-                        QString s = var.split(">").at(2).split("<").at(0);
-                        for(int cpt = 0;cpt<s.count();cpt++)
-                        {
-                            if(s.at(cpt).isLetterOrNumber())
-                                cpt = s.count();
-                            s.remove(0,1);
-                        }
-                        l.append(s);
-                        t = true;
-                    }
-                }
+                l.append("");
             }
             etat = 2;
         }
@@ -467,7 +456,7 @@ QStringList RexelFr::Get_Invoice(const QString InvoiceNumber)
     if(etat != 6)
     {
         DEBUG << "AffichageTableau - Erreur, Liste incomplète :" << etat;
-        m_Fct->FrnError(9,l.at(l.count()-1) + " Etat=" + QString::number(etat));
+        m_Fct->FrnError(variable,REXEL,l.at(l.count()-1) + " Etat=" + QString::number(etat));
         l.clear();
     }
     DEBUG << "Fin Rexel::AffichageTableau()";
@@ -487,7 +476,7 @@ bool RexelFr::Test_Connexion()
     if(!Connexion())
     {
         if(m_Fct->FindTexte("Informations invalides, veuillez réessayer"))
-            m_Fct->FrnError(bad_Login);
+            m_Fct->FrnError(bad_Login,REXEL);
         return false;
     }
     else

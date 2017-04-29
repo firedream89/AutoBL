@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.40-B5"); //Version De L'application
-QString ver("1405");
+QString version("1.40-B8"); //Version De L'application
+QString ver("1408");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -107,6 +107,8 @@ Principal::Principal(QWidget *parent) :
     connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
     connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(AddError(QString)));
     connect(m_Esabora,SIGNAL(Message(QString,QString,bool)),this,SLOT(Afficher_Message_Box(QString,QString,bool)));
+    connect(m_Esabora,SIGNAL(DemandeListeMatos(QString)),this,SLOT(Get_Tableau_Matos(QString)));
+    connect(this,SIGNAL(End_Get_Tableau_Matos()),m_Esabora,SIGNAL(ReceptionListeMatos()));
 
     connect(ui->bLienEsabora,SIGNAL(clicked(bool)),this,SLOT(Emplacement_Esabora()));
     connect(ui->bTestEsabora,SIGNAL(clicked(bool)),this,SLOT(Test_Esabora()));
@@ -684,17 +686,17 @@ void Principal::Demarrage()
 
     ///Récuperation des BC
     Create_Fen_Info("Fournisseur","Info");
-    if(!m_Frn->Start())
-        Affichage_Erreurs("Des erreurs se sont produites durant la recherche de bons");
+    if(ui->activ_Rexel->isChecked())
+        if(!m_Frn->Start())
+            Affichage_Erreurs("Des erreurs se sont produites durant la recherche de bons");
     Update_Fen_Info();
 
-    qDebug() << "Demarrage 2";
     int nbBC(0),nbBL(0);
     ///Démarrage d'esabora
-
     bool automatic = ui->ajoutAutoBL->isChecked();
-    if(!m_Esabora->Start(automatic,nbBC,nbBL))
-        Affichage_Erreurs(tr("Des erreurs se sont produite durant la procédure d'ajout de bon"));
+    if(!m_Arret && ui->activ_Esab->isChecked())
+        if(!m_Esabora->Start(automatic,nbBC,nbBL))
+            Affichage_Erreurs(tr("Des erreurs se sont produite durant la procédure d'ajout de bon"));
 
 
     Afficher_Fichiers_Excel();
@@ -729,6 +731,7 @@ void Principal::Arret()
 {
     qDebug() << "Arret demandé !";
     m_Arret = true;
+    m_Esabora->Stop();
     m_Tache->Affichage_Info("Procédure en cours d'arret, veuiller patientez...");
 }
 
@@ -1446,6 +1449,7 @@ void Principal::Get_Tableau_Matos(QString Numero_Commande)
         return;
     }
     m_Esabora->Set_Liste_Matos(m_Frn->Get_Invoice_List(list.at(0),Numero_Commande));
+    emit End_Get_Tableau_Matos();
 }
 
 void Principal::Init_Fournisseur()

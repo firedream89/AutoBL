@@ -105,16 +105,11 @@ void FctFournisseur::WebOpen()
     web->setEnabled(true);
 }
 
-void FctFournisseur::FrnError(int code,QString er)
+void FctFournisseur::FrnError(int code,QString frn,QString er)
 {
-    QString frn;
-    if(QString::number(code).at(0) == '9')
-        frn = "Rexel.fr";
-
-    //New Error
     er = m_Error->Err(code,er,frn);
     emit error(er);
-   DEBUG << er;
+    DEBUG << er;
 }
 
 void FctFournisseur::Info(QString i)

@@ -40,6 +40,7 @@ public slots:
     bool Ouverture_Liste_BC();
     void Abort();
     bool Ajout_Stock(QString numero_Commande);
+    void Stop();
 
 private slots:
     bool Clavier(QString commande);
@@ -69,6 +70,7 @@ private:
     QStringList m_List_Cmd;
     bool m_Arret;
     Error err;
+    QProcess p;
 };
 
 #endif // ESABORA_H

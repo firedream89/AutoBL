@@ -1,7 +1,5 @@
 #include "db.h"
 
-QString key = "5269856472300456";//Clé ouverture BDD
-
 /////////////////////////////////
 /// Table En_Cours
 /// ---------------
@@ -48,6 +46,7 @@ void DB::Init()
 {
     //Ouverture de la DB
     QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+    qDebug() << db.drivers();
     db.setDatabaseName(qApp->applicationDirPath() + "/bdd.db");
     db.setHostName("127.0.0.1");
 

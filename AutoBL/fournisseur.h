@@ -28,10 +28,12 @@ public:
     bool Add(const QString nom);
     bool Del(const QString nom);
     bool Start();
-    QStringList Get_Invoice_List(const QString &frn,const QString &invoiceNumber);
     bool Update_Var(const QString &frn, const QString &login, const QString &mdp, const QString &complement);
     bool Test_Connexion(const QString& nom);
     void Show_Web();
+
+public slots:
+    QStringList Get_Invoice_List(const QString &frn,const QString &invoiceNumber);
 
 signals:
     void En_Cours_Fournisseur(QString nom);
