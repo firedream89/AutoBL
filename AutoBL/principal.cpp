@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.40-B8"); //Version De L'application
+QString version("1.40-B9"); //Version De L'application
 QString ver("1408");
 /////////////////////////////////
 

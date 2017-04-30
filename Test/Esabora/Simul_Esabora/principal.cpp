@@ -103,7 +103,7 @@ void principal::list_bon()
 
 void principal::create_Bon()
 {
-    QFile file("nBC.txt");
+    QFile file(qApp->applicationDirPath() + "/nBC.txt");
     if(!file.open(QIODevice::ReadWrite))
         QMessageBox::warning(this,"Erreur","Erreur dans le fichier f1");
 
@@ -148,7 +148,7 @@ void principal::find_chantier()
         text = this->findChild<QDialog*>("CBC")->findChild<QLineEdit*>("nch")->text();
     }
 
-    QFile file("lBC.txt");
+    QFile file(qApp->applicationDirPath() + "/lBC.txt");
     if(!file.open(QIODevice::ReadOnly))
         QMessageBox::warning(this,"Erreur","Erreur dans le fichier f1");
     QTextStream flux(&file);
@@ -178,9 +178,9 @@ void principal::save_new_bl()
             QMessageBox::warning(f,"Erreur","Des informations sont manquantes");
             return;
         }
-        QFile file(nbc + ".txt");
-        QFile file2("lBC.txt");
-        QFile file3("nBC.txt");
+        QFile file(qApp->applicationDirPath() + "/" + nbc + ".txt");
+        QFile file2(qApp->applicationDirPath() + "/lBC.txt");
+        QFile file3(qApp->applicationDirPath() + "/nBC.txt");
         if(!file.open(QIODevice::WriteOnly) || !file2.open(QIODevice::ReadOnly) || !file3.open(QIODevice::WriteOnly))
         {
             QMessageBox::warning(f,"Erreur","Erreur dans le fichier f1");
@@ -204,8 +204,8 @@ void principal::save_new_bl()
         file3.write(nbc.toLatin1());
 
         this->showMaximized();
-        show_Bon(nbc);
         f->accept();
+        show_Bon(nbc);       
     }
     else
         QMessageBox::warning(0,"Erreur","Erreur dans le fichier f1");
@@ -213,13 +213,13 @@ void principal::save_new_bl()
 
 void principal::show_Bon(QString bon)
 {
-    QFile file(bon + ".txt");
+    QFile file(qApp->applicationDirPath() + "/" + bon + ".txt");
     if(!file.open(QIODevice::ReadOnly))
         QMessageBox::warning(this,"Erreur","Erreur dans le fichier f1");
 
-    QDialog *f = new QDialog(this);
+    QDialog *f = new QDialog(this->findChild<QDialog*>("listbon"));
     f->setObjectName("showbon");
-    f->setWindowTitle("Commande " + bon + "- session : 1 - DB");
+    f->setWindowTitle("commande " + bon + " - session : 1 - DB");
     connect(f,SIGNAL(rejected()),this,SLOT(show()));
     connect(f,SIGNAL(rejected()),this,SLOT(save_bon()));
     QVBoxLayout *l = new QVBoxLayout(f);
@@ -278,7 +278,7 @@ void principal::save_bon()
         if(f != NULL)
         {
             QTableWidget *t = f->findChild<QTableWidget*>("table");
-            QFile file(f->windowTitle().split(" ").at(1) + ".txt");
+            QFile file(qApp->applicationDirPath() + "/" + f->windowTitle().split(" ").at(1) + ".txt");
             if(!file.open(QIODevice::WriteOnly | QIODevice::Append))
                 QMessageBox::warning(0,"Erreur","Erreur dans le fichier f1");
             QTextStream flux(&file);
@@ -339,7 +339,7 @@ void principal::aff_bon()
         if(f->findChild<QLineEdit*>("bc")->text().isEmpty())
             return;
         f->findChild<QLineEdit*>("bc")->blockSignals(true);
-        QFile file(f->findChild<QLineEdit*>("bc")->text() + ".txt");
+        QFile file(qApp->applicationDirPath() + "/" + f->findChild<QLineEdit*>("bc")->text() + ".txt");
         file.open(QIODevice::ReadOnly);
         if(file.atEnd())
         {
@@ -372,7 +372,7 @@ void principal::total_bon()
     {
         if(QMessageBox::question(0,"","Total = quantité livré ?") == QMessageBox::Yes)
         {
-            QFile file(f->findChild<QLineEdit*>("bc")->text() + ".txt");
+            QFile file(qApp->applicationDirPath() + "/" + f->findChild<QLineEdit*>("bc")->text() + ".txt");
             if(!file.open(QIODevice::WriteOnly | QIODevice::Append))
                 QMessageBox::warning(0,"Erreur","Erreur dans le fichier f1");
             QTextStream flux(&file);
@@ -390,7 +390,7 @@ void principal::valid_bon()
     {
         if(QMessageBox::question(0,"","Ajouter le bon au chantier ?") == QMessageBox::Yes)
         {
-            QFile file(f->findChild<QLineEdit*>("bc")->text() + ".txt");
+            QFile file(qApp->applicationDirPath() + "/" + f->findChild<QLineEdit*>("bc")->text() + ".txt");
             if(!file.open(QIODevice::WriteOnly | QIODevice::Append))
                 QMessageBox::warning(0,"Erreur","Erreur dans le fichier f1");
             QTextStream flux(&file);

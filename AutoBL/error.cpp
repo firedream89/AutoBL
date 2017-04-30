@@ -63,6 +63,9 @@ QString Error::Err(int code, QString e, QString fromClass)
     case Mouse:
         err = QObject::tr("La déplacement de la souris à échoué");
         break;
+    case designation:
+        err = QObject::tr("La référence est inconnue").arg(e);
+        break;
     default:
         err = QObject::tr("Erreur inconnue %1").arg(e);
         break;

@@ -33,13 +33,16 @@ bool RexelFr::Start()
         }
         //Récupération des BL
         req = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée En Totalité' OR Etat='Livrée Et Facturée'");
+        qDebug() << "BOUCLE Récupération des BL" << req.next();
         while(req.next())
-            if(req.value("Numero_Livraison").toString().isEmpty())
+            if(req.value("Numero_Livraison").toString() != "")
             {
+                qDebug() << "BOUCLE Récupération d'un BL";
                 m_Fct->Info(tr("Récupération des bons de livraison commande %1").arg(req.value("Numero_Commande").toString()));
                 if(!Check_Delivery(req.value("Numero_Commande").toString()))
                     m_Fct->FrnError(load,REXEL,req.value("Numero_Livraison").toString());
             }
+        qDebug() << "BOUCLE Fin Récupération des BL";
     }
     else
         m_Fct->FrnError(bad_Login,REXEL);

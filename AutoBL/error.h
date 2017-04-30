@@ -21,7 +21,8 @@ typedef enum {
     Traitement,//13
     Window,//14
     Focus,//15
-    Mouse//16
+    Mouse,//16
+    designation//17
 }ERR;
 
 class Error

@@ -85,7 +85,7 @@ void DB::Init()
         Requete("INSERT INTO Options VALUES('10','APTSG','0')");
         Requete("INSERT INTO Options VALUES('11','MDPA','')");
         Requete("INSERT INTO Options VALUES('12','Nom_BDD','')");
-        Requete("INSERT INTO Options VALUES('13','ADD_Auto_BL','0')");
+        Requete("INSERT INTO Options VALUES('13','ADD_Auto_BL','1')");
         Requete("INSERT INTO Options VALUES('14','Tmp_Cmd','0.5')");
         Requete("INSERT INTO Options VALUES('15','NUR2','')");
         Requete("INSERT INTO Options VALUES('16','Help','0')");

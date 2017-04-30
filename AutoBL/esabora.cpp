@@ -271,7 +271,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                     Clavier("Tab");
                 }
                 if(liste_Matos.at(cpt+1) == "")//Si Référence est vide
-                    emit Erreur(err.Err(6,"Ref=" + liste_Matos.at(cpt) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB));
+                    emit Erreur(err.Err(designation,"Ref=" + liste_Matos.at(cpt) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB));
                 Clavier("-" + liste_Matos.at(cpt+1));//Ref
                 Clavier("Tab");
                 pp->clear();
@@ -282,7 +282,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                 lp.exec();
                 if(pp->text() == "" || pp->text() == liste_Matos.at(cpt+1))//Si La désignation n'a pas été trouvé
                 {
-                    emit Erreur(err.Err(6,"Ref=" + liste_Matos.at(cpt+1) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB));
+                    emit Erreur(err.Err(designation,"Ref=" + liste_Matos.at(cpt+1) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB));
                     pp->clear();
                     t.start(1000);
                     lp.exec();
@@ -438,8 +438,16 @@ bool Esabora::Clavier(QString commande)
         return true;
     }
 
+    if(GetKeyState(VK_LMENU) < 0)
+        keybd_event(VK_LMENU,0,KEYEVENTF_KEYUP,0);
+    if(GetKeyState(VK_SHIFT) < 0)
+        keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+    if(GetKeyState(VK_LCONTROL) < 0)
+        keybd_event(VK_LCONTROL,0,KEYEVENTF_KEYUP,0);
+
     QEventLoop l;
     QTimer t;
+    bool addition(true);
     connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
 
     QStringList ligne = commande.split("+");
@@ -448,15 +456,17 @@ bool Esabora::Clavier(QString commande)
         ligne.clear();
         for(int cpt=1;cpt<=commande.count();cpt++)
             ligne.append(commande.at(cpt));
+        addition = false;
     }
 
     int nbLigne = 0;
     while(ligne.count() > nbLigne)
     {
         QString var = ligne.at(nbLigne);
-
+        qDebug() << "Before : " << GetKeyState(VK_SHIFT) << GetKeyState(VK_LMENU) << GetKeyState(VK_LCONTROL);
         //Verif majuscule
-        if((var.at(0).isUpper() || var.at(0) == '/' || var.at(0) == '.') && GetKeyState(VK_SHIFT) >= 0 && GetKeyState(VK_LMENU) >= 0)
+        if((var.at(0).isUpper() || var.at(0) == '/' || var.at(0) == '.') && GetKeyState(VK_SHIFT) >= 0 && GetKeyState(VK_LMENU) >= 0 &&
+                !addition)
         {
             keybd_event(VK_SHIFT,0,0,0);
         }
@@ -671,7 +681,7 @@ bool Esabora::Clavier(QString commande)
         nbLigne++;
         t.start(100);
         l.exec();
-
+        qDebug() << "After : " << GetKeyState(VK_SHIFT) << GetKeyState(VK_LMENU) << GetKeyState(VK_LCONTROL);
     }
     nbLigne = 0;
 
