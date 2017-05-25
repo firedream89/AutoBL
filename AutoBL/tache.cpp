@@ -63,11 +63,9 @@ void Tache::Login(bool etat)
     if(!etat)
     {
         m->actions().at(1)->setEnabled(false);
-        m->actions().at(2)->setEnabled(false);
     }
     else
     {
         m->actions().at(1)->setEnabled(true);
-        m->actions().at(2)->setEnabled(true);
     }
 }

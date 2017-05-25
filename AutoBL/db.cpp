@@ -23,8 +23,10 @@
 /// Nom
 /// Valeur
 /////////////////////////////////
-DB::DB()
+DB::DB(Error *err):
+    m_Error(err)
 {
+    DEBUG << "Initialisation DB";
 }
 
 QSqlQuery DB::Requete(QString req)
@@ -34,10 +36,10 @@ QSqlQuery DB::Requete(QString req)
     if(requete.prepare(req))
     {
         if(!requete.exec())
-            emit Error("DB | E101 | Execution de la requete échouée : " + req);
+            emit sError("DB | E101 | Execution de la requete échouée : " + req);
     }
     else
-        emit Error("DB | E102 | Préparation de la requete échouée : " + req);
+        emit sError("DB | E102 | Préparation de la requete échouée : " + req);
 
     return requete;
 }
@@ -52,7 +54,7 @@ void DB::Init()
 
     if(!db.open())
     {
-        emit Error("DB | E001 | Ouverture de la Database échoué : " + db.hostName() + " " + db.driverName());
+        emit sError("DB | E001 | Ouverture de la Database échoué : " + db.hostName() + " " + db.driverName());
         return;
     }
     else
@@ -103,7 +105,7 @@ void DB::Init()
     if(query.prepare("ALTER TABLE En_Cours ADD Fournisseur TEXT"))
         if(!query.exec())
         {
-          emit Error("Echec de modification de la base de données");
+          emit sError("Echec de modification de la base de données");
         }
     Requete("UPDATE En_Cours SET Fournisseur='Rexel.fr' WHERE Fournisseur=''");
     Requete("UPDATE En_Cours SET Etat='En préparation' WHERE Etat='En cours' AND Fournisseur='Rexel.fr'");
@@ -122,6 +124,8 @@ void DB::Init()
     }
     else
         emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());
+
+    DEBUG << "DB initialisée";
 }
 
 void DB::Close()
@@ -182,7 +186,7 @@ void DB::Sav()
         }
     }
     if(!ok)
-        emit Error("DB | E301 | Echec de sauvegarde de la DB");
+        emit sError("DB | E301 | Echec de sauvegarde de la DB");
 }
 
 void DB::Purge()

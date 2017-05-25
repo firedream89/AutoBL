@@ -19,14 +19,19 @@ Principal::Principal(QWidget *parent) :
             if(qApp->arguments().at(i).split("=").at(1) == "1")
                 QMessageBox::warning(0,"AutoBL",tr("Une erreur s'est produite durant la Restauration/mise à jour de la base de données."));
 
-    //Vérification mise à jour
-    MAJ();
-
     //Traitement des variables de l'application
     m_Lien_Work = QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0);
     ui->e_Path->setText("Work Path : " + QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0));
     qDebug() << "Lien dossier de travail : " <<m_Lien_Work;
     premierDemarrage = false;
+
+    //Erreur
+    m_Error = new Error(m_Lien_Work);
+    connect(m_Error,SIGNAL(sError(QString)),this,SLOT(Affichage_Erreurs(QString)));
+
+    //DB
+    m_DB = new DB(m_Error);
+    m_DB->Init();
 
     //Création des Dossiers
     QDir dir;
@@ -46,12 +51,17 @@ Principal::Principal(QWidget *parent) :
     m_Erreurs = 0;
     ui->e_Erreurs->setText("");
     ui->e_Erreur2->setText(QString::number(m_Erreurs));
-    connect(&m_DB,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
-    connect(&m_DB,SIGNAL(Error(QString)),this,SLOT(Affichage_Erreurs(QString)));
-    connect(&m_DB,SIGNAL(Error(QString)),this,SLOT(AddError(QString)));
-    m_DB.Init();
+    connect(m_DB,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
+    connect(m_DB,SIGNAL(sError(QString)),this,SLOT(Affichage_Erreurs(QString)));
+    connect(m_DB,SIGNAL(sError(QString)),this,SLOT(AddError(QString)));
+
+    //Tache
     m_Tache = new Tache(version);
     m_Tache->Affichage_Info("AutoBL V" + version);
+
+    //Vérification mise à jour
+    MAJ();
+
     m_Tri = 0;
     Afficher_Fichiers_Excel();
     mdp = new QLineEdit;
@@ -72,13 +82,13 @@ Principal::Principal(QWidget *parent) :
 
     //Préparation Esabora + Fournisseur
     QSqlQuery req;
-    m_Frn = new Fournisseur(m_Lien_Work);
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
+    m_Frn = new Fournisseur(m_Lien_Work,m_DB,m_Error);
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
     while(req.next())
         if(!m_Frn->Add(req.value(0).toString()))
             Affichage_Erreurs(tr("Ajout du fournisseur %1 échoué").arg(req.value(0).toString()));
 
-    m_Esabora = new Esabora(this,ui->eLogin->text(),ui->eMDP->text(),ui->lienEsabora->text(),m_Lien_Work);
+    m_Esabora = new Esabora(this,ui->eLogin->text(),ui->eMDP->text(),ui->lienEsabora->text(),m_Lien_Work,m_DB,m_Error);
     QThread *thread = new QThread;
     ///Déplacement des classes dans un thread séparé
     m_Esabora->moveToThread(thread);
@@ -86,7 +96,7 @@ Principal::Principal(QWidget *parent) :
     Chargement_Parametres();
 
     //Création des connect
-    connect(&m_DB,SIGNAL(CreateTable()),this,SLOT(PurgeError()));
+    connect(m_DB,SIGNAL(CreateTable()),this,SLOT(PurgeError()));
 
     connect(m_Tache,SIGNAL(temps_Restant()),this,SLOT(Affichage_Temps_Restant()));
     connect(m_Tache,SIGNAL(Ouvrir()),this,SLOT(show()));
@@ -96,7 +106,6 @@ Principal::Principal(QWidget *parent) :
     connect(m_Tache,SIGNAL(Quitter()),this,SLOT(Quitter()));
     connect(m_Tache,SIGNAL(MAJ_BC()),this,SLOT(Demarrer_Frn()));
 
-    connect(m_Frn,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
     connect(m_Frn,SIGNAL(Info(QString)),this,SLOT(Update_Fen_Info(QString)));
     connect(m_Frn,SIGNAL(LoadProgress(int)),this,SLOT(LoadWeb(int)));
     connect(m_Frn,SIGNAL(En_Cours_Info(QString)),this,SLOT(Update_Fen_Info(QString)));
@@ -104,7 +113,6 @@ Principal::Principal(QWidget *parent) :
     connect(m_Frn,SIGNAL(Change_Load_Window(QString)),this,SLOT(Update_Load_Window(QString)));
 
     connect(m_Esabora,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
-    connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(Affichage_Erreurs(QString)));
     connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(AddError(QString)));
     connect(m_Esabora,SIGNAL(Message(QString,QString,bool)),this,SLOT(Afficher_Message_Box(QString,QString,bool)));
     connect(m_Esabora,SIGNAL(DemandeListeMatos(QString)),this,SLOT(Get_Tableau_Matos(QString)));
@@ -155,18 +163,18 @@ Principal::Principal(QWidget *parent) :
         ui->lienEsabora->setText("<-3");
     }
 
-    req = m_DB.Requete("SELECT * FROM Options WHERE ID='16'");
+    req = m_DB->Requete("SELECT * FROM Options WHERE ID='16'");
     req.next();
     if(req.value("Valeur").toInt() == 0)
     {
         Help(true);
-        m_DB.Requete("UPDATE Options SET Valeur='1' WHERE ID='16'");
+        m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='16'");
     }
 
     //Reset MDP API
     if(qApp->arguments().contains("-RSTMDP"))
     {
-        m_DB.Requete("UPDATE Options SET Valeur='' WHERE ID='11'");
+        m_DB->Requete("UPDATE Options SET Valeur='' WHERE ID='11'");
         QMessageBox::information(this,"","Le mot de passe de l'application à été réinitialisé !");
     }
 
@@ -181,7 +189,7 @@ Principal::~Principal()
 void Principal::Init_Config()
 {
     ///Démarrage automatique
-    QSqlQuery req = m_DB.Requete("SELECT * FROM Options WHERE Nom='Auto'");
+    QSqlQuery req = m_DB->Requete("SELECT * FROM Options WHERE Nom='Auto'");
     req.next();
     if(req.value("Valeur").toInt() == 1)
     {
@@ -194,46 +202,46 @@ void Principal::Init_Config()
         ui->Heure->setEnabled(false);
     }
     ///Variable Heure && minutes Démarrage
-    req = m_DB.Requete("SELECT * FROM Options WHERE Nom='Heure'");
+    req = m_DB->Requete("SELECT * FROM Options WHERE Nom='Heure'");
     req.next();
-    QSqlQuery req2 = m_DB.Requete("SELECT * FROM Options WHERE Nom='Minutes'");
+    QSqlQuery req2 = m_DB->Requete("SELECT * FROM Options WHERE Nom='Minutes'");
     req2.next();
     ui->Heure->setTime(QTime(req.value("Valeur").toInt(),req2.value("Valeur").toInt()));
     ///Variable login Esabora
-    req = m_DB.Requete("SELECT * FROM Options WHERE Nom='Login'");
+    req = m_DB->Requete("SELECT * FROM Options WHERE Nom='Login'");
     req.next();
-    ui->eLogin->setText(m_DB.Decrypt(req.value("Valeur").toString()));
+    ui->eLogin->setText(m_DB->Decrypt(req.value("Valeur").toString()));
     ///Variable MDP Esabora
-    req = m_DB.Requete("SELECT * FROM Options WHERE Nom='MDP'");
+    req = m_DB->Requete("SELECT * FROM Options WHERE Nom='MDP'");
     req.next();
-    ui->eMDP->setText(m_DB.Decrypt(req.value("Valeur").toString()));
+    ui->eMDP->setText(m_DB->Decrypt(req.value("Valeur").toString()));
     ///Variable Emplacement Esabora
-    req = m_DB.Requete("SELECT * FROM Options WHERE Nom='LienEsabora'");
+    req = m_DB->Requete("SELECT * FROM Options WHERE Nom='LienEsabora'");
     req.next();
     ui->lienEsabora->setText(req.value("Valeur").toString());
     ///Variable MDP Application
 
     ///Variable temps entre chaque commandes Esabora
-    req = m_DB.Requete("SELECT * FROM Options WHERE ID='14'");
+    req = m_DB->Requete("SELECT * FROM Options WHERE ID='14'");
     req.next();
     ui->tmpCmd->setValue(req.value("Valeur").toDouble());
     ///Variable nom BDD Esabora
-    req = m_DB.Requete("SELECT * FROM Options WHERE ID='12'");
+    req = m_DB->Requete("SELECT * FROM Options WHERE ID='12'");
     req.next();
     ui->nBDDEsab->setText(req.value("Valeur").toString());
     ///Variable Temps boucle Navigation Rexel
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='19'");
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='19'");
     req.next();
     ui->tmpBoucleRexel->setValue(req.value("Valeur").toDouble());
     ///Variable Purge auto BDD
-    req = m_DB.Requete("SELECT * FROM Options WHERE ID='17'");
+    req = m_DB->Requete("SELECT * FROM Options WHERE ID='17'");
     req.next();
     if(req.value("Valeur").toInt() == 1)
         ui->autoPurgeDB->setChecked(true);
     else
         ui->autoPurgeDB->setChecked(false);
     ///Variable Ajout Auto des BL
-    req = m_DB.Requete("SELECT * FROM Options WHERE ID='13'");
+    req = m_DB->Requete("SELECT * FROM Options WHERE ID='13'");
     req.next();
     if(req.value("Valeur").toInt() == 1)
         ui->ajoutAutoBL->setChecked(true);
@@ -245,18 +253,18 @@ void Principal::Init_Config()
     /// Version
     ui->versionAPI->setText(version);
     ///Cycle total
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='20'");
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='20'");
     req.next();
     ui->totalBCCrees->setText(req.value("Valeur").toString());
     ///Semi Automatique
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='22'");
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='22'");
     req.next();
     if(req.value("Valeur").toInt() == 1 && 0)
         ui->semiAuto->setChecked(true);
     else
         ui->semiAuto->setChecked(false);
     ///Nom Entreprise Esabora
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='23'");
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
     req.next();
     ui->nEntrepriseEsab->setText(req.value("Valeur").toString());
     Init_Fournisseur();
@@ -272,33 +280,33 @@ void Principal::Init_Config()
 void Principal::Sauvegarde_Parametres()
 {
     if(ui->gAjoutAuto->isChecked())
-        m_DB.Requete("UPDATE Options SET Valeur='1' WHERE Nom='Auto'");
+        m_DB->Requete("UPDATE Options SET Valeur='1' WHERE Nom='Auto'");
     else
-        m_DB.Requete("UPDATE Options SET Valeur='0' WHERE Nom='Auto'");
+        m_DB->Requete("UPDATE Options SET Valeur='0' WHERE Nom='Auto'");
 
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->Heure->time().toString("HH") + "' WHERE Nom='Heure'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->Heure->time().toString("mm") + "' WHERE Nom='Minutes'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + m_DB.Encrypt(ui->eLogin->text()) + "' WHERE Nom='Login'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + m_DB.Encrypt(ui->eMDP->text()) + "' WHERE Nom='MDP'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->lienEsabora->text() + "' WHERE Nom='LienEsabora'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + ui->Heure->time().toString("HH") + "' WHERE Nom='Heure'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + ui->Heure->time().toString("mm") + "' WHERE Nom='Minutes'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(ui->eLogin->text()) + "' WHERE Nom='Login'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(ui->eMDP->text()) + "' WHERE Nom='MDP'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + ui->lienEsabora->text() + "' WHERE Nom='LienEsabora'");
     if(!ui->mDPA->text().isEmpty())
-        m_DB.Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->nBDDEsab->text() + "' WHERE ID='12'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpCmd->value()) + "' WHERE ID='14'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpBoucleRexel->value()) + "' WHERE ID='19'");
+        m_DB->Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + ui->nBDDEsab->text() + "' WHERE ID='12'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpCmd->value()) + "' WHERE ID='14'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpBoucleRexel->value()) + "' WHERE ID='19'");
     if(ui->autoPurgeDB->isChecked())
-        m_DB.Requete("UPDATE Options SET Valeur='1' WHERE ID='17'");
+        m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='17'");
     else
-        m_DB.Requete("UPDATE Options SET Valeur='0' WHERE ID='17'");
+        m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='17'");
     if(ui->ajoutAutoBL->isChecked())
-        m_DB.Requete("UPDATE Options SET Valeur='1' WHERE ID='13'");
+        m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='13'");
     else
-        m_DB.Requete("UPDATE Options SET Valeur='0' WHERE ID='13'");
+        m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='13'");
     if(ui->semiAuto->isChecked())
-        m_DB.Requete("UPDATE Options SET Valeur='1' WHERE ID='22'");
+        m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='22'");
     else
-        m_DB.Requete("UPDATE Options SET Valeur='0' WHERE ID='22'");
-    m_DB.Requete("UPDATE Options SET Valeur='" + ui->nEntrepriseEsab->text() + "' WHERE ID='23'");
+        m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='22'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + ui->nEntrepriseEsab->text() + "' WHERE ID='23'");
 
     QSettings settings2("Microsoft","Windows\\CurrentVersion\\Run");
     if(ui->cDWin->isChecked())
@@ -309,8 +317,8 @@ void Principal::Sauvegarde_Parametres()
     else
         settings2.remove("AutoBL");
 
-    QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='7'");
-    QSqlQuery r2 = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='8'");
+    QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='7'");
+    QSqlQuery r2 = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='8'");
     r.next();
     r2.next();
 
@@ -342,7 +350,7 @@ void Principal::Chargement_Parametres()
         m_Temps.stop();
 
     //Affichage colonne BL
-    QSqlQuery val = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='13'");
+    QSqlQuery val = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='13'");
     val.next();
     if(val.value("Valeur").toInt() == 1)
         ui->tNomFichier->hideColumn(7);
@@ -394,7 +402,7 @@ void Principal::Demarrage_Auto_BC(bool Demarrage_Timer)
                  m_Logs.resize(0);
              }
          if(ui->autoPurgeDB->isChecked())
-             m_DB.Purge();
+             m_DB->Purge();
     }
     else if(!Demarrage_Timer)
     {
@@ -533,11 +541,11 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
     if(tri == 10)
         tri = m_Tri;
     if(tri == 0)///Tri par Date
-        req = m_DB.Requete("SELECT * FROM En_Cours ORDER BY Date");
+        req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Date");
     else if(tri == 1)///Tri par Etat Esabora
-        req = m_DB.Requete("SELECT * FROM En_Cours ORDER BY Ajout");
+        req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Ajout");
     else if(tri == 2)///Tri par Référence
-        req = m_DB.Requete("SELECT * FROM En_Cours ORDER BY Nom_Chantier");
+        req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Nom_Chantier");
 
     if(!req.exec())
         Affichage_Erreurs("Requete affichage des fichiers échoué !",true);
@@ -582,7 +590,7 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
                     ui->tNomFichier->item(0,7)->setCheckState(Qt::Checked);
 
                 //Force Check BL
-                QSqlQuery bl = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='13'");
+                QSqlQuery bl = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='13'");
                 bl.next();
                 if(bl.value("Valeur").toInt() == 1)
                 {
@@ -643,7 +651,7 @@ void Principal::Emplacement_Esabora()
 {
     ui->lienEsabora->setText(QFileDialog::getOpenFileName(this,"Emplacement Esabora",ui->lienEsabora->text(),"*.ink",0,QFileDialog::DontResolveSymlinks));
 
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='LienEsabora'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='LienEsabora'");
     req.next();
     if(req.value("Valeur").toString() != ui->lienEsabora->text())
     {
@@ -670,7 +678,7 @@ void Principal::Demarrage()
 {
     QSqlQuery req;
 
-    m_DB.Sav();
+    m_DB->Sav();
     Affichage_Info("Recherche de nouveau BL...",true);
     m_Temps.stop();
     m_Arret = false;///Début d'ajout BC
@@ -700,9 +708,10 @@ void Principal::Demarrage()
 
 
     Afficher_Fichiers_Excel();
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='20'");
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='20'");
     req.next();
-    m_DB.Requete("UPDATE Options SET Valeur='" + QString::number(req.value("Valeur").toInt()+nbBC) + "' WHERE ID='20'");
+    m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(req.value("Valeur").toInt()+nbBC) + "' WHERE ID='20'");
+    DEBUG << "nb BC créer : " << nbBC << " nb BC validé : " << nbBL;
     ui->totalBCCrees->setText(QString::number(ui->totalBCCrees->text().toInt()+nbBC));
     ui->lastCycleBCCrees->setText(QString::number(nbBC));
     ui->lastCycleBCValides->setText(QString::number(nbBL));
@@ -712,7 +721,7 @@ void Principal::Demarrage()
     emit FinAjout();///envoie signal en cas d'arret de l'API
 
     if(ui->autoPurgeDB->isChecked())
-        m_DB.Purge();
+        m_DB->Purge();
     if(ui->e_Erreur2->text().toInt() > 0)
         Post_Report();
     Demarrage_Auto_BC();
@@ -871,13 +880,13 @@ void Principal::Test_Esabora()
     return;
     if(m_Esabora->Lancement_API())
     {
-        QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
+        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
         while(req.next())
         {
             if(!m_Esabora->Ajout_BC(req.value("Numero_Commande").toString()))
             {
                 Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué").arg(req.value("Numero_Commande").toString()));
-                m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
 
                 if(req.value("Ajout").toString() != "Modifier")
                 {
@@ -888,7 +897,7 @@ void Principal::Test_Esabora()
             }
             else
             {
-                m_DB.Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
 
                 if(req.value("Ajout") != "Modifier")
                 {
@@ -914,7 +923,7 @@ void Principal::Test_BC()
 {
     if(m_Esabora->Lancement_API())
     {
-        QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
+        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
         if(req.next())
         {
             m_Tache->Affichage_En_Cours();
@@ -928,12 +937,12 @@ void Principal::Test_BC()
                 if(m_Esabora->GetEtat() == 1)
                 {
                     Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué, BC Vide à supprimer !").arg(req.value("Numero_Commande").toString()));
-                    m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                 }
             }
             else
             {
-                m_DB.Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
 
                 if(req.value("Ajout") != "Modifier")
                 {
@@ -954,7 +963,7 @@ void Principal::Test_BL()
         {
             if(ui->tNomFichier->item(cpt,7)->checkState() == Qt::Checked)
             {
-                QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,5)->text() + "'");
+                QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,5)->text() + "'");
                 if(req.next())
                 {
                     if(!m_Esabora->Ajout_BL(req.value("Numero_BC_Esabora").toString(),ui->tNomFichier->item(cpt,4)->text()))
@@ -964,7 +973,7 @@ void Principal::Test_BL()
                     else
                     {
                         Affichage_Info("Principal | Ajout BL N°" + ui->tNomFichier->item(cpt,3)->text() + " Réussi");
-                        m_DB.Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,4)->text() + "'");
+                        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,4)->text() + "'");
                     }
                 }
                 else
@@ -982,7 +991,7 @@ void Principal::Purge_Bl()
 {
     if(QMessageBox::question(this,"Purge","Voulez vous vraiment purger la base de données ?"))
     {
-        m_DB.Requete("DELETE FROM En_Cours");
+        m_DB->Requete("DELETE FROM En_Cours");
     }
 }
 
@@ -990,12 +999,12 @@ void Principal::Remove_Row_DB()
 {
     int l = ui->tNomFichier->currentRow();
     if(QMessageBox::question(this,"","Voulez-vous vraiment placer ce bon en terminé ?") == QMessageBox::Yes)
-        m_DB.Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
+        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
 }
 
 void Principal::Restaurer_DB()
 {
-    m_DB.Close();
+    m_DB->Close();
 
     QString var;
     QFile s(qApp->applicationDirPath() + "/bddSav.db");
@@ -1024,7 +1033,7 @@ void Principal::Restaurer_DB()
         qApp->exit(0);
     }
 
-    m_DB.Init();
+    m_DB->Init();
     Show_List_Sav();
 }
 
@@ -1126,11 +1135,11 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
     {
         if(ui->tNomFichier->item(l,c)->checkState() == Qt::Checked)
         {
-            m_DB.Requete("UPDATE En_Cours SET Ajout_BL='1' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
+            m_DB->Requete("UPDATE En_Cours SET Ajout_BL='1' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
         }
         else
         {
-            m_DB.Requete("UPDATE En_Cours SET Ajout_BL='0' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
+            m_DB->Requete("UPDATE En_Cours SET Ajout_BL='0' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
         }
     }
 
@@ -1143,7 +1152,7 @@ void Principal::Modif_Cell_TNomFichier(int l,int c)
         if(QMessageBox::question(this,"",tr("Voulez vous vraiment modifier la référence de chantier ?")) == 16384)
         {
             if(ui->tNomFichier->item(l,2)->text().at(0).isDigit() && ui->tNomFichier->item(l,2)->text().at(ui->tNomFichier->item(l,2)->text().count()-1).isDigit())
-                m_DB.Requete("UPDATE En_Cours SET Nom_Chantier='" + ui->tNomFichier->item(l,2)->text() + "', Ajout='Modifier' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
+                m_DB->Requete("UPDATE En_Cours SET Nom_Chantier='" + ui->tNomFichier->item(l,2)->text() + "', Ajout='Modifier' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
             else
                 QMessageBox::information(this,"",tr("La référence de chantier doit être un nombre !"));
         }
@@ -1153,7 +1162,7 @@ void Principal::Modif_Cell_TNomFichier(int l,int c)
     {
         if(QMessageBox::question(this,"",tr("Voulez vous vraiment modifier le numéro esabora ?")) == 16384)
         {
-            m_DB.Requete("UPDATE En_Cours SET Numero_BC_Esabora='" + ui->tNomFichier->item(l,8)->text() + "' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
+            m_DB->Requete("UPDATE En_Cours SET Numero_BC_Esabora='" + ui->tNomFichier->item(l,8)->text() + "' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
         }
         Afficher_Fichiers_Excel();
     }
@@ -1218,7 +1227,7 @@ void Principal::Login()
 
 void Principal::Login_False()
 {
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='11'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='11'");
     if(req.next())
     {
         if(req.value("Valeur").toString() != "")
@@ -1240,7 +1249,7 @@ void Principal::Login_True()
     QString mdph = mdp->text().split(" ").at(0);
     QByteArray mdpb = QCryptographicHash::hash(mdph.toLatin1(),QCryptographicHash::Sha256);
     DEBUG << mdpb.toHex();
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='11'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='11'");
     req.next();
     DEBUG << req.value(0);
     if(req.value("Valeur").toString() != mdpb.toHex())
@@ -1279,12 +1288,12 @@ void Principal::MAJ()
     for(int cpt=0;cpt<retour.count();cpt++)
         if(retour.at(cpt).toDouble() > ver.toDouble())
             MAJDispo.append("ver=" + retour.at(cpt));
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='21'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='21'");
     req.next();
     if(MAJDispo.count() == 1 && MAJDispo.at(0) != req.value("Valeur").toString())
     {
         qDebug() << "MAJ - Une mise à jour est disponible !";
-        m_DB.Requete("UPDATE Options SET Valeur='" + MAJDispo.at(0) + "' WHERE ID='21'");
+        m_DB->Requete("UPDATE Options SET Valeur='" + MAJDispo.at(0) + "' WHERE ID='21'");
         MAJDispo.append("API=" + QCoreApplication::applicationDirPath() + "/" + "AutoBL.exe");
         MAJDispo.append("ftp=" + QString(MAJLINK));
         MAJDispo.append("RA=oui");
@@ -1320,7 +1329,7 @@ void Principal::Bug_Report()
 bool Principal::Post_Report()
 {
     qDebug() << "Post Report";
-    QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Nom_BDD'");
+    QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Nom_BDD'");
     r.next();
     QString nur = r.value(0).toString();
     if(this->findChildren<QDialog *>("rapport de bug").count() > 0)
@@ -1439,7 +1448,7 @@ void Principal::Get_Tableau_Matos(int l)
 //Erreur 9xx
 void Principal::Get_Tableau_Matos(QString Numero_Commande)
 {
-    QStringList list = m_DB.Find_Fournisseur_From_Invoice(Numero_Commande);
+    QStringList list = m_DB->Find_Fournisseur_From_Invoice(Numero_Commande);
     if(list.count() != 1)
     {
         if(list.count() == 0)
@@ -1454,12 +1463,12 @@ void Principal::Get_Tableau_Matos(QString Numero_Commande)
 
 void Principal::Init_Fournisseur()
 {
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='24'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='24'");
     req.next();
     if(req.value(0).toString() != "Rexel.fr|")
-        m_DB.Requete("UPDATE Options SET Valeur='Rexel.fr|', Nom='Fournisseurs' WHERE ID='24'");
+        m_DB->Requete("UPDATE Options SET Valeur='Rexel.fr|', Nom='Fournisseurs' WHERE ID='24'");
 
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom='FrnADD'");
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom='FrnADD'");
 
     req.next();
     DEBUG << req.value("Valeur");
@@ -1487,15 +1496,15 @@ void Principal::Add_Fournisseur()
         return;
     ui->listFrnAjouter->addItem(ui->listFrnDispo->selectedItems().at(0)->text());
     ui->listFrnAjouter->setCurrentRow(ui->listFrnAjouter->count()-1);
-    QSqlQuery req = m_DB.Requete("SELECT MAX(ID) FROM Options");
+    QSqlQuery req = m_DB->Requete("SELECT MAX(ID) FROM Options");
     req.next();
-    m_DB.Requete("INSERT INTO Options VALUES('" + QString::number(req.value(0).toInt()+1) + "','FrnADD','" + ui->listFrnDispo->selectedItems().at(0)->text() + "')");
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom ='FrnADD' ORDER BY ID ASC");
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnDispo->selectedItems().at(0)->text() + "'");
+    m_DB->Requete("INSERT INTO Options VALUES('" + QString::number(req.value(0).toInt()+1) + "','FrnADD','" + ui->listFrnDispo->selectedItems().at(0)->text() + "')");
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom ='FrnADD' ORDER BY ID ASC");
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnDispo->selectedItems().at(0)->text() + "'");
     QStringList f;
     if(req.next())
     {
-        f = m_DB.Decrypt(req.value("Valeur").toString()).split("|");
+        f = m_DB->Decrypt(req.value("Valeur").toString()).split("|");
         m_Frn->Add(ui->listFrnDispo->selectedItems().at(0)->text(),f.at(0),f.at(1),f.at(2));
     }
     else
@@ -1521,8 +1530,8 @@ void Principal::Del_Fournisseur()
     if(ui->listFrnAjouter->selectedItems().isEmpty())
         return;
     ui->listFrnDispo->addItem(ui->listFrnAjouter->selectedItems().at(0)->text());
-    m_DB.Requete("DELETE FROM Options WHERE Valeur='" + ui->listFrnAjouter->selectedItems().at(0)->text() + "'");
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom ='FrnADD'");
+    m_DB->Requete("DELETE FROM Options WHERE Valeur='" + ui->listFrnAjouter->selectedItems().at(0)->text() + "'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom ='FrnADD'");
     m_Frn->Del(ui->listFrnAjouter->selectedItems().at(0)->text());
     ui->listFrnAjouter->clear();
 
@@ -1536,14 +1545,14 @@ void Principal::Del_Fournisseur()
 void Principal::Save_Param_Fournisseur()
 {
     QString r = ui->eFrnUserName->text() + "|" + ui->eFrnMail->text() + "|" + ui->eFrnMDP->text();
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
     if(req.next())
-        m_DB.Requete("UPDATE Options SET Valeur='" + m_DB.Encrypt(r) + "' WHERE Nom ='" + ui->lFrn->text() + "'");
+        m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(r) + "' WHERE Nom ='" + ui->lFrn->text() + "'");
     else
     {
-        req = m_DB.Requete("SELECT MAX(ID) FROM Options");
+        req = m_DB->Requete("SELECT MAX(ID) FROM Options");
         req.next();
-        m_DB.Requete("INSERT INTO Options VALUES('" + req.value(0).toString() + "','" + ui->lFrn->text() + "','" + m_DB.Encrypt(r) + "')");
+        m_DB->Requete("INSERT INTO Options VALUES('" + req.value(0).toString() + "','" + ui->lFrn->text() + "','" + m_DB->Encrypt(r) + "')");
     }
     if(m_Frn->Update_Var(ui->lFrn->text(),ui->eFrnUserName->text(),ui->eFrnMail->text(),ui->eFrnMDP->text()))
         Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour",true);
@@ -1578,10 +1587,10 @@ void Principal::Load_Param_Fournisseur()
         return;
     QStringList l;
 
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='Info_" + ui->listFrnAjouter->currentItem()->text() + "'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Info_" + ui->listFrnAjouter->currentItem()->text() + "'");
     if(req.next())
     {
-        l = m_DB.Decrypt(req.value(0).toString()).split("|");
+        l = m_DB->Decrypt(req.value(0).toString()).split("|");
         if(l.count() == 3)
         {
             ui->lFrnUserName->setText(l.at(0));
@@ -1597,11 +1606,11 @@ void Principal::Load_Param_Fournisseur()
         ui->lFrnMDP->setText("Mot de passe");
 
 
-    req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
     ui->lFrn->setText(ui->listFrnAjouter->currentItem()->text());
     if(req.next())
     {
-        l = m_DB.Decrypt(req.value("Valeur").toString()).split("|");
+        l = m_DB->Decrypt(req.value("Valeur").toString()).split("|");
         if(l.count() == 3)
         {
             ui->eFrnUserName->setText(l.at(0));

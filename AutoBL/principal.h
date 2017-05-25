@@ -18,6 +18,7 @@
 #include "esabora.h"
 #include "fournisseur.h"
 #include <../../Cle_AutoBL.cpp>
+#include "error.h"
 
 #define DEBUG qDebug()
 
@@ -108,7 +109,7 @@ private:
     Tache *m_Tache;
     bool login;
     QLineEdit *mdp;
-    DB m_DB;
+    DB *m_DB;
     QTimer m_Temps;
     Esabora *m_Esabora;
     int m_Erreurs;
@@ -117,6 +118,7 @@ private:
     int m_Tri;
     bool premierDemarrage;
     Fournisseur *m_Frn;
+    Error *m_Error;
 };
 
 #endif // PRINCIPAL_H

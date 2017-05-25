@@ -15,13 +15,14 @@
 
 #include "error.h"
 #define DEBUG qDebug()
+#define FCT "WEB"
 
 class FctFournisseur: public QObject,public Error
 {
     Q_OBJECT
 
 public:
-    FctFournisseur(QString WorkLink);
+    FctFournisseur(QString WorkLink,Error *err);
     ~FctFournisseur();
     bool WebLoad(QString lien);
     bool FindTexte(QString texte);
@@ -33,6 +34,7 @@ public:
     void FrnError(int code, QString frn, QString er = 0);
     void Info(QString info);
     void Change_Load_Window(QString text);
+    bool Get_Load_Finished();
 
 public slots:
     void Stop_Load();
@@ -45,7 +47,7 @@ signals:
     void change_Load_Window(QString text);
 
 private slots:
-
+    void Set_Load(bool state);
 
 private:
     QEventLoop *loop;
@@ -53,6 +55,7 @@ private:
     QWebEngineView *web;
     QString m_WorkLink;
     Error *m_Error;
+    bool m_load;
 };
 
 #endif // FCTFOURNISSEUR_H

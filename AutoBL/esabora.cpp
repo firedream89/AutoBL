@@ -1,8 +1,8 @@
 #include "esabora.h"
 #include <Windows.h>
 
-Esabora::Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail):
-    m_fen(fen),m_Login(Login),m_MDP(MDP),m_Lien_Esabora(Lien_Esabora),m_Lien_Work(Lien_Travail)
+Esabora::Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail, DB *db,Error *e):
+    m_fen(fen),m_Login(Login),m_MDP(MDP),m_Lien_Esabora(Lien_Esabora),m_Lien_Work(Lien_Travail),m_DB(db),err(e)
 {
     qDebug() << "Init Class Esabora";
 }
@@ -20,7 +20,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
         return false;
 
     ///Ajout des BC sur esabora
-    QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
+    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
     Ouverture_Liste_BC();
     qDebug() << "Liste BC ouverte";
     while(req.next() && !m_Arret)
@@ -32,10 +32,10 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
             if(req.value("Nom_Chantier").toString() == "0")//Ajout BC au Stock
             {
                 if(!Ajout_Stock(req.value("Numero_Commande").toString()))
-                    emit Erreur(err.Err(9,req.value("Numero_Commande").toString(),ESAB));
+                    err->Err(Not_BC,req.value("Numero_Commande").toString(),ESAB);
                 else
                 {
-                    m_DB.Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     nbBC++;
                 }
             }      
@@ -44,16 +44,16 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                 if(!Ajout_BC(req.value("Numero_Commande").toString()))
                 {
                     if(GetEtat() == 0)
-                        emit Erreur(err.Err(9,req.value("Numero_Commande").toString(),ESAB));
+                        err->Err(Not_BC,req.value("Numero_Commande").toString(),ESAB);
                     else if(GetEtat() == 1)
                     {
-                        emit Erreur(err.Err(10,req.value("Numero_Commande").toString(),ESAB));
-                        m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                        err->Err(BC,req.value("Numero_Commande").toString(),ESAB);
+                        m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     }
                 }
                 else
                 {
-                    m_DB.Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     nbBC++;
                     if(automatic)
                         m_List_Cmd.append(req.value("Numero_Commande").toString());
@@ -66,7 +66,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
 
 
     ///Ajout des BL sur esabora
-    req = m_DB.Requete("SELECT * FROM En_Cours WHERE Ajout_BL='1' AND Ajout='Bon Ajouté'");
+    req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout_BL='1' AND Ajout='Bon Ajouté'");
     while(req.next())
         m_List_Cmd.append(req.value("Numero_Commande").toString());
 
@@ -74,23 +74,23 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
     {
         if(m_Arret)
             cpt = m_List_Cmd.count();
-        QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + m_List_Cmd.at(cpt) + "'");
+        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + m_List_Cmd.at(cpt) + "'");
         if(req.next())
         {
             if(!Ajout_BL(req.value("Numero_BC_Esabora").toString(),req.value("Numero_Livraison").toString()))
             {
-                emit Erreur(err.Err(11,req.value("Numero_Livraison").toString(),ESAB));
+                err->Err(BL,req.value("Numero_Livraison").toString(),ESAB);
             }
             else
             {
                 nbBL++;
                 emit Info(tr("Principal | Ajout BL N°%0 Réussi").arg(req.value("Numero_Livraison").toString()));
-                m_DB.Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + m_List_Cmd.at(cpt) + "'");
+                m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + m_List_Cmd.at(cpt) + "'");
             }
         }
         else
         {
-            emit Erreur(err.Err(7,m_List_Cmd.at(cpt),ESAB));
+            err->Err(requete,m_List_Cmd.at(cpt),ESAB);
         }
     }
 
@@ -106,7 +106,7 @@ bool Esabora::Lancement_API()
         p.start();
     else if(!QDesktopServices::openUrl(m_Lien_Esabora))
     {
-        emit Erreur(err.Err(12,"",ESAB));
+        err->Err(Run_Esabora,"",ESAB);
         qDebug() << "Lancement_API - Echec ouverture d'Esabora.elec";
         qDebug() << "Fin Esabora::Lancement_API()";
         return false;
@@ -114,7 +114,7 @@ bool Esabora::Lancement_API()
 
     if(!Traitement_Fichier_Config("Open"))
     {
-        emit Erreur(err.Err(1,"Config.esab",ESAB));
+        err->Err(open_File,"Config.esab",ESAB);
         qDebug() << "Lancement_API - Echec du traitement du login sur Esabora.elec";
         qDebug() << "Fin Esabora::Lancement_API()";
         return false;
@@ -135,7 +135,7 @@ bool Esabora::Ouverture_Liste_BC()
 bool Esabora::Ajout_BC(QString Numero_Commande)
 {
     qDebug() << "Esabora::Ajout_BC()";
-    QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + Numero_Commande + "'");
+    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + Numero_Commande + "'");
     req.next();
     QString bL;
     bL = m_Lien_Work + "/Pj/" + Numero_Commande + ".xlsx";
@@ -159,7 +159,7 @@ bool Esabora::Ajout_BL(QString Numero_Commande_Esab, QString Numero_BL)
     qDebug() << "Esabora::Ajout_BL()";
     if(!Traitement_Fichier_Config("Valid_BL",Numero_Commande_Esab + " " + Numero_BL))
     {
-        emit Erreur(err.Err(11,Numero_Commande_Esab,ESAB));
+        err->Err(BL,Numero_Commande_Esab,ESAB);
         qDebug() << "Ajout_BL - Echec Traitement Valid_BL";
         qDebug() << "Fin Esabora::Ajout_BL()";
         return false;
@@ -177,13 +177,13 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
     emit Info("Ouverture fichier Config.esab");
     if(!fichier.exists())
     {
-        emit Erreur(err.Err(open_File,fichier.fileName(),ESAB));
+        err->Err(open_File,fichier.fileName(),ESAB);
         qDebug() << "Traitement_Fichier_Config - Echec le fichier " << fichier.fileName() << "n'existe pas";
         return false;
     }
     if(!fichier.open(QIODevice::ReadOnly))
     {
-        emit Erreur(err.Err(open_File,fichier.fileName(),ESAB));
+        err->Err(open_File,fichier.fileName(),ESAB);
         qDebug() << "Traitement_Fichier_Config - Echec d'ouverture du fichier " << fichier.fileName();
         return false;
     }
@@ -194,9 +194,9 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
     QEventLoop loop;
     QTimer tmp;
     connect(&tmp,SIGNAL(timeout()),&loop,SLOT(quit()));
-    QSqlQuery req = m_DB.Requete("SELECT Nom_Chantier FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
+    QSqlQuery req = m_DB->Requete("SELECT Nom_Chantier FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
     req.next();
-    QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='14'");
+    QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='14'");
     r.next();
     int varTmp = r.value("Valeur").toDouble() * 1000;
     qDebug() << "Esabora::Traitement_Fichier_Config - Recherche de " << file << "dans le fichier Config";
@@ -232,7 +232,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
         else if(temp == "{BL}") Clavier("-" + bL.split(" ").at(1));
         else if(temp == "{COMMENTAIRE}")
         {
-            QSqlQuery req = m_DB.Requete("SELECT * FROM En_Cours WHERE Numero_BC_Esabora='" + bL.split(" ").at(0) + "'");
+            QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_BC_Esabora='" + bL.split(" ").at(0) + "'");
             req.next();
             Clavier("-AutoBL : Bon de commande " + req.value("Numero_Commande").toString());
         }
@@ -250,7 +250,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
             for(int cpt=0;cpt<liste_Matos.count();cpt++)
             {
                 if(liste_Matos.count()-cpt < 7)
-                    emit Erreur(err.Err(6,"Ligne incomplète : " + liste_Matos.at(cpt),ESAB));
+                    err->Err(variable,"Ligne incomplète : " + liste_Matos.at(cpt),ESAB);
                 QEventLoop lp;
                 QTimer t;
                 connect(&t,SIGNAL(timeout()),&lp,SLOT(quit()));
@@ -271,7 +271,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                     Clavier("Tab");
                 }
                 if(liste_Matos.at(cpt+1) == "")//Si Référence est vide
-                    emit Erreur(err.Err(designation,"Ref=" + liste_Matos.at(cpt) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB));
+                    err->Err(designation,"Ref=" + liste_Matos.at(cpt) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB);
                 Clavier("-" + liste_Matos.at(cpt+1));//Ref
                 Clavier("Tab");
                 pp->clear();
@@ -282,7 +282,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                 lp.exec();
                 if(pp->text() == "" || pp->text() == liste_Matos.at(cpt+1))//Si La désignation n'a pas été trouvé
                 {
-                    emit Erreur(err.Err(designation,"Ref=" + liste_Matos.at(cpt+1) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB));
+                    err->Err(designation,"Ref=" + liste_Matos.at(cpt+1) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB);
                     pp->clear();
                     t.start(1000);
                     lp.exec();
@@ -306,17 +306,17 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
             QString t;
             if(bL.split("/").count() > 1)
             {
-                QSqlQuery r = m_DB.Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
+                QSqlQuery r = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
                 if(!r.next())
-                    emit Erreur(err.Err(7,r.lastError().text(),ESAB));
+                    err->Err(requete,r.lastError().text(),ESAB);
 
                 t = r.value("Numero_BC_Esabora").toString();
                 temp.replace("%0",t);
             }
-            r = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='12'");
+            r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='12'");
             r.next();
             temp.replace("%1",r.value("Valeur").toString());
-            r = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='23'");
+            r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
             r.next();
             temp.replace("%2",r.value("Valeur").toString());
             qDebug() << temp;
@@ -328,7 +328,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
             emit Info(fen);
             if(!Verification_Fenetre(fen))
             {
-                emit Erreur(err.Err(14,fen,ESAB));
+                err->Err(Window,fen,ESAB);
                 return false;
             }
             else
@@ -338,7 +338,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                     t = true;
                 if(!Verification_Focus(fen,t))
                 {
-                    emit Erreur(err.Err(15,fen,ESAB));
+                    err->Err(Focus,fen,ESAB);
                     Clavier("Entrée");
                     Abort();
                     if(file == "New_BC")
@@ -358,7 +358,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
         else if(temp.split(" ").at(0) == "Souris")
         {
             if(!Souris(temp))
-               emit Erreur(err.Err(16,"",ESAB));
+               err->Err(Mouse,"",ESAB);
             m_Tmp = "";
         }
         else if(temp.split(" ").at(0) == "Copier")
@@ -371,11 +371,11 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
             emit Info("Copie de " + pP->text());
             if(pP->text().count() != 7)
             {
-                emit Erreur(err.Err(13,"Copie PP échouée ! " + pP->text(),ESAB));
+                err->Err(Traitement,"Copie PP échouée ! " + pP->text(),ESAB);
                 return false;
             }
             if(temp.split(" ").at(1) == "Numero_BC_Esabora")
-                m_DB.Requete("UPDATE En_Cours SET Numero_BC_Esabora='" + pP->text() + "' WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
+                m_DB->Requete("UPDATE En_Cours SET Numero_BC_Esabora='" + pP->text() + "' WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
         }
         else if(temp.at(0) == '|')
         {
@@ -390,7 +390,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
             qDebug() << temp;
             Clavier(temp);
         }
-        else emit Erreur(err.Err(13,temp,ESAB));
+        else err->Err(Traitement,temp,ESAB);
     }
     qDebug() << "Fin Esabora::Traitement_Fichier_Config()";
     return true;
@@ -767,7 +767,7 @@ bool Esabora::Ajout_Stock(QString numero_Commande)
     qDebug() << "Esabora::Ajout_Stock()";
     if(!Traitement_Fichier_Config("Ajout_Stock","///" + numero_Commande + ".tmp"))
     {
-        emit Erreur(err.Err(13,"",ESAB));
+        err->Err(Traitement,"",ESAB);
         qDebug() << "Ajout_Stock - Echec dans le traitement du Bon de commande";
         return false;
     }
@@ -778,8 +778,8 @@ bool Esabora::Ajout_Stock(QString numero_Commande)
 void Esabora::Semi_Auto(QString NumeroCommande)
 {
     qDebug() << "Esabora::Semi_Auto()";
-    QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='23'");
-    QSqlQuery r2 = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='12'");
+    QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
+    QSqlQuery r2 = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='12'");
     r.next();
     r2.next();
     if(!Verification_Fenetre(r.value("Valeur").toString() + " - SESSION : 1 - REPERTOIRE : " + r2.value("Valeur").toString()))
@@ -796,7 +796,7 @@ void Esabora::Semi_Auto(QString NumeroCommande)
     Traitement_Fichier_Config("Semi_Auto","///" + NumeroCommande + ".");
 
     if(QMessageBox::question(m_fen,"","L'ajout du bon de commande à t'il réussi ?") == QMessageBox::Yes)
-        m_DB.Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + NumeroCommande + "'");
+        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + NumeroCommande + "'");
 
     emit Message("","Le bon de livraison doit être validé manuellement.",false);
     qDebug() << "Fin Esabora::Semi_Auto()";

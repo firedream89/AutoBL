@@ -18,7 +18,7 @@ class RexelFr: public QObject
     Q_OBJECT
 
 public:
-    RexelFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp);
+    RexelFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db);
     bool Start();
     QStringList Get_Invoice(const QString InvoiceNumber);
     void Set_Var(const QString login,const QString mdp,const QString comp);
@@ -39,7 +39,7 @@ signals:
 private:
     QString m_Login,m_MDP,m_UserName,m_WorkLink;
     FctFournisseur *m_Fct;
-    DB m_DB;
+    DB *m_DB;
 
 };
 

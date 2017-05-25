@@ -9,12 +9,15 @@
 #include <QDesktopServices>
 
 #include <../../../Cle_AutoBL.cpp>
+#include <error.h>
+
+#define DEBUG qDebug()
 
 class DB: public QObject
 {
     Q_OBJECT
 public:
-    DB();
+    DB(Error *err);
     QSqlQuery Requete(QString req);
     void Init();
     void Close();
@@ -27,9 +30,12 @@ public slots:
     void Sav();
 
 signals:
-    void Error(QString err);
+    void sError(QString err);
     void Info(QString texte);
     void CreateTable();
+
+private:
+    Error *m_Error;
 
 };
 

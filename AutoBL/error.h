@@ -3,6 +3,9 @@
 
 #include <QString>
 #include <QObject>
+#include <QFile>
+#include <QDebug>
+#include <QObject>
 
 typedef enum {
     no_Error,//0
@@ -22,15 +25,28 @@ typedef enum {
     Window,//14
     Focus,//15
     Mouse,//16
-    designation//17
+    designation,//17
+    save_file,//18
+    noConnected,
+    failFrn,
+    failData,
+    findFrn
 }ERR;
 
-class Error
+class Error: public QObject
 {
+    Q_OBJECT
+
+    QFile m_Errors;
+
 public:
     Error();
+    Error(QString work_Link);
     QString Err(int code, QString e = 0, QString fromClass = 0);
+    void Write_Error(QString e);
 
+signals:
+    void sError(QString e);
 };
 
 #endif // ERROR_H

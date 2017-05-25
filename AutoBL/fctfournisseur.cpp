@@ -1,15 +1,16 @@
 #include "fctfournisseur.h"
 
-FctFournisseur::FctFournisseur(QString WorkLink):
+FctFournisseur::FctFournisseur(QString WorkLink, Error *err):
     m_WorkLink(WorkLink)
 {
     web = new QWebEngineView;
     timer = new QTimer;
     loop = new QEventLoop;
-    m_Error = new Error;
+    m_Error = err;
     QObject::connect(timer,SIGNAL(timeout()),loop,SLOT(quit()));
     QObject::connect(web,SIGNAL(loadFinished(bool)),loop,SLOT(quit()));
     QObject::connect(web,SIGNAL(loadProgress(int)),this,SIGNAL(LoadProgress(int)));
+    QObject::connect(web,SIGNAL(loadFinished(bool)),this,SLOT(Set_Load(bool)));
 
     web->setEnabled(false);
 }
@@ -32,14 +33,21 @@ void FctFournisseur::Loop(int tMax)
 
 bool FctFournisseur::WebLoad(QString lien)
 {
+    bool intCo = true;
     for(int cpt=0;cpt<1;cpt++)
     {
+        Set_Load(false);
         web->load(QUrl(lien));
         Loop(30000);
+        intCo = FindTexte("Aucune connexion Internet");
         if(timer->isActive())
-            return true;
+            if(!FindTexte("Aucune connexion Internet"))
+                return true;
+            else
+                m_Error->Err(noConnected,"",FCT);
         web->stop();
     }
+
     return false;
 }
 
@@ -107,9 +115,7 @@ void FctFournisseur::WebOpen()
 
 void FctFournisseur::FrnError(int code,QString frn,QString er)
 {
-    er = m_Error->Err(code,er,frn);
-    emit error(er);
-    DEBUG << er;
+    DEBUG << m_Error->Err(code,er,frn);
 }
 
 void FctFournisseur::Info(QString i)
@@ -125,4 +131,14 @@ void FctFournisseur::Change_Load_Window(QString text)
 void FctFournisseur::Stop_Load()
 {
     web->stop();
+}
+
+void FctFournisseur::Set_Load(bool state)
+{
+    m_load = state;
+}
+
+bool FctFournisseur::Get_Load_Finished()
+{
+    return m_load;
 }

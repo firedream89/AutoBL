@@ -1,7 +1,7 @@
 #include "rexelfr.h"
 ///Error Code 9xx
-RexelFr::RexelFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp):
-    m_Login(login),m_MDP(mdp),m_UserName(comp),m_WorkLink(lien_Travail)
+RexelFr::RexelFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db):
+    m_Login(login),m_MDP(mdp),m_UserName(comp),m_WorkLink(lien_Travail),m_DB(db)
 {
     DEBUG << "Init Class RexelFr";
     m_Fct = fct;
@@ -15,16 +15,16 @@ bool RexelFr::Start()
         if(!Create_List_Invoice())
             m_Fct->FrnError(bad_Login,REXEL);
         //Véfification des numéro de chantier
-        req = m_DB.Requete("SELECT * FROM En_Cours WHERE Ajout=''");
+        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout=''");
         while(req.next())
         {
             if(req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
-                m_DB.Requete("UPDATE En_Cours SET Ajout='Telecharger' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                m_DB->Requete("UPDATE En_Cours SET Ajout='Telecharger' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
             else
-                m_DB.Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
         }
         //Vérification état BC
-        req = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat!='Livrée En Totalité' AND Etat!='Livrée Et Facturée'");
+        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Etat!='Livrée En Totalité' AND Etat!='Livrée Et Facturée'");
         while(req.next())
         {
             m_Fct->Info(tr("Mise à jour état commande %1").arg(req.value("Numero_Commande").toString()));
@@ -32,10 +32,10 @@ bool RexelFr::Start()
                 m_Fct->FrnError(fail_check,REXEL,req.value("Numero_Commande").toString());
         }
         //Récupération des BL
-        req = m_DB.Requete("SELECT * FROM En_Cours WHERE Etat='Livrée En Totalité' OR Etat='Livrée Et Facturée'");
-        qDebug() << "BOUCLE Récupération des BL" << req.next();
+        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Etat='Livrée En Totalité' OR Etat='Livrée Et Facturée'");
+        qDebug() << "BOUCLE Récupération des BL";
         while(req.next())
-            if(req.value("Numero_Livraison").toString() != "")
+            if(req.value("Numero_Livraison").toString() == "" || req.value("Numero_Livraison").toString() == " ")
             {
                 qDebug() << "BOUCLE Récupération d'un BL";
                 m_Fct->Info(tr("Récupération des bons de livraison commande %1").arg(req.value("Numero_Commande").toString()));
@@ -52,7 +52,7 @@ bool RexelFr::Start()
 bool RexelFr::Connexion()
 {
     DEBUG << "RexelFr::Connexion()";
-    m_Fct->Info(tr("Chargement..."));
+    m_Fct->Info(tr("Connexion..."));
 
     if(!m_Fct->WebLoad("https://www.rexel.fr/frx"))
     {
@@ -71,7 +71,7 @@ bool RexelFr::Connexion()
 
     if(m_Fct->FindTexte("Votre compte a été verrouillé, veuillez contacter ladministrateur"))
     {
-        m_Fct->FrnError(fail_check,REXEL,"Compte verrouillé, réessayez plus tard");
+        m_Fct->FrnError(fail_check,REXEL,tr("Compte verrouillé, réessayez plus tard"));
         return false;
     }
 
@@ -79,10 +79,13 @@ bool RexelFr::Connexion()
     if(m_Fct->FindTexte(m_UserName))
         return true;
 
-    m_Fct->FrnError(fail_check,REXEL,"Connexion échouée");
+    if(m_Fct->FindTexte("Informations invalides, veuillez réessayer") || m_Fct->Get_Load_Finished())
+        m_Fct->FrnError(fail_check,REXEL,tr("Connexion échouée : Informations invalides"));
+    else
+        m_Fct->FrnError(fail_check,REXEL,tr("Connexion échouée : Erreur inconnue"));
     return false;
 }
-///Error code 92x
+
 bool RexelFr::Create_List_Invoice()
 {
     ///Récuperation de la liste de bon de commandes et enregistrement dans le fichier web_Temp.txt
@@ -95,7 +98,7 @@ bool RexelFr::Create_List_Invoice()
 
     ///Récupération du texte de page de commandes et placement en fichier
     QTimer t;
-    QSqlQuery r = m_DB.Requete("SELECT Valeur FROM Options WHERE ID='19'");
+    QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='19'");
     r.next();
     connect(&t,SIGNAL(timeout()),&t,SLOT(stop()));
     int nbPage(0),tPage(6);
@@ -136,14 +139,14 @@ bool RexelFr::Create_List_Invoice()
             m_Fct->FrnError(open_File,REXEL,fichier.fileName());
 
         DEBUG << "Navigation - Début du traitement des informations";
-        req = m_DB.Requete("SELECT * FROM En_Cours WHERE Fournisseur='Rexel.fr'");
+        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='Rexel.fr'");
         if(!req.next())
             premierDemarrage = true;
 
         while(!flux.atEnd() && !fin)
         {
             int id = 0;
-            req = m_DB.Requete("SELECT MAX(ID) FROM En_Cours");
+            req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
             req.next();
             id = req.value(0).toInt();
             id++;
@@ -188,7 +191,7 @@ bool RexelFr::Create_List_Invoice()
                     error = true;
                 }
 
-                req = m_DB.Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "'");
+                req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "'");
                 req.next();
                 if(req.value("Numero_Commande").isNull())
                 {
@@ -208,7 +211,7 @@ bool RexelFr::Create_List_Invoice()
                     }
                     else if(premierDemarrage)
                     {
-                        m_DB.Requete("UPDATE En_Cours SET Ajout='Ok' WHERE ID='1'");
+                        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE ID='1'");
                         fin = true;
                     }
                 }
@@ -264,11 +267,17 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
     }while(m_Fct->InsertJavaScript("$('#deliveryHistoryPageLoader').is(':visible')").toBool() && t.isActive());
 
     if(!t.isActive())
+    {
         m_Fct->FrnError(fail_check,REXEL,"Délai écoulé");
+        return false;
+    }
+    if(!m_Fct->SaveText())
+    {
+        m_Fct->FrnError(save_file,REXEL);
+        return false;
+    }
 
     ///Traitement des données contenu dans le fichier web_Temp.txt
-    /// -------------------------------
-    ///Vérifier si les bl sont dispo sur les En Cours/Fermée sur rexel--------------------------
     /// -------------------------------
     QFile fichier(m_WorkLink + "/web_Temp.txt");
     if(!fichier.open(QIODevice::ReadOnly))
@@ -284,11 +293,11 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
             while(!fichier.atEnd() && !fin)
             {
                 tmp = fichier.readLine();
-                if(!tmp.contains("Rexel France") && tmp.isSimpleText())
+                if(tmp != "10")
                 {
                     for(int cpt=0;cpt<tmp.count();cpt++)
                     {
-                        if(!tmp[cpt].isSpace())
+                        if(tmp.at(cpt).isDigit() || tmp.at(cpt) == '-')
                         {
                             DEBUG << "Recuperation_BL - Ajout d'un BL";
                             bl.append(tmp[cpt]);
@@ -309,10 +318,9 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
 
     if(bl.split(" ").count() > 5)
         m_Fct->FrnError(too_many,REXEL,QString(bl.split(" ").count()));
-    m_DB.Requete("UPDATE En_Cours SET Numero_Livraison='" + bl + "' WHERE Numero_Commande='" + InvoiceNumber + "'");
+    m_DB->Requete("UPDATE En_Cours SET Numero_Livraison='" + bl + "' WHERE Numero_Commande='" + InvoiceNumber + "'");
     DEBUG << "Recuperation_BL - DB mise à jour";
     DEBUG << "Fin Rexel::Recuperation_BL()";
-    m_Fct->Info("");
     return true;
 }
 ///Error code 94x
@@ -338,12 +346,12 @@ bool RexelFr::Check_State(const QString InvoiceNumber)
     if(m_Fct->FindTexte("Livrée En Totalité") || m_Fct->FindTexte("Livrée Et Facturée"))
     {
         DEBUG << "VerificationEtatBC - Mise à jour de l'état du BC " + InvoiceNumber + "=" + "Livrée en totalité";
-        m_DB.Requete("UPDATE En_Cours SET Etat='Livrée En Totalité' WHERE Numero_Commande='" + InvoiceNumber + "'");
+        m_DB->Requete("UPDATE En_Cours SET Etat='Livrée En Totalité' WHERE Numero_Commande='" + InvoiceNumber + "'");
     }
     else if(m_Fct->FindTexte("Partiellement Livrée"))
     {
         DEBUG << "VerificationEtatBC - Mise à jour de l'état du BC " + InvoiceNumber + "=" + "Partiellement livrée";
-        m_DB.Requete("UPDATE En_Cours SET Etat='Partiellement Livrée' WHERE Numero_Commande='" + InvoiceNumber + "'");
+        m_DB->Requete("UPDATE En_Cours SET Etat='Partiellement Livrée' WHERE Numero_Commande='" + InvoiceNumber + "'");
     }
     m_Fct->Info("");
     DEBUG << "Fin Rexel::VerificationEtatBC()";

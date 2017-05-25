@@ -16,13 +16,14 @@
 #define FRN5 ""
 #define FRN6 ""
 #define FRN7 ""
+#define FRN "Fournisseur"
 
 class Fournisseur : public QObject
 {
     Q_OBJECT
 
 public:
-    Fournisseur(QString lien_Travail);
+    Fournisseur(QString lien_Travail, DB *db, Error *err);
     ~Fournisseur();
     bool Add(const QString nom,const QString login,const QString mdp,const QString complement);
     bool Add(const QString nom);
@@ -49,8 +50,8 @@ private:
     QStringList fournisseurs;
     QString m_Lien_Travail;
     FctFournisseur *m_fct;
-    DB m_DB;
-    Error m_Error;
+    DB *m_DB;
+    Error *m_Error;
 };
 
 #endif // FOURNISSEUR_H

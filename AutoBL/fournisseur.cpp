@@ -1,12 +1,11 @@
 #include "fournisseur.h"
 //Error Code 5xx
-Fournisseur::Fournisseur(QString lien_Travail):
-    m_Lien_Travail(lien_Travail)
+Fournisseur::Fournisseur(QString lien_Travail, DB *db, Error *err):
+    m_Lien_Travail(lien_Travail),m_DB(db),m_Error(err)
 {
     DEBUG << "Fournisseur | Init de la classe";
-    m_fct = new FctFournisseur(m_Lien_Travail);
+    m_fct = new FctFournisseur(m_Lien_Travail,m_Error);
     connect(m_fct,SIGNAL(info(QString)),this,SIGNAL(Info(QString)));
-    connect(m_fct,SIGNAL(error(QString)),this,SIGNAL(Erreur(QString)));
     connect(m_fct,SIGNAL(LoadProgress(int)),this,SIGNAL(LoadProgress(int)));
     connect(m_fct,SIGNAL(change_Load_Window(QString)),this,SIGNAL(Change_Load_Window(QString)));
 }
@@ -51,15 +50,15 @@ bool Fournisseur::Start()
 
             if(nom == "Rexel.fr")
             {
-                RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp);
+                RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
 
                 frn->Start();
             }
             else
-                emit Erreur(tr("Erreur critique interne : le nom de fournisseur n'existe pas(%1)").arg(nom));
+                m_Error->Err(failFrn,nom,FRN);
         }
         else
-            emit Erreur(tr("Erreur Critique interne sur les données d'un fournisseur"));
+            m_Error->Err(failData,"",FRN);
     }
     return true;
 }
@@ -70,7 +69,7 @@ QStringList Fournisseur::Get_Invoice_List(const QString& frn,const QString& invo
     DEBUG << frn << invoiceNumber;
     if(f.isEmpty())
     {
-        emit Erreur(tr("Fournisseur non trouvé !(%0)").arg(frn));
+        m_Error->Err(findFrn,frn,FRN);
         return QStringList(0);
     }
     ///Init variables fonction
@@ -80,7 +79,7 @@ QStringList Fournisseur::Get_Invoice_List(const QString& frn,const QString& invo
 
     if(frn == "Rexel.fr")
     {
-        RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp);
+        RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
         return frn->Get_Invoice(invoiceNumber);
     }
 }
@@ -116,12 +115,12 @@ bool Fournisseur::Test_Connexion(const QString &nom)
     QStringList f = Find_Fournisseur(nom);
     if(f.isEmpty())
     {
-        emit Erreur(tr("Fournisseur non trouvé !(%0)").arg(nom));
+        m_Error->Err(findFrn,nom,FRN);
         return false;
     }
     if(nom == "Rexel.fr")
     {
-        RexelFr *frn = new RexelFr(m_fct,f.at(0),f.at(1),m_Lien_Travail,f.at(2));
+        RexelFr *frn = new RexelFr(m_fct,f.at(0),f.at(1),m_Lien_Travail,f.at(2),m_DB);
         if(!frn->Test_Connexion())
         {
             if(m_fct->FindTexte("Informations invalides, veuillez réessayer"))
@@ -136,7 +135,8 @@ bool Fournisseur::Test_Connexion(const QString &nom)
         }
     }
     else
-        emit Erreur("Fournisseur non trouvé");
+        m_Error->Err(findFrn,"",FRN);
+
     return false;
 }
 
@@ -157,10 +157,10 @@ QStringList Fournisseur::Find_Fournisseur(QString nom)
 
 QStringList Fournisseur::Find_Fournisseur_From_DB(const QString nom)
 {
-    QSqlQuery req = m_DB.Requete("SELECT Valeur FROM Options WHERE Nom='" + nom + "'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + nom + "'");
     if(req.next())
     {
-        QStringList var = m_DB.Decrypt(req.value(0).toString()).split("|");
+        QStringList var = m_DB->Decrypt(req.value(0).toString()).split("|");
         QStringList l;
         if(var.count() != 3)
         {

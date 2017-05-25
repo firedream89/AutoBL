@@ -22,7 +22,7 @@ class Esabora : public QObject
 private:
     QWidget *m_fen;
 public:
-    Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail);
+    Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail, DB *db, Error *e);
     int GetEtat();
     bool Start(bool automatic, int &nbBC, int &nbBL);
     ~Esabora();
@@ -59,7 +59,7 @@ signals:
     void Message(QString header,QString texte,bool warning);
 
 private:
-    DB m_DB;
+    DB *m_DB;
     int etat;
     QString m_Login;
     QString m_MDP;
@@ -69,7 +69,7 @@ private:
     QStringList liste_Matos;
     QStringList m_List_Cmd;
     bool m_Arret;
-    Error err;
+    Error *err;
     QProcess p;
 };
 
