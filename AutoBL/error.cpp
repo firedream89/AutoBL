@@ -91,6 +91,15 @@ QString Error::Err(int code, QString e, QString fromClass)
     case findFrn:
         err = tr("Fournisseur non trouvé !(%0)").arg(e);
         break;
+    case openDB:
+        err = tr("Ouverture de la base de données échouée");
+        break;
+    case updateDB:
+        err = tr("Echec de modification de la base de données");
+        break;
+    case saveDB:
+        err = tr("Echec de sauvegarde de la DB");
+        break;
     default:
         err = tr("Erreur inconnue %1").arg(e);
         break;
@@ -99,6 +108,7 @@ QString Error::Err(int code, QString e, QString fromClass)
     if(!fromClass.isEmpty())
         err = fromClass + " | " + err;
     emit sError(err);
+    Write_Error(err);
     return err;
 }
 

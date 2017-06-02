@@ -15,6 +15,7 @@ Esabora::~Esabora()
 bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
 {
     m_Arret = false;
+    m_List_Cmd.clear();
 
     if(!Lancement_API())
         return false;
@@ -32,7 +33,11 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
             if(req.value("Nom_Chantier").toString() == "0")//Ajout BC au Stock
             {
                 if(!Ajout_Stock(req.value("Numero_Commande").toString()))
+                {
+                    Abort();
+                    Ouverture_Liste_BC();
                     err->Err(Not_BC,req.value("Numero_Commande").toString(),ESAB);
+                }
                 else
                 {
                     m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
@@ -43,6 +48,8 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
             {
                 if(!Ajout_BC(req.value("Numero_Commande").toString()))
                 {
+                    Abort();
+                    Ouverture_Liste_BC();
                     if(GetEtat() == 0)
                         err->Err(Not_BC,req.value("Numero_Commande").toString(),ESAB);
                     else if(GetEtat() == 1)
@@ -79,6 +86,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
         {
             if(!Ajout_BL(req.value("Numero_BC_Esabora").toString(),req.value("Numero_Livraison").toString()))
             {
+                Abort();
                 err->Err(BL,req.value("Numero_Livraison").toString(),ESAB);
             }
             else

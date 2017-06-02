@@ -44,8 +44,6 @@ bool RexelFr::Start()
             }
         qDebug() << "BOUCLE Fin Récupération des BL";
     }
-    else
-        m_Fct->FrnError(bad_Login,REXEL);
     return true;
 }
 
@@ -69,7 +67,7 @@ bool RexelFr::Connexion()
     m_Fct->InsertJavaScript("document.getElementById('loginForm').submit()");
     m_Fct->Loop();
 
-    if(m_Fct->FindTexte("Votre compte a été verrouillé, veuillez contacter ladministrateur"))
+    if(m_Fct->FindTexte("Votre compte a été verrouillé, veuillez contacter l'administrateur"))
     {
         m_Fct->FrnError(fail_check,REXEL,tr("Compte verrouillé, réessayez plus tard"));
         return false;
@@ -153,47 +151,90 @@ bool RexelFr::Create_List_Invoice()
 
             infoChantier = "";
             QString ligne = flux.readLine();
+
+            //N° de commande Rexel : 4421-000192238  Statut : Livrée en totalité Total : 460,87 €
             if(ligne.contains("N° de commande Rexel") && ligne.split(" ").last() != "Rexel")
             {
                 etat.clear();
-
+                nomChantier.clear();
+                numeroCommande.clear();
+                DEBUG << ligne;
+                DEBUG << ligne.split(":");
                 bool error(false);
-                numeroCommande = ligne.split(" ").last();
+
+                //Contrôle
+                if(ligne.split(":").count() != 4)
+                {
+                    m_Fct->FrnError(variable,REXEL,"Compteur ligne 1 = " + QString::number(ligne.split(":").count()));
+                    return false;
+                }
+                if(ligne.split(":").at(2).split(" ").count() < 3)
+                {
+                    m_Fct->FrnError(variable,REXEL,"Compteur ligne 2 = " + QString::number(ligne.split(":").at(2).split(" ").count()));
+                    return false;
+                }
+
+                //Numéro de commande
+                numeroCommande = ligne.split(":").at(1).split(" ").at(1);
+
+                //status
+                for(int i=1;i<ligne.split(":").at(2).split(" ").count();i++)
+                    if(!ligne.split(":").at(2).split(" ").at(i).contains("Total"))
+                        if(i == 1)
+                            etat = ligne.split(":").at(2).split(" ").at(i);
+                        else
+                            etat += " " + ligne.split(":").at(2).split(" ").at(i);
+
+                //Lien chantier
                 lienChantier = "https://www.rexel.fr/frx/my-account/orders/" + numeroCommande;
+
+                //Date
                 ligne = flux.readLine();
                 if(ligne.contains("Date :"))
-                    date = ligne.split(" ").last().replace(".","/");
+                    date = flux.readLine().replace(".","/");
                 else
                 {
                     m_Fct->FrnError(variable,REXEL,"date");
                     error = true;
                 }
+
+                //Nom chantier
                 ligne = flux.readLine();
+                if(ligne.contains("Réf. chantier :"))
+                {
+                    infoChantier = flux.readLine();
+                    ligne = flux.readLine();
+                }
+
+                //Numero chantier
                 if(ligne.contains("Réf. cde :"))
-                    nomChantier = ligne.replace("Réf. cde : ","");
+                    nomChantier = flux.readLine();
                 else
                 {
                     m_Fct->FrnError(variable,REXEL,"Référence");
                     error = true;
                 }
-                ligne = flux.readLine();
-                if(ligne.contains("Réf. chantier :"))
-                    infoChantier = ligne.replace("Réf. chantier : ","");
-                ligne = flux.readLine();
-                while(!ligne.contains("Statut : ") && !flux.atEnd())
-                    ligne = flux.readLine();
-                DEBUG << ligne;
-                if(ligne.contains("Statut : "))
-                    etat = ligne.replace("Statut : ","");
-                else
+
+                //Contrôle
+                if(etat.isEmpty())
                 {
                     m_Fct->FrnError(variable,REXEL,"Etat");
                     error = true;
                 }
+                else if(numeroCommande.isEmpty())
+                {
+                    m_Fct->FrnError(variable,REXEL,"Numéro de commande");
+                    error = true;
+                }
+                else if(nomChantier.isEmpty())
+                {
+                    m_Fct->FrnError(variable,REXEL,"Numéro de chantier");
+                }
+                DEBUG << etat << numeroCommande << nomChantier;
 
                 req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "'");
                 req.next();
-                if(req.value("Numero_Commande").isNull())
+                if(req.value("Numero_Commande").isNull() && !error)
                 {
                     if(date.split("/").count() != 3)///Si la date n'a pas été trouvé
                     {
@@ -293,31 +334,32 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
             while(!fichier.atEnd() && !fin)
             {
                 tmp = fichier.readLine();
-                if(tmp != "10")
-                {
-                    for(int cpt=0;cpt<tmp.count();cpt++)
-                    {
-                        if(tmp.at(cpt).isDigit() || tmp.at(cpt) == '-')
-                        {
-                            DEBUG << "Recuperation_BL - Ajout d'un BL";
-                            bl.append(tmp[cpt]);
-                        }
-                        else
-                        {
-                            DEBUG << "Recuperation_BL - Fin d'ajout d'un BL";
-                            cpt = tmp.count();
-                        }
-                    }
-                    bl.append(" ");
-                }
-                else
+
+                if(tmp.contains("Afficher :"))
                     fin = true;
+                for(int cpt=0;cpt<tmp.count();cpt++)
+                {
+                    if(tmp.at(cpt).isDigit() || tmp.at(cpt) == '-')
+                    {
+                        DEBUG << "Recuperation_BL - Ajout d'un BL";
+                        bl.append(tmp[cpt]);
+                    }
+                    else
+                    {
+                        DEBUG << "Recuperation_BL - Fin d'ajout d'un BL";
+                        cpt = tmp.count();
+                    }
+                }
+                bl.append(" ");
             }
     }
     DEBUG << "Recuperation_BL - Fin du traitement";
 
     if(bl.split(" ").count() > 5)
+    {
         m_Fct->FrnError(too_many,REXEL,QString(bl.split(" ").count()));
+        return false;
+    }
     m_DB->Requete("UPDATE En_Cours SET Numero_Livraison='" + bl + "' WHERE Numero_Commande='" + InvoiceNumber + "'");
     DEBUG << "Recuperation_BL - DB mise à jour";
     DEBUG << "Fin Rexel::Recuperation_BL()";

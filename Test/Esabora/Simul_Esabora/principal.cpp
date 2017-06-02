@@ -107,7 +107,7 @@ void principal::create_Bon()
     if(!file.open(QIODevice::ReadWrite))
         QMessageBox::warning(this,"Erreur","Erreur dans le fichier f1");
 
-    QDialog *f = new QDialog(this);
+    QDialog *f = new QDialog(this->findChild<QDialog*>("listbon"));
     connect(f,SIGNAL(rejected()),this,SLOT(show()));
     connect(f,SIGNAL(finished(int)),f,SLOT(deleteLater()));
     f->setObjectName("CBC");
@@ -150,7 +150,7 @@ void principal::find_chantier()
 
     QFile file(qApp->applicationDirPath() + "/lBC.txt");
     if(!file.open(QIODevice::ReadOnly))
-        QMessageBox::warning(this,"Erreur","Erreur dans le fichier f1");
+        QMessageBox::warning(0,"Erreur","Erreur dans le fichier f1");
     QTextStream flux(&file);
     bool test(false);
     while(!flux.atEnd())
@@ -159,7 +159,7 @@ void principal::find_chantier()
     if(!test)
     {
         QMessageBox::question(0,"Erreur","Le chantier n'existe pas, voulez vous le créer ?");
-        this->findChild<QDialog*>("CBC")->findChild<QLineEdit*>("nch")->blockSignals(false);
+        //this->findChild<QDialog*>("CBC")->findChild<QLineEdit*>("nch")->blockSignals(false);
     }
 }
 

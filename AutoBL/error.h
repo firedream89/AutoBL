@@ -30,7 +30,10 @@ typedef enum {
     noConnected,
     failFrn,
     failData,
-    findFrn
+    findFrn,
+    openDB,
+    updateDB,
+    saveDB
 }ERR;
 
 class Error: public QObject

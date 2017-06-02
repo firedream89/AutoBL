@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.40-B9"); //Version De L'application
-QString ver("1408");
+QString version("1.40-B11"); //Version De L'application
+QString ver("1411");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -28,6 +28,7 @@ Principal::Principal(QWidget *parent) :
     //Erreur
     m_Error = new Error(m_Lien_Work);
     connect(m_Error,SIGNAL(sError(QString)),this,SLOT(Affichage_Erreurs(QString)));
+    connect(m_Error,SIGNAL(sError(QString)),this,SLOT(AddError(QString)));
 
     //DB
     m_DB = new DB(m_Error);
@@ -299,9 +300,15 @@ void Principal::Sauvegarde_Parametres()
     else
         m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='17'");
     if(ui->ajoutAutoBL->isChecked())
+    {
         m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='13'");
+        m_DB->Requete("UPDATE En_Cours SET Ajout_BL='1'");
+    }
     else
+    {
         m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='13'");
+        m_DB->Requete("UPDATE En_Cours SET Ajout_BL='0'");
+    }
     if(ui->semiAuto->isChecked())
         m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='22'");
     else
@@ -1735,7 +1742,6 @@ void Principal::AddError(QString error)
     else if(error.contains("Esabora | E504")) error = tr("Le déplacement de la souris à échoué");
     else if(error.contains("Rexel | E001") || error.contains("Rexel | E002") || error.contains("Rexel | E101") || error.contains("Rexel | E102")) error = tr("Chargement de la page échouée");
     else if(error.contains("Rexel | E106") || error.contains("Rexel | E107")) error = "Une information n'a pas pu être récupérée";
-
     ui->eArgErreurs->addItem(t.currentDateTime().toString("dd/MM/yyyy hh:mm ") + error);
 }
 
