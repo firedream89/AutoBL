@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.40-B11"); //Version De L'application
-QString ver("1411");
+QString version("1.41"); //Version De L'application
+QString ver("1412");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -1472,8 +1472,8 @@ void Principal::Init_Fournisseur()
 {
     QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='24'");
     req.next();
-    if(req.value(0).toString() != "Rexel.fr|")
-        m_DB->Requete("UPDATE Options SET Valeur='Rexel.fr|', Nom='Fournisseurs' WHERE ID='24'");
+    if(req.value(0).toString() != m_Frn->List_Frn())
+        m_DB->Requete("UPDATE Options SET Valeur='" + m_Frn->List_Frn() + "', Nom='Fournisseurs' WHERE ID='24'");
 
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom='FrnADD'");
 

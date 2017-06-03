@@ -1,18 +1,18 @@
 #include "minimalfournisseur.h"
-///Error Code xxx
-MinimalFournisseur::MinimalFournisseur(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp):
-    m_Login(login),m_MDP(mdp),m_UserName(comp),m_WorkLink(lien_Travail)
+
+MinimalFournisseur::MinimalFournisseur(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db):
+    m_Login(login),m_MDP(mdp),m_UserName(comp),m_WorkLink(lien_Travail),m_Fct(fct),m_DB(db)
 {
-    DEBUG << "Init Class FRN";
+    DEBUG << "Init Class " << FRN;
     m_Fct = fct;
 }
 
 bool MinimalFournisseur::Start()
 {
+    DEBUG << "Start " << FRN;
     //Premier démarrage
 }
 
-///Error code xxx
 QStringList MinimalFournisseur::Get_Invoice(const QString InvoiceNumber)
 {
 
@@ -27,6 +27,6 @@ void MinimalFournisseur::Set_Var(const QString login, const QString mdp, const Q
 
 bool MinimalFournisseur::Test_Connexion()
 {
-    DEBUG << "TEST CONNEXION FRN";
+    DEBUG << "TEST CONNEXION " << FRN;
     return ;
 }

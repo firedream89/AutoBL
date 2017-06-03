@@ -6,6 +6,7 @@
 
 #include "fctfournisseur.h"
 #include "rexelfr.h"
+#include "socolecfr.h"
 #include "error.h"
 
 #define DEBUG qDebug()
@@ -17,6 +18,7 @@
 #define FRN6 ""
 #define FRN7 ""
 #define FRN "Fournisseur"
+#define FRNLIST "Rexel.fr|Socolec.fr"
 
 class Fournisseur : public QObject
 {
@@ -32,6 +34,7 @@ public:
     bool Update_Var(const QString &frn, const QString &login, const QString &mdp, const QString &complement);
     bool Test_Connexion(const QString& nom);
     void Show_Web();
+    QString List_Frn() const;
 
 public slots:
     QStringList Get_Invoice_List(const QString &frn,const QString &invoiceNumber);

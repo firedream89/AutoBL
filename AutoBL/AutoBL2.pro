@@ -26,7 +26,8 @@ SOURCES += main.cpp\
     fournisseur.cpp \
     rexelfr.cpp \
     fctfournisseur.cpp \
-    error.cpp
+    error.cpp \
+    socolecfr.cpp
 
 HEADERS  += principal.h \
     esabora.h \
@@ -35,7 +36,8 @@ HEADERS  += principal.h \
     fournisseur.h \
     rexelfr.h \
     fctfournisseur.h \
-    error.h
+    error.h \
+    socolecfr.h
 
 FORMS    += principal.ui
 

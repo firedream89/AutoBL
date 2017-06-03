@@ -1,24 +1,20 @@
-#ifndef REXELFR_H
-#define REXELFR_H
-
-#include <QObject>
-#include <QTimer>
-#include <QEventLoop>
-#include <QDebug>
-#include <QSqlQuery>
+#ifndef SOCOLECFR_H
+#define SOCOLECFR_H
 
 #include "db.h"
 #include "fctfournisseur.h"
+#include <QDebug>
+#include <QObject>
 
 #define DEBUG qDebug()
-#define REXEL "Rexel.fr"
+#define FRN "Socolec.fr"
 
-class RexelFr: public QObject
+class SocolecFr: public QObject
 {
     Q_OBJECT
 
 public:
-    RexelFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db);
+    SocolecFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db);
     bool Start();
     QStringList Get_Invoice(const QString InvoiceNumber);
     void Set_Var(const QString login,const QString mdp,const QString comp);
@@ -26,10 +22,7 @@ public:
 
 private slots:
     bool Connexion();
-    bool Create_List_Invoice();
-    bool Check_Delivery(const QString InvoiceNumber);
-    bool Check_State(const QString InvoiceNumber);
-
+    bool Create_List_Invoice(bool firstInit = 0);
 
 signals:
     void Info(const QString i);
@@ -39,7 +32,6 @@ private:
     QString m_Login,m_MDP,m_UserName,m_WorkLink;
     FctFournisseur *m_Fct;
     DB *m_DB;
-
 };
 
-#endif // REXELFR_H
+#endif // SOCOLECFR_H

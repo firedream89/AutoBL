@@ -54,6 +54,11 @@ bool Fournisseur::Start()
 
                 frn->Start();
             }
+            else if(nom == "Socolec.fr")
+            {
+                SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
+                frn->Start();
+            }
             else
                 m_Error->Err(failFrn,nom,FRN);
         }
@@ -80,6 +85,11 @@ QStringList Fournisseur::Get_Invoice_List(const QString& frn,const QString& invo
     if(frn == "Rexel.fr")
     {
         RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
+        return frn->Get_Invoice(invoiceNumber);
+    }
+    else if(frn == "Socolec.fr")
+    {
+        SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
         return frn->Get_Invoice(invoiceNumber);
     }
 }
@@ -134,6 +144,23 @@ bool Fournisseur::Test_Connexion(const QString &nom)
             return true;
         }
     }
+    else if(nom == "Socolec.fr")
+    {
+        SocolecFr * frn = new SocolecFr(m_fct,f.at(0),f.at(1),m_Lien_Travail,f.at(2),m_DB);
+        if(!frn->Test_Connexion())
+        {
+            if(m_fct->FindTexte("Le N° de compte spécifié n'existe pas"))
+                emit Info(tr("Le numéro de compte est incorrecte"));
+            else if(m_fct->FindTexte("Email ou mot de passe incorrect"))
+                emit Info(tr("Email ou mot de passe incorrect"));
+            else
+                emit Info(tr("Une erreur unconnue s'est produite"));
+        }
+        else
+        {
+            emit Info(tr("Connexion à %0 réussie").arg(nom));
+        }
+    }
     else
         m_Error->Err(findFrn,"",FRN);
 
@@ -180,4 +207,9 @@ QStringList Fournisseur::Find_Fournisseur_From_DB(const QString nom)
 void Fournisseur::Show_Web()
 {
     m_fct->WebOpen();
+}
+
+QString Fournisseur::List_Frn() const
+{
+    return QString(FRNLIST);
 }
