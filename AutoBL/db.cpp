@@ -1,6 +1,5 @@
 #include "db.h"
 
-QString key = "ODBABL";//Clé ouverture BDD
 /////////////////////////////////
 /// Table En_Cours
 /// ---------------
@@ -16,6 +15,7 @@ QString key = "ODBABL";//Clé ouverture BDD
 /// Ajout
 /// Info_Chantier
 /// Ajout_BL
+/// Fournisseur
 /// ---------------
 /// Table Options
 /// ---------------
@@ -23,35 +23,46 @@ QString key = "ODBABL";//Clé ouverture BDD
 /// Nom
 /// Valeur
 /////////////////////////////////
-DB::DB()
+DB::DB(Error *err):
+    m_Error(err)
 {
+    DEBUG << "Initialisation DB";
+
+    QFile f(qApp->applicationDirPath() + "/bddInfo.db");
+    if(f.exists())//si DB inaccessible, lancer la mise à jour de la DB
+    {
+        DEBUG << "Update de la BDD";
+        QDesktopServices::openUrl(QUrl::fromLocalFile(qApp->applicationDirPath() + "/bin/MAJ_BDD.exe"));
+        qApp->exit(0);
+    }
 }
 
-QSqlQuery DB::Requete(QString req)
+QSqlQuery DB::Requete(QString r)
 {
-    QSqlQuery requete;
+    QSqlQuery req;
 
-    if(requete.prepare(req))
+    if(req.prepare(r))
     {
-        if(!requete.exec())
-            emit Error("DB | E101 | Execution de la requete échouée : " + req);
+        if(!req.exec())
+            m_Error->Err(requete,r,"DB");
     }
     else
-        emit Error("DB | E102 | Préparation de la requete échouée : " + req);
+        m_Error->Err(requete,r,"DB");
 
-    return requete;
+    return req;
 }
 
 void DB::Init()
 {
     //Ouverture de la DB
-    QSqlDatabase db = QSqlDatabase::addDatabase("SQLITECIPHER");
-    db.setDatabaseName(qApp->applicationDirPath() + "/bddInfo.db");
+    QSqlDatabase db = QSqlDatabase::addDatabase("QSQLITE");
+    qDebug() << db.drivers();
+    db.setDatabaseName(qApp->applicationDirPath() + "/bdd.db");
     db.setHostName("127.0.0.1");
 
     if(!db.open())
     {
-        emit Error("DB | E001 | Ouverture de la Database échoué : " + db.hostName() + " " + db.driverName());
+        m_Error->Err(openDB);
         return;
     }
     else
@@ -59,12 +70,7 @@ void DB::Init()
 
     //test DB
     QSqlQuery req;
-    req.exec("PRAGMA key = '" + key + "';");
-    req = Requete("SELECT * FROM Options");
-    if(!req.next())
-        emit Error("DB | E002 | DB Inaccessible !");
-    else
-        emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());
+
 
     //Création Tableau DB si inexistant
     QSqlQuery query;
@@ -77,8 +83,8 @@ void DB::Init()
         emit Info("Création BDD");
         emit CreateTable();
         Requete("INSERT INTO Options VALUES('0','Auto','0')");
-        Requete("INSERT INTO Options VALUES('1','Minutes','22')");
-        Requete("INSERT INTO Options VALUES('2','Heure','0')");
+        Requete("INSERT INTO Options VALUES('1','Minutes','0')");
+        Requete("INSERT INTO Options VALUES('2','Heure','22')");
         Requete("INSERT INTO Options VALUES('3','Login','')");
         Requete("INSERT INTO Options VALUES('4','MDP','')");
         Requete("INSERT INTO Options VALUES('5','LienEsabora','')");
@@ -89,7 +95,7 @@ void DB::Init()
         Requete("INSERT INTO Options VALUES('10','APTSG','0')");
         Requete("INSERT INTO Options VALUES('11','MDPA','')");
         Requete("INSERT INTO Options VALUES('12','Nom_BDD','')");
-        Requete("INSERT INTO Options VALUES('13','ADD_Auto_BL','0')");
+        Requete("INSERT INTO Options VALUES('13','ADD_Auto_BL','1')");
         Requete("INSERT INTO Options VALUES('14','Tmp_Cmd','0.5')");
         Requete("INSERT INTO Options VALUES('15','NUR2','')");
         Requete("INSERT INTO Options VALUES('16','Help','0')");
@@ -100,26 +106,51 @@ void DB::Init()
         Requete("INSERT INTO Options VALUES('21','VersionAPI','')");
         Requete("INSERT INTO Options VALUES('22','SemiAuto','0')");
         Requete("INSERT INTO Options VALUES('23','Nom_Entreprise_Esabora','')");
-        Requete("INSERT INTO Options VALUES('24','','')");
+        Requete("INSERT INTO Options VALUES('24','Fournisseurs','Rexel.fr|')");
         Requete("INSERT INTO Options VALUES('25','','')");
     }
-    Requete("UPDATE En_Cours SET Etat='En préparation' WHERE Etat='En cours'");
-    Requete("UPDATE En_Cours SET Etat='Livrée en totalité' WHERE Etat='Fermée'");
-    Requete("UPDATE En_Cours SET Etat='Livrée Et Facturée' WHERE Etat='Livrée et facturée'");
+
+    if(query.prepare("ALTER TABLE En_Cours ADD Fournisseur TEXT"))
+        if(!query.exec())
+            m_Error->Err(updateDB,"","DB");
+
+    Requete("UPDATE En_Cours SET Fournisseur='Rexel.fr' WHERE Fournisseur=''");
+    Requete("UPDATE En_Cours SET Etat='En préparation' WHERE Etat='En cours' AND Fournisseur='Rexel.fr'");
+    Requete("UPDATE En_Cours SET Etat='Livrée en totalité' WHERE Etat='Fermée' AND Fournisseur='Rexel.fr'");
+    Requete("UPDATE En_COurs SET Etat='Livrée Et Facturée' WHERE Etat='Livrée et facturée'");
     Requete("UPDATE En_Cours SET Etat='Livrée En Totalité' WHERE Etat='Livrée en totalité'");
     Requete("UPDATE En_Cours SET Etat='Partiellement Livrée' WHERE Etat='Partiellement livrée'");
+
+    //Test DB
+    req = Requete("SELECT * FROM Options");
+
+    if(!req.next())//si DB inaccessible, lancer la mise à jour de la DB
+    {
+        db.close();
+        QDesktopServices::openUrl(QUrl("bin/MAJ_BDD.exe"));
+        qApp->exit(0);
+    }
+    else
+        emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());
+
+    DEBUG << "DB initialisée";
+}
+
+void DB::Close()
+{
+    QSqlDatabase::removeDatabase("qt_sql_default_connection");
 }
 
 void DB::Sav()
 {
     qDebug() << "Sav";
-    QFile sav(qApp->applicationDirPath() + "/bddInfoSav.db");
-    QFile sav2(qApp->applicationDirPath() + "/bddInfoSav2.db");
-    QFile sav3(qApp->applicationDirPath() + "/bddInfoSav3.db");
+    QFile sav(qApp->applicationDirPath() + "/bddSav.db");
+    QFile sav2(qApp->applicationDirPath() + "/bddSav2.db");
+    QFile sav3(qApp->applicationDirPath() + "/bddSav3.db");
     QFileInfo f(sav);
     QFileInfo f1(sav2);
     QFileInfo f2(sav3);
-    QFileInfo fBDD(qApp->applicationDirPath() + "/bddInfo.db");
+    QFileInfo fBDD(qApp->applicationDirPath() + "/bdd.db");
 
     bool ok(true);
 
@@ -128,42 +159,42 @@ void DB::Sav()
 
     if(!sav.exists())
     {
-        ok = sav.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav.db");
+        ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav.db");
         emit Info("DB | Sauvegarde de la DB(sav)");
     }
     else if(!sav2.exists())
     {
-        ok = sav.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav2.db");
+        ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav2.db");
         emit Info("DB | Sauvegarde de la DB(sav2)");
     }
     else if(!sav3.exists())
     {
-        ok = sav.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav3.db");
+        ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav3.db");
         emit Info("DB | Sauvegarde de la DB(sav3)");
     }
     else
     {
-        if(f.lastModified().operator <(f1.lastModified()) && f.lastModified().operator <(f2.lastModified()))
+        if(f.lastModified().operator <(f1.lastModified()) && f.lastModified().operator <(f2.lastModified()) && f.lastModified().toString("dd/MM/yyyy") != QDate::currentDate().toString("dd/MM/yyyy"))
         {
             sav.remove();
-            ok = sav.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav.db");
+            ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav.db");
             emit Info("DB | Sauvegarde de la DB(sav)");
         }
-        else if(f1.lastModified().operator <(f2.lastModified()))
+        else if(f1.lastModified().operator <(f2.lastModified()) && f1.lastModified().toString("dd/MM/yyyy") != QDate::currentDate().toString("dd/MM/yyyy"))
         {
             sav2.remove();
-            ok = sav2.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav2.db");
+            ok = sav2.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav2.db");
             emit Info("DB | Sauvegarde de la DB(sav2)");
         }
-        else
+        else if(f2.lastModified().toString("dd/MM/yyyy") != QDate::currentDate().toString("dd/MM/yyyy"))
         {
             sav3.remove();
-            ok = sav3.copy(qApp->applicationDirPath() + "/bddInfo.db",qApp->applicationDirPath() + "/bddInfoSav3.db");
+            ok = sav3.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav3.db");
             emit Info("DB | Sauvegarde de la DB(sav3)");
         }
     }
     if(!ok)
-        emit Error("DB | E301 | Echec de sauvegarde de la DB");
+        m_Error->Err(saveDB);
 }
 
 void DB::Purge()
@@ -175,3 +206,53 @@ void DB::Purge()
     Requete("DELETE FROM En_Cours WHERE Date < '" + t.toString("yyyy-MM-dd") + "' AND Ajout='Ok'");
 }
 
+QStringList DB::Find_Fournisseur_From_Invoice(QString invoice)
+{
+    QStringList list;
+    QSqlQuery req = Requete("SELECT Fournisseur FROM En_Cours WHERE Numero_Commande='" + invoice + "'");
+    while(req.next())
+        list.append(req.value(0).toString());
+    return list;
+}
+
+QString DB::Encrypt(QString text)
+{
+    QString crypt;
+    QStringList k = QString(PKEY).split(" ");
+    int idk(0);
+    for(int i = 0;i<text.count();i++)
+    {
+        if(idk == k.count())
+            idk = 0;
+        int t = text.at(i).unicode();
+        t -= k.at(idk).toInt();
+        if(t > 250)
+            t = t - 250;
+        else if(t < 0)
+            t = t + 250;
+        crypt += QChar(t).toLatin1();
+        idk++;
+    }
+    return crypt;
+}
+
+QString DB::Decrypt(QString text)
+{
+    QString decrypt;
+    QStringList k = QString(PKEY).split(" ");
+    int idk(0);
+    for(int i = 0;i<text.count();i++)
+    {
+        if(idk == k.count())
+            idk = 0;
+        int t = text.at(i).unicode();
+        t += k.at(idk).toInt();
+        if(t < 0)
+            t = t + 250;
+        else if(t > 250)
+            t = t - 250;
+        decrypt += QChar(t).toLatin1();
+        idk++;
+    }
+    return decrypt;
+}

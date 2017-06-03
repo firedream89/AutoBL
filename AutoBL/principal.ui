@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>748</width>
-    <height>571</height>
+    <height>598</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -104,6 +104,11 @@
            </property>
            <property name="toolTip">
             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Numéro du bon de commande sur Esabora&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+           </property>
+          </column>
+          <column>
+           <property name="text">
+            <string>Fournisseur</string>
            </property>
           </column>
          </widget>
@@ -385,94 +390,10 @@
                 </property>
                </widget>
               </item>
-              <item row="8" column="0" colspan="2">
-               <widget class="Line" name="line">
-                <property name="orientation">
-                 <enum>Qt::Horizontal</enum>
-                </property>
-               </widget>
-              </item>
-              <item row="9" column="0">
-               <widget class="QLabel" name="label_9">
+              <item row="7" column="0">
+               <widget class="QLabel" name="label_29">
                 <property name="text">
-                 <string>Email Rexel</string>
-                </property>
-               </widget>
-              </item>
-              <item row="9" column="1">
-               <widget class="QLineEdit" name="eNUR">
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Saisir l'adresse email du compte utilisateur du site Rexel.fr&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="echoMode">
-                 <enum>QLineEdit::Normal</enum>
-                </property>
-               </widget>
-              </item>
-              <item row="10" column="0">
-               <widget class="QLabel" name="label_10">
-                <property name="text">
-                 <string>Mot de passe Rexel</string>
-                </property>
-               </widget>
-              </item>
-              <item row="10" column="1">
-               <widget class="QLineEdit" name="eMDPR">
-                <property name="minimumSize">
-                 <size>
-                  <width>250</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Saisir le mot de passe du compte Rexel.fr&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="echoMode">
-                 <enum>QLineEdit::Password</enum>
-                </property>
-               </widget>
-              </item>
-              <item row="11" column="0">
-               <widget class="QLabel" name="label_13">
-                <property name="text">
-                 <string>Nom d'utilisateur Rexel</string>
-                </property>
-               </widget>
-              </item>
-              <item row="11" column="1">
-               <widget class="QLineEdit" name="eNUR2">
-                <property name="minimumSize">
-                 <size>
-                  <width>250</width>
-                  <height>0</height>
-                 </size>
-                </property>
-                <property name="maximumSize">
-                 <size>
-                  <width>16777215</width>
-                  <height>16777215</height>
-                 </size>
-                </property>
-                <property name="toolTip">
-                 <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Saisir le nom d'utilisateur du compte Rexel se trouvant en haut à droite sur la page d'accueil.&lt;/p&gt;&lt;p&gt;ex : MARTIN duPONT&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-                </property>
-                <property name="text">
-                 <string/>
-                </property>
-                <property name="echoMode">
-                 <enum>QLineEdit::Normal</enum>
+                 <string>Nom de l'entreprise Esabora</string>
                 </property>
                </widget>
               </item>
@@ -483,10 +404,17 @@
                 </property>
                </widget>
               </item>
-              <item row="7" column="0">
-               <widget class="QLabel" name="label_29">
+              <item row="8" column="0">
+               <widget class="QPushButton" name="bMAJRepertoire">
                 <property name="text">
-                 <string>Nom de l'entreprise Esabora</string>
+                 <string>Mettre à jour le répertoire</string>
+                </property>
+               </widget>
+              </item>
+              <item row="9" column="0" colspan="2">
+               <widget class="Line" name="line">
+                <property name="orientation">
+                 <enum>Qt::Horizontal</enum>
                 </property>
                </widget>
               </item>
@@ -558,6 +486,161 @@
             </item>
            </layout>
           </widget>
+          <widget class="QWidget" name="Fournisseur">
+           <attribute name="title">
+            <string>Fournisseurs</string>
+           </attribute>
+           <layout class="QGridLayout" name="gridLayout_6">
+            <item row="4" column="1">
+             <spacer name="verticalSpacer_5">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>40</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="0" column="0">
+             <widget class="QLabel" name="label_22">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>25</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Fournisseurs Disponibles</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1" rowspan="2">
+             <layout class="QVBoxLayout" name="verticalLayout">
+              <item>
+               <spacer name="verticalSpacer_4">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <widget class="QPushButton" name="bFrnAjouter">
+                <property name="text">
+                 <string>&gt;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="bFrnRetirer">
+                <property name="text">
+                 <string>&lt;</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_3">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>40</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+             </layout>
+            </item>
+            <item row="0" column="2">
+             <widget class="QLabel" name="label_23">
+              <property name="maximumSize">
+               <size>
+                <width>16777215</width>
+                <height>25</height>
+               </size>
+              </property>
+              <property name="text">
+               <string>Fournisseurs ajoutés</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="2">
+             <layout class="QFormLayout" name="formLayout_2">
+              <item row="0" column="0">
+               <widget class="QLabel" name="lFrnUserName">
+                <property name="text">
+                 <string>Nom d'utilisateur</string>
+                </property>
+               </widget>
+              </item>
+              <item row="0" column="1">
+               <widget class="QLineEdit" name="eFrnUserName"/>
+              </item>
+              <item row="1" column="0">
+               <widget class="QLabel" name="lFrnMail">
+                <property name="text">
+                 <string>Email</string>
+                </property>
+               </widget>
+              </item>
+              <item row="2" column="0">
+               <widget class="QLabel" name="lFrnMDP">
+                <property name="text">
+                 <string>Mot de passe</string>
+                </property>
+               </widget>
+              </item>
+              <item row="1" column="1">
+               <widget class="QLineEdit" name="eFrnMail"/>
+              </item>
+              <item row="2" column="1">
+               <widget class="QLineEdit" name="eFrnMDP">
+                <property name="echoMode">
+                 <enum>QLineEdit::Password</enum>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QPushButton" name="bFrnSave">
+                <property name="text">
+                 <string>Sauvegarder</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QPushButton" name="bFrnTest">
+                <property name="text">
+                 <string>Test de connexion</string>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </item>
+            <item row="3" column="2">
+             <widget class="QLabel" name="lFrn">
+              <property name="text">
+               <string>Fournisseur</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="0" rowspan="2">
+             <widget class="QListWidget" name="listFrnDispo"/>
+            </item>
+            <item row="1" column="2" rowspan="2">
+             <widget class="QListWidget" name="listFrnAjouter"/>
+            </item>
+           </layout>
+          </widget>
           <widget class="QWidget" name="tab_3">
            <attribute name="title">
             <string>Avancé</string>
@@ -567,86 +650,6 @@
              <widget class="QLabel" name="label_6">
               <property name="text">
                <string>Temps entre chaque commande(en seconde)</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="0">
-             <widget class="QLabel" name="label_11">
-              <property name="text">
-               <string>Ajout des BL automatiquement</string>
-              </property>
-             </widget>
-            </item>
-            <item row="3" column="1">
-             <widget class="QCheckBox" name="ajoutAutoBL">
-              <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ajout des bons de livraison automatique, l'ajout sera déporté de 24h après la création du bon de commande concerné.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="0">
-             <widget class="QLabel" name="label_12">
-              <property name="text">
-               <string>Envoyer rapport d'erreur automatiquement</string>
-              </property>
-             </widget>
-            </item>
-            <item row="5" column="1">
-             <widget class="QCheckBox" name="rapport_Erreur">
-              <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Envoyer automatiquement les rapports lors d'erreur d'éxecution du programme.(Les rapports sont totalement anomyme et aide au débuggage du programme)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-              <property name="text">
-               <string/>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="0">
-             <widget class="QLabel" name="label_14">
-              <property name="text">
-               <string>Purge automatique de la BDD</string>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="1">
-             <widget class="QCheckBox" name="autoPurgeDB">
-              <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Purge la DB de tout les bons de commandes aillant plus de 2 mois.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-              <property name="text">
-               <string/>
-              </property>
-              <property name="checked">
-               <bool>true</bool>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="1">
-             <widget class="QDoubleSpinBox" name="tmpBoucleRexel">
-              <property name="toolTip">
-               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Regler le temps en fonction de la rapidité de la connexion internet.&lt;/p&gt;&lt;p&gt;Attention en dessous de 5 secondes le site de Rexel pourrait ne pas répondre à temps&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
-              </property>
-              <property name="minimum">
-               <double>0.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>10.000000000000000</double>
-              </property>
-              <property name="value">
-               <double>5.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="label_16">
-              <property name="text">
-               <string>Temps entre Chaque Boucle Rexel</string>
               </property>
              </widget>
             </item>
@@ -666,14 +669,94 @@
               </property>
              </widget>
             </item>
-            <item row="7" column="0">
+            <item row="1" column="0">
+             <widget class="QLabel" name="label_16">
+              <property name="text">
+               <string>Temps entre Chaque Boucle Rexel</string>
+              </property>
+             </widget>
+            </item>
+            <item row="1" column="1">
+             <widget class="QDoubleSpinBox" name="tmpBoucleRexel">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Regler le temps en fonction de la rapidité de la connexion internet.&lt;/p&gt;&lt;p&gt;Attention en dessous de 5 secondes le site de Rexel pourrait ne pas répondre à temps&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="minimum">
+               <double>0.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>10.000000000000000</double>
+              </property>
+              <property name="value">
+               <double>5.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="label_11">
+              <property name="text">
+               <string>Ajout des BL automatiquement</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QCheckBox" name="ajoutAutoBL">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Ajout des bons de livraison automatique, l'ajout sera déporté de 24h après la création du bon de commande concerné.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="0">
+             <widget class="QLabel" name="label_12">
+              <property name="text">
+               <string>Envoyer rapport d'erreur automatiquement</string>
+              </property>
+             </widget>
+            </item>
+            <item row="3" column="1">
+             <widget class="QCheckBox" name="rapport_Erreur">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Envoyer automatiquement les rapports lors d'erreur d'éxecution du programme.(Les rapports sont totalement anomyme et aide au débuggage du programme)&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="label_14">
+              <property name="text">
+               <string>Purge automatique de la BDD</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QCheckBox" name="autoPurgeDB">
+              <property name="toolTip">
+               <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Purge la DB de tout les bons de commandes aillant plus de 2 mois.&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+              </property>
+              <property name="text">
+               <string/>
+              </property>
+              <property name="checked">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item row="5" column="0">
              <widget class="QLabel" name="label_20">
               <property name="text">
                <string>Ajout semi automatique</string>
               </property>
              </widget>
             </item>
-            <item row="7" column="1">
+            <item row="5" column="1">
              <widget class="QCheckBox" name="semiAuto">
               <property name="enabled">
                <bool>false</bool>
@@ -690,6 +773,25 @@
               <property name="checked">
                <bool>false</bool>
               </property>
+             </widget>
+            </item>
+            <item row="6" column="0">
+             <widget class="QGroupBox" name="groupBox_4">
+              <property name="title">
+               <string>Restauration de base de données</string>
+              </property>
+              <layout class="QGridLayout" name="gridLayout_7">
+               <item row="0" column="0">
+                <widget class="QListWidget" name="listSavDB"/>
+               </item>
+               <item row="1" column="0">
+                <widget class="QPushButton" name="restaurerDB">
+                 <property name="text">
+                  <string>Restaurer</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
              </widget>
             </item>
            </layout>
@@ -831,7 +933,7 @@
      <x>0</x>
      <y>0</y>
      <width>748</width>
-     <height>20</height>
+     <height>25</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
@@ -891,8 +993,6 @@
   <tabstop>lienEsabora</tabstop>
   <tabstop>eLogin</tabstop>
   <tabstop>eMDP</tabstop>
-  <tabstop>eNUR</tabstop>
-  <tabstop>eMDPR</tabstop>
   <tabstop>gAjoutAuto</tabstop>
   <tabstop>Heure</tabstop>
   <tabstop>bTestEsabora</tabstop>

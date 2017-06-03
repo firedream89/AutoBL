@@ -9,10 +9,12 @@
 #include <QtWidgets>
 #include <QObject>
 #include <QDebug>
-#include <windows.h>
 #include <QMessageBox>
 
 #include "db.h"
+#include "error.h"
+
+#define ESAB QString("Esabora")
 
 class Esabora : public QObject
 {
@@ -20,8 +22,9 @@ class Esabora : public QObject
 private:
     QWidget *m_fen;
 public:
-    Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail);
+    Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail, DB *db, Error *e);
     int GetEtat();
+    bool Start(bool automatic, int &nbBC, int &nbBL);
     ~Esabora();
 
 public slots:
@@ -37,15 +40,16 @@ public slots:
     bool Ouverture_Liste_BC();
     void Abort();
     bool Ajout_Stock(QString numero_Commande);
+    void Stop();
 
 private slots:
-    bool Clavier(QString commande, bool keyUp = 0);
+    bool Clavier(QString commande);
     bool Souris(QString commande);
     bool Traitement_Fichier_Config(const QString file, const QString bL = 0);
     bool Verification_Fenetre(QString fenetre);
-    void EmitErreur(int code,int string,QString info = 0);
     bool Verification_Focus(QString fen,bool focus);
     bool Verification_Message_Box(QString &message);
+    bool Get_List_Matos(QString invoice);
 
 signals:
     void DemandeListeMatos(QString NumeroCommande);
@@ -55,7 +59,7 @@ signals:
     void Message(QString header,QString texte,bool warning);
 
 private:
-    DB m_DB;
+    DB *m_DB;
     int etat;
     QString m_Login;
     QString m_MDP;
@@ -63,6 +67,10 @@ private:
     QString m_Tmp;
     QString m_Lien_Work;
     QStringList liste_Matos;
+    QStringList m_List_Cmd;
+    bool m_Arret;
+    Error *err;
+    QProcess p;
 };
 
 #endif // ESABORA_H

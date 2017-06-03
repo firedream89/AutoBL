@@ -27,6 +27,7 @@ private slots:
 
 signals:
     void temps_Restant();
+    void MAJ_BC();
     void ajout_BC();
     void Ouvrir();
     void Arret();
