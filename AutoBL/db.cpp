@@ -27,6 +27,14 @@ DB::DB(Error *err):
     m_Error(err)
 {
     DEBUG << "Initialisation DB";
+
+    QFile f(qApp->applicationDirPath() + "/bddInfo.db");
+    if(f.exists())//si DB inaccessible, lancer la mise à jour de la DB
+    {
+        DEBUG << "Update de la BDD";
+        QDesktopServices::openUrl(QUrl::fromLocalFile(qApp->applicationDirPath() + "/bin/MAJ_BDD.exe"));
+        qApp->exit(0);
+    }
 }
 
 QSqlQuery DB::Requete(QString r)
@@ -115,6 +123,7 @@ void DB::Init()
 
     //Test DB
     req = Requete("SELECT * FROM Options");
+
     if(!req.next())//si DB inaccessible, lancer la mise à jour de la DB
     {
         db.close();
