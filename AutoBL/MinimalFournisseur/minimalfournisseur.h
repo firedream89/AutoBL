@@ -19,10 +19,12 @@ public:
     QStringList Get_Invoice(const QString InvoiceNumber);
     void Set_Var(const QString login,const QString mdp,const QString comp);
     bool Test_Connexion();
+    static QString Get_Inf();
 
 private slots:
     bool Connexion();
     bool Create_List_Invoice();
+    bool Connexion();
 
 signals:
     void Info(const QString i);

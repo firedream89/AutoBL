@@ -230,6 +230,10 @@ QString DB::Encrypt(QString text)
             t = t - 250;
         else if(t < 0)
             t = t + 250;
+        if(t == 34)//si '
+            t = 251;
+        else if(t == 39)//ou "
+            t = 252;
         crypt += QChar(t).toLatin1();
         idk++;
     }
@@ -246,6 +250,10 @@ QString DB::Decrypt(QString text)
         if(idk == k.count())
             idk = 0;
         int t = text.at(i).unicode();
+        if(t == 251)//retour a '
+            t = 34;
+        else if(t == 252)//retour a "
+            t = 39;
         t += k.at(idk).toInt();
         if(t < 0)
             t = t + 250;

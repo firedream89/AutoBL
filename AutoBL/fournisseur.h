@@ -35,6 +35,7 @@ public:
     bool Test_Connexion(const QString& nom);
     void Show_Web();
     QString List_Frn() const;
+    QString Get_Frn_Inf(QString frn) const;
 
 public slots:
     QStringList Get_Invoice_List(const QString &frn,const QString &invoiceNumber);

@@ -12,6 +12,7 @@
 
 #define DEBUG qDebug()
 #define REXEL "Rexel.fr"
+#define INF "Nom d'utilisateur|Email|Mot de passe"
 
 class RexelFr: public QObject
 {
@@ -23,6 +24,7 @@ public:
     QStringList Get_Invoice(const QString InvoiceNumber);
     void Set_Var(const QString login,const QString mdp,const QString comp);
     bool Test_Connexion();
+    static QString Get_Info();
 
 private slots:
     bool Connexion();

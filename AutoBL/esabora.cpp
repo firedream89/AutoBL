@@ -177,7 +177,7 @@ bool Esabora::Ajout_BL(QString Numero_Commande_Esab, QString Numero_BL)
     return true;
 }
 ///Erreur 5xx
-bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
+bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//Ajouter {Boucle_Constructeur}
 {
     qDebug() << "Esabora::Traitement_Fichier_Config()";
     etat = 0;
@@ -307,6 +307,22 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                 Clavier("Tab");
                 Clavier("Tab");
                 cpt += 6;
+            }
+        }
+        else if(temp == "{BOUCLE_CONSTRUCTEUR}")
+        {
+            for(int i=0;i<liste_Matos.count();i+6)
+            {
+                Clavier("-" + liste_Matos.at(i+1).toUpper());
+                Clavier("Ctrl+C");
+                tmp.start(1000);
+                loop.exec();
+                QClipboard *pp = QApplication::clipboard();
+                if(pp->text().isEmpty())
+                    DEBUG << "Constructeur " + liste_Matos.at(i+1) + " non trouvé sur Esabora";
+                else
+                    if(pp->text().split("(").count() == 2)
+                        liste_Matos.operator [](i+1) = pp->text().split("(").at(1) + liste_Matos.at(i+1);
             }
         }
         else if(temp[0] == '=')

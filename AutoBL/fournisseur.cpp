@@ -1,5 +1,13 @@
 #include "fournisseur.h"
-//Error Code 5xx
+
+////////////
+///FRN CLASS UPDATE
+/// -Start
+/// -Get_Invoice_List
+/// -Test_Connexion
+/// -Get_Frn_Inf
+///////////
+
 Fournisseur::Fournisseur(QString lien_Travail, DB *db, Error *err):
     m_Lien_Travail(lien_Travail),m_DB(db),m_Error(err)
 {
@@ -14,6 +22,7 @@ Fournisseur::~Fournisseur()
 {
     delete m_fct;
 }
+
 bool Fournisseur::Add(const QString nom,const QString login,const QString mdp,const QString complement)
 {
     ///Ajout d'un fournisseur
@@ -48,13 +57,13 @@ bool Fournisseur::Start()
 
             emit En_Cours_Fournisseur(nom);
 
-            if(nom == "Rexel.fr")
+            if(nom == FRN1)
             {
                 RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
 
                 frn->Start();
             }
-            else if(nom == "Socolec.fr")
+            else if(nom == FRN2)
             {
                 SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
                 frn->Start();
@@ -82,12 +91,12 @@ QStringList Fournisseur::Get_Invoice_List(const QString& frn,const QString& invo
     QString mdp = f.at(1);
     QString comp = f.at(2);
 
-    if(frn == "Rexel.fr")
+    if(frn == FRN1)
     {
         RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
         return frn->Get_Invoice(invoiceNumber);
     }
-    else if(frn == "Socolec.fr")
+    else if(frn == FRN2)
     {
         SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
         return frn->Get_Invoice(invoiceNumber);
@@ -128,7 +137,7 @@ bool Fournisseur::Test_Connexion(const QString &nom)
         m_Error->Err(findFrn,nom,FRN);
         return false;
     }
-    if(nom == "Rexel.fr")
+    if(nom == FRN1)
     {
         RexelFr *frn = new RexelFr(m_fct,f.at(0),f.at(1),m_Lien_Travail,f.at(2),m_DB);
         if(!frn->Test_Connexion())
@@ -144,7 +153,7 @@ bool Fournisseur::Test_Connexion(const QString &nom)
             return true;
         }
     }
-    else if(nom == "Socolec.fr")
+    else if(nom == FRN2)
     {
         SocolecFr * frn = new SocolecFr(m_fct,f.at(0),f.at(1),m_Lien_Travail,f.at(2),m_DB);
         if(!frn->Test_Connexion())
@@ -212,4 +221,14 @@ void Fournisseur::Show_Web()
 QString Fournisseur::List_Frn() const
 {
     return QString(FRNLIST);
+}
+
+QString Fournisseur::Get_Frn_Inf(QString frn) const
+{
+    if(frn == FRN1)
+        return RexelFr::Get_Info();
+    else if(frn == FRN2)
+        return SocolecFr::Get_Inf();
+    else
+        m_Error->Err(variable,"Get_Frn_Inf",FRN);
 }

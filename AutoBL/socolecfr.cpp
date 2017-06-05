@@ -35,6 +35,7 @@ bool SocolecFr::Start()
 bool SocolecFr::Connexion()
 {
     //Chargement de la page
+    m_Fct->Info("Connexion...");
     if(!m_Fct->WebLoad("https://socolec.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-SOCOLEC-Site/fr_FR/-/EUR/ViewLogin-Start"))
     {
         m_Fct->FrnError(load,FRN,"Connexion");
@@ -42,10 +43,10 @@ bool SocolecFr::Connexion()
     }
 
     //Injection des scripts de connexion
-    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm_Login') [0].value = '" + m_Login + "';");
-    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm_Password') [0].value = '" + m_MDP + "';");
-    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm_RegistrationDomain') [0].value = '" + m_UserName + "';");
-    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm') [0].submit();");
+    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm_Login')[0].value = '" + m_Login + "';");
+    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm_Password')[0].value = '" + m_MDP + "';");
+    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm_RegistrationDomain')[0].value = '" + m_UserName + "';");
+    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm')[0].submit();");
     m_Fct->Loop(5000);
 
     //Contrôle de connexion
@@ -168,4 +169,9 @@ bool SocolecFr::Test_Connexion()
 {
     DEBUG << "TEST CONNEXION " << FRN;
     return Connexion();
+}
+
+QString SocolecFr::Get_Inf()
+{
+    return QString(INF);
 }

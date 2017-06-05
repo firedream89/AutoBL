@@ -535,3 +535,8 @@ bool RexelFr::Test_Connexion()
     else
         return true;
 }
+
+QString RexelFr::Get_Info()
+{
+    return QString(INF);
+}

@@ -13,6 +13,11 @@ bool MinimalFournisseur::Start()
     //Premier démarrage
 }
 
+bool MinimalFournisseur::Connexion()
+{
+
+}
+
 QStringList MinimalFournisseur::Get_Invoice(const QString InvoiceNumber)
 {
 
@@ -28,5 +33,11 @@ void MinimalFournisseur::Set_Var(const QString login, const QString mdp, const Q
 bool MinimalFournisseur::Test_Connexion()
 {
     DEBUG << "TEST CONNEXION " << FRN;
+    Connexion();
     return ;
+}
+
+QString MinimalFournisseur::Get_Inf()
+{
+    return QString(INF);
 }

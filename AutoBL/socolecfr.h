@@ -8,6 +8,7 @@
 
 #define DEBUG qDebug()
 #define FRN "Socolec.fr"
+#define INF "Numéro de compte|Email|Mot de passe"
 
 class SocolecFr: public QObject
 {
@@ -19,6 +20,7 @@ public:
     QStringList Get_Invoice(const QString InvoiceNumber);
     void Set_Var(const QString login,const QString mdp,const QString comp);
     bool Test_Connexion();
+    static QString Get_Inf();
 
 private slots:
     bool Connexion();

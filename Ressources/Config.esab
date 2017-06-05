@@ -15,6 +15,24 @@ Pause 2
 =Liste des commandes Focus
 [/Liste_BC]
 
+[Cat]
+Alt+P+C non
+Pause 2
+=Recherche Produits
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+{BOUCLE_CONSTRUCTEUR}
+Echap
+[/Cat]
+
 [New_BC]
 Alt+A oui
 Pause 2

@@ -70,11 +70,25 @@ Principal::Principal(QWidget *parent) :
     Login_False();
 
     //Premier démarrage
+    QFileInfo f(qApp->applicationDirPath() + "/Config.esab");
+    QFileInfo f2(m_Lien_Work + "/Config/Config.esab");
     if(!QFile::exists(m_Lien_Work + "/Config/Config.esab"))
     {
         QFile::copy("Config.esab",m_Lien_Work + "/Config/Config.esab");
         qDebug() << "Premier démarrage initialisé";
         premierDemarrage = true;
+    }
+    else if(f.lastModified() != f2.lastModified())//Vérification nouvelle version Config.esab
+    {
+        DEBUG << "Copie du Config.esab en cours...";
+        bool err(false);
+        QFile file(m_Lien_Work + "/Config/Config.esab");
+        err = file.remove();
+        err = QFile::copy(qApp->applicationDirPath() + "/Config.esab",m_Lien_Work + "/Config/Config.esab");
+        if(err)
+            DEBUG << "Copie de Config.esab échoué";
+        else
+            DEBUG << "Copie de Config.esab réussis";
     }
 
     DEBUG << "Premier démarrage" << premierDemarrage;
@@ -1559,9 +1573,9 @@ void Principal::Save_Param_Fournisseur()
     {
         req = m_DB->Requete("SELECT MAX(ID) FROM Options");
         req.next();
-        m_DB->Requete("INSERT INTO Options VALUES('" + req.value(0).toString() + "','" + ui->lFrn->text() + "','" + m_DB->Encrypt(r) + "')");
+        m_DB->Requete("INSERT INTO Options VALUES('" + QString::number(req.value(0).toInt()+1) + "','" + ui->lFrn->text() + "','" + m_DB->Encrypt(r) + "')");
     }
-    if(m_Frn->Update_Var(ui->lFrn->text(),ui->eFrnUserName->text(),ui->eFrnMail->text(),ui->eFrnMDP->text()))
+    if(m_Frn->Update_Var(ui->lFrn->text(),ui->eFrnMail->text(),ui->eFrnMDP->text(),ui->eFrnUserName->text()))
         Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour",true);
     else
     {
@@ -1592,19 +1606,15 @@ void Principal::Load_Param_Fournisseur()
     ui->eFrnMDP->clear();
     if(ui->listFrnAjouter->selectedItems().isEmpty())
         return;
-    QStringList l;
+    QStringList l = m_Frn->Get_Frn_Inf(ui->listFrnAjouter->currentItem()->text()).split("|");
 
-    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Info_" + ui->listFrnAjouter->currentItem()->text() + "'");
-    if(req.next())
+    if(l.count() == 3)
     {
-        l = m_DB->Decrypt(req.value(0).toString()).split("|");
-        if(l.count() == 3)
-        {
-            ui->lFrnUserName->setText(l.at(0));
-            ui->lFrnMail->setText(l.at(1));
-            ui->lFrnMDP->setText(l.at(2));
-        }
+        ui->lFrnUserName->setText(l.at(0));
+        ui->lFrnMail->setText(l.at(1));
+        ui->lFrnMDP->setText(l.at(2));
     }
+
     if(ui->lFrnUserName->text() == "")
         ui->lFrnUserName->setText("Nom d'utilisateur");
     if(ui->lFrnMail->text() == "")
@@ -1613,7 +1623,7 @@ void Principal::Load_Param_Fournisseur()
         ui->lFrnMDP->setText("Mot de passe");
 
 
-    req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
     ui->lFrn->setText(ui->listFrnAjouter->currentItem()->text());
     if(req.next())
     {
