@@ -17,7 +17,7 @@
 #define DEBUG qDebug()
 #define FCT "WEB"
 
-class FctFournisseur: public QObject,public Error
+class FctFournisseur: public QObject
 {
     Q_OBJECT
 

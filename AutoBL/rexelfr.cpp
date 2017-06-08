@@ -14,17 +14,9 @@ bool RexelFr::Start()
         QSqlQuery req;
         if(!Create_List_Invoice())
             m_Fct->FrnError(bad_Login,REXEL);
-        //Véfification des numéro de chantier
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout=''");
-        while(req.next())
-        {
-            if(req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
-                m_DB->Requete("UPDATE En_Cours SET Ajout='Telecharger' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-            else
-                m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-        }
+
         //Vérification état BC
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Etat!='Livrée En Totalité' AND Etat!='Livrée Et Facturée'");
+        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Etat!='Livrée En Totalité' AND Etat!='Livrée Et Facturée' AND Fournisseur='" + QString(REXEL) + "'");
         while(req.next())
         {
             m_Fct->Info(tr("Mise à jour état commande %1").arg(req.value("Numero_Commande").toString()));
@@ -32,7 +24,7 @@ bool RexelFr::Start()
                 m_Fct->FrnError(fail_check,REXEL,req.value("Numero_Commande").toString());
         }
         //Récupération des BL
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Etat='Livrée En Totalité' OR Etat='Livrée Et Facturée'");
+        req = m_DB->Requete("SELECT * FROM En_Cours WHERE (Etat='Livrée En Totalité' OR Etat='Livrée Et Facturée') AND Fournisseur='" + QString(REXEL) + "'");
         qDebug() << "BOUCLE Récupération des BL";
         while(req.next())
             if(req.value("Numero_Livraison").toString() == "" || req.value("Numero_Livraison").toString() == " ")
@@ -232,7 +224,7 @@ bool RexelFr::Create_List_Invoice()
                 }
                 DEBUG << etat << numeroCommande << nomChantier;
 
-                req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "'");
+                req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "' AND Fournisseur='" + REXEL + "'");
                 req.next();
                 if(req.value("Numero_Commande").isNull() && !error)
                 {
@@ -252,7 +244,7 @@ bool RexelFr::Create_List_Invoice()
                     }
                     else if(premierDemarrage)
                     {
-                        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE ID='1'");
+                        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE ID='" + QString::number(id) + "'");
                         fin = true;
                     }
                 }
@@ -360,7 +352,7 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
         m_Fct->FrnError(too_many,REXEL,QString(bl.split(" ").count()));
         return false;
     }
-    m_DB->Requete("UPDATE En_Cours SET Numero_Livraison='" + bl + "' WHERE Numero_Commande='" + InvoiceNumber + "'");
+    m_DB->Requete("UPDATE En_Cours SET Numero_Livraison='" + bl + "' WHERE Numero_Commande='" + InvoiceNumber + "' AND Fournisseur='" + REXEL + "'");
     DEBUG << "Recuperation_BL - DB mise à jour";
     DEBUG << "Fin Rexel::Recuperation_BL()";
     return true;
@@ -388,12 +380,12 @@ bool RexelFr::Check_State(const QString InvoiceNumber)
     if(m_Fct->FindTexte("Livrée En Totalité") || m_Fct->FindTexte("Livrée Et Facturée"))
     {
         DEBUG << "VerificationEtatBC - Mise à jour de l'état du BC " + InvoiceNumber + "=" + "Livrée en totalité";
-        m_DB->Requete("UPDATE En_Cours SET Etat='Livrée En Totalité' WHERE Numero_Commande='" + InvoiceNumber + "'");
+        m_DB->Requete("UPDATE En_Cours SET Etat='Livrée En Totalité' WHERE Numero_Commande='" + InvoiceNumber + "' AND Fournisseur='" + REXEL + "'");
     }
     else if(m_Fct->FindTexte("Partiellement Livrée"))
     {
         DEBUG << "VerificationEtatBC - Mise à jour de l'état du BC " + InvoiceNumber + "=" + "Partiellement livrée";
-        m_DB->Requete("UPDATE En_Cours SET Etat='Partiellement Livrée' WHERE Numero_Commande='" + InvoiceNumber + "'");
+        m_DB->Requete("UPDATE En_Cours SET Etat='Partiellement Livrée' WHERE Numero_Commande='" + InvoiceNumber + "' AND Fournisseur='" + REXEL + "'");
     }
     m_Fct->Info("");
     DEBUG << "Fin Rexel::VerificationEtatBC()";

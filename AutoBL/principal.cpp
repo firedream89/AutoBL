@@ -78,7 +78,7 @@ Principal::Principal(QWidget *parent) :
         qDebug() << "Premier démarrage initialisé";
         premierDemarrage = true;
     }
-    else if(f.lastModified() != f2.lastModified())//Vérification nouvelle version Config.esab
+    else if(f.lastModified() != f2.lastModified() && f.exists())//Vérification nouvelle version Config.esab
     {
         DEBUG << "Copie du Config.esab en cours...";
         bool err(false);
@@ -91,7 +91,6 @@ Principal::Principal(QWidget *parent) :
             DEBUG << "Copie de Config.esab réussis";
     }
 
-    DEBUG << "Premier démarrage" << premierDemarrage;
     //Chargement des paramètres
     Init_Config();
 
@@ -583,6 +582,13 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
     setColor.setNamedColor("#9bffff");
     while(req.next())
     {
+
+        //Contrôle des nouveau bons
+        if(req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
+            m_DB->Requete("UPDATE En_Cours SET Ajout='Telecharger' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'AND Fournisseur='" + req.value("Fournisseur").toString() + "'");
+        else
+            m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "' AND Fournisseur='" + req.value("Fournisseur").toString() + "'");
+
         bool t(false);
         if(req.value("Ajout").toString() != "Ok")
             t = true;

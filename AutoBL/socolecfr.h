@@ -25,6 +25,8 @@ public:
 private slots:
     bool Connexion();
     bool Create_List_Invoice(bool firstInit = 0);
+    bool Update_State(QString invoice);
+    bool Update_Delivery(QString invoice);
 
 signals:
     void Info(const QString i);

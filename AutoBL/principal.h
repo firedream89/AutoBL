@@ -17,7 +17,11 @@
 #include "tache.h"
 #include "esabora.h"
 #include "fournisseur.h"
+////////////
+///ADD #define PKEY ""
+///ADD #define MAJLINK ""
 #include <../../Cle_AutoBL.cpp>
+///////////
 #include "error.h"
 
 #define DEBUG qDebug()

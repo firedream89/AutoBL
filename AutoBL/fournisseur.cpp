@@ -101,6 +101,7 @@ QStringList Fournisseur::Get_Invoice_List(const QString& frn,const QString& invo
         SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
         return frn->Get_Invoice(invoiceNumber);
     }
+    return QStringList();
 }
 
 bool Fournisseur::Update_Var(const QString& frn,const QString& login,const QString& mdp,const QString& complement)

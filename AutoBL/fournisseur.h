@@ -20,6 +20,7 @@
 #define FRN "Fournisseur"
 #define FRNLIST "Rexel.fr|Socolec.fr"
 
+
 class Fournisseur : public QObject
 {
     Q_OBJECT

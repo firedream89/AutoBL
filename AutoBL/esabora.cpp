@@ -30,6 +30,54 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
         emit Info(tr("Ajout du bon de commande %0").arg(req.value("Numero_Commande").toString()));
         if(Get_List_Matos(req.value("Numero_Commande").toString()))
         {
+            if(!liste_Matos.isEmpty())
+                DEBUG << "Liste matériels Vide !";
+            //Vérif Fabriquant
+            QStringList list;
+            QFile file(m_Lien_Work + "/Config/Fab.esab");
+            if(!file.open(QIODevice::ReadWrite))
+                err->Err(open_File,ESAB,"Fab.esab");
+            QTextStream flux(&file);
+
+            for(int i=0;i<liste_Matos.count();i++)
+            {
+                list.append(liste_Matos.at(i));
+                list.append(liste_Matos.at(i+1));
+                list.append(liste_Matos.at(i+2));
+                if(liste_Matos.at(i+3).isEmpty() && !liste_Matos.at(i+2).isEmpty())//si Fabricant connu mais pas Fab
+                {
+                    file.seek(0);
+                    while(!flux.atEnd())//vérif si Fab déjà connu
+                    {
+                        QString var = flux.readLine();
+                        if(var.split(";").at(0) == liste_Matos.at(i+2))
+                        {
+                            list.append(var.split(";").at(1));
+                            file.seek(0);
+                            break;
+                        }
+                    }
+                    if(file.atEnd())//Sinon rechercher Fab sur esabora
+                    {
+                        QString var = Find_Fabricant(liste_Matos.at(i+2));
+                        if(!var.isEmpty())
+                        {
+                            list.append(var);
+                            file.seek(SEEK_END);
+                            flux << liste_Matos.at(i+2) + ";" + var + "\r\n";
+                            file.seek(0);
+                        }
+                    }
+                }
+                else
+                    list.append(liste_Matos.at(i+3));
+                list.append(liste_Matos.at(i+4));
+                list.append(liste_Matos.at(i+5));
+                list.append(liste_Matos.at(i+6));
+                i += 6;
+            }
+            liste_Matos = list;
+
             if(req.value("Nom_Chantier").toString() == "0")//Ajout BC au Stock
             {
                 if(!Ajout_Stock(req.value("Numero_Commande").toString()))
@@ -138,6 +186,23 @@ bool Esabora::Ouverture_Liste_BC()
     qDebug() << "Esabora::Ouverture_Liste_BC()";
     if(Traitement_Fichier_Config("Liste_BC")) return true;
     return false;
+}
+
+QString Esabora::Find_Fabricant(QString Fab)
+{
+    QClipboard *pp = QApplication::clipboard();
+    pp->clear();
+    if(!Verification_Fenetre("Recherche Produits"))
+        if(!Traitement_Fichier_Config("Open_Cat"))
+        {
+            err->Err(Traitement,ESAB,"Find_Fabricant");
+            return QString();
+        }
+    Traitement_Fichier_Config("Cat",Fab);
+    if(pp->text().isEmpty())
+        DEBUG << "Constructeur " + Fab + " non trouvé sur Esabora";
+    return pp->text();
+
 }
 
 bool Esabora::Ajout_BC(QString Numero_Commande)
@@ -311,19 +376,11 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
         }
         else if(temp == "{BOUCLE_CONSTRUCTEUR}")
         {
-            for(int i=0;i<liste_Matos.count();i+6)
-            {
-                Clavier("-" + liste_Matos.at(i+1).toUpper());
-                Clavier("Ctrl+C");
-                tmp.start(1000);
-                loop.exec();
-                QClipboard *pp = QApplication::clipboard();
-                if(pp->text().isEmpty())
-                    DEBUG << "Constructeur " + liste_Matos.at(i+1) + " non trouvé sur Esabora";
-                else
-                    if(pp->text().split("(").count() == 2)
-                        liste_Matos.operator [](i+1) = pp->text().split("(").at(1) + liste_Matos.at(i+1);
-            }
+            Clavier("-" + bL.toUpper());
+            Clavier("Ctrl+C");
+            tmp.start(1000);
+            loop.exec();
+            QClipboard *pp = QApplication::clipboard();
         }
         else if(temp[0] == '=')
         {
@@ -416,6 +473,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
         }
         else err->Err(Traitement,temp,ESAB);
     }
+    liste_Matos.clear();
     qDebug() << "Fin Esabora::Traitement_Fichier_Config()";
     return true;
 }
