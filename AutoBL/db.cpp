@@ -115,11 +115,12 @@ void DB::Init()
             m_Error->Err(updateDB,"","DB");
 
     Requete("UPDATE En_Cours SET Fournisseur='Rexel.fr' WHERE Fournisseur=''");
-    Requete("UPDATE En_Cours SET Etat='En préparation' WHERE Etat='En cours' AND Fournisseur='Rexel.fr'");
-    Requete("UPDATE En_Cours SET Etat='Livrée en totalité' WHERE Etat='Fermée' AND Fournisseur='Rexel.fr'");
-    Requete("UPDATE En_COurs SET Etat='Livrée Et Facturée' WHERE Etat='Livrée et facturée'");
-    Requete("UPDATE En_Cours SET Etat='Livrée En Totalité' WHERE Etat='Livrée en totalité'");
-    Requete("UPDATE En_Cours SET Etat='Partiellement Livrée' WHERE Etat='Partiellement livrée'");
+    Requete("UPDATE En_Cours SET Etat='0' WHERE Etat='En préparation' AND Fournisseur='Rexel.fr'");
+    Requete("UPDATE En_Cours SET Etat='2' WHERE Etat='Livrée en totalité' AND Fournisseur='Rexel.fr'");
+    Requete("UPDATE En_Cours SET Etat='2' WHERE Etat='Livrée Et Facturée'");
+    Requete("UPDATE En_Cours SET Etat='2' WHERE Etat='Livrée En Totalité'");
+    Requete("UPDATE En_Cours SET Etat='1' WHERE Etat='Partiellement Livrée'");
+    Requete("UPDATE En_Cours SET Etat='2' WHERE Etat='Facturée'");
 
     //Test DB
     req = Requete("SELECT * FROM Options");
@@ -132,6 +133,14 @@ void DB::Init()
     }
     else
         emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());
+
+    //Update variable Ajout
+    Requete("UPDATE En_Cours SET Ajout='0' WHERE Ajout='Telecharger'");
+    Requete("UPDATE En_Cours SET Ajout='1' WHERE Ajout='Erreur'");
+    Requete("UPDATE En_Cours SET Ajout='2' WHERE Ajout='Modifier'");
+    Requete("UPDATE En_COurs SET Ajout='3' WHERE Ajout='Bon ajouté'");
+    Requete("UPDATE En_Cours SET AJout='4' WHERE Ajout='Ok'");
+
 
     DEBUG << "DB initialisée";
 }
@@ -203,7 +212,7 @@ void DB::Purge()
     QDate t;
     t = t.currentDate();
     t = t.addMonths(-2);
-    Requete("DELETE FROM En_Cours WHERE Date < '" + t.toString("yyyy-MM-dd") + "' AND Ajout='Ok'");
+    Requete("DELETE FROM En_Cours WHERE Date < '" + t.toString("yyyy-MM-dd") + "' AND Ajout='"+QString::number(endAdd)+"'");
 }
 
 QStringList DB::Find_Fournisseur_From_Invoice(QString invoice)
@@ -263,4 +272,26 @@ QString DB::Decrypt(QString text)
         idk++;
     }
     return decrypt;
+}
+
+QString DB::enum_State(int state)
+{
+    QString var;
+
+    if(state == download)
+        var = "Télécharger";
+    else if(state == error)
+        var = "Erreur";
+    else if(state == updateRef)
+        var = "Modifier";
+    else if(state == add)
+        var = "Bon ajouté";
+    else if(state == endAdd)
+        var = "Ok";
+    else
+    {
+        m_Error->Err(variable,"enum_State","DB");
+        return QString();
+    }
+    return var;
 }

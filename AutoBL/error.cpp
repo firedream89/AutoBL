@@ -9,10 +9,11 @@ Error::Error(QString work_Link)
 {
     qDebug() << "Init classe Error";
     m_Errors.setFileName(work_Link + "/Logs/errors.txt");
-    m_Errors.open(QIODevice::WriteOnly | QIODevice::Append);
+    if(!m_Errors.open(QIODevice::WriteOnly | QIODevice::Append))
+        Err(open_File,"Log error","Général");
 
     //Chargement des classes de l'application et fonctions nécéssaires
-    m_Errors.write("--------------------------Run AutoBL-----------------------------");
+    Write_Error("--------------------------Run AutoBL-----------------------------");
 }  
 
 QString Error::Err(int code, QString e, QString fromClass)
@@ -114,5 +115,6 @@ QString Error::Err(int code, QString e, QString fromClass)
 
 void Error::Write_Error(QString e)
 {
-    m_Errors.write(e.toLatin1() + "/r/n");
+    QTextStream flux(&m_Errors);
+    flux << e << "\r\n";
 }

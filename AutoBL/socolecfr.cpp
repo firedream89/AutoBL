@@ -19,12 +19,13 @@ bool SocolecFr::Start()
 
     if(Connexion())
     {
+        m_Fct->Info("Chargement des commandes...");
         if(!Create_List_Invoice(firstInit))
             error = true;
 
         //Update Etat
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "' AND (Etat='En Attente' OR Etat='En traitement' OR "
-                                                                                          "Etat='En préparation' OR Etat='Partiellement livrée')");
+        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "' AND (Etat='" + QString::number(open) + "' OR "
+                                                                                                 "Etat='" + QString::number(partial) + "')");
         while(req.next())
             Update_State(req.value("Numero_Commande").toString());
 
@@ -107,32 +108,49 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
             }
             text = flux.readLine();
             if(text.split(">").count() > 1)
-                date = text.split(">").at(1).split("<").at(0).split("&").at(0);
+            {
+                text = text.split(">").at(1).split("<").at(0).split("&").at(0);
+                date = text.split("/").at(2) + "-" + text.split("/").at(1) + "-" + text.split("/").at(0);
+            }
             else
             {
                 m_Fct->FrnError(variable,FRN,"date");
                 return false;
             }
-            flux.readLine();
-            flux.readLine();
-            flux.readLine();
-            flux.readLine();
+
             flux.readLine();
             flux.readLine();
             flux.readLine();
             flux.readLine();
             flux.readLine();
             text = flux.readLine();
-            text.replace(" ","");
-            if(text.contains("0123456789",Qt::CaseInsensitive))
-                invoice_Number = text;
+            if(text.split(">").count() > 3)//Ref chantier
+                ref = text.split(">").at(2).split("<").at(0);
+            else
+            {
+                m_Fct->FrnError(variable,FRN,"Référence chantier");
+                return false;
+            }
+            text = flux.readLine();
+            if(text.split(">").count() > 3)//Nom chantier
+                name = text.split(">").at(2).split("<").at(0);
+            else
+                DEBUG << "Pas de nom de chantier";
+            flux.readLine();
+            flux.readLine();
+            text = flux.readLine();
+            text.replace("\t","");
+            DEBUG << "Ajout commande " << text;
+            invoice_Number = text;
             flux.readLine();
             flux.readLine();
             text = flux.readLine();
             if(text.split(">").count() > 1)
             {
+                DEBUG << text;
                 text = text.split(">").at(1);
-                text.replace("&eacute;","é");
+                text.replace("Ã©","é");
+                DEBUG << text;
                 if(text == "En attente" || text == "En traitement" || text == "En préparation" || text == "Livrée" || text == "Partiellement livrée" ||
                         text == "Partiellement facturée" || text == "Facturée" || text == "Terminée")
                     etat = text;
@@ -153,12 +171,13 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
             {
                 int ID(0);
                 QSqlQuery req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
+                req.next();
                 ID = req.value(0).toInt();
                 ID++;
                 m_DB->Requete("INSERT INTO En_Cours VALUES('" + QString::number(ID) + "','" + date + "','" + ref + "','" + invoice_Number + "','','" + link + "','" + etat + "','','" + name + "','0','','" + FRN + "')");
                 if(firstInit)
                 {
-                    m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE ID='" + QString::number(ID) + "'");
+                    m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE ID='" + QString::number(ID) + "'");
                     return true;
                 }
             }
@@ -233,27 +252,29 @@ bool SocolecFr::Update_State(QString invoice)
                 m_Fct->FrnError(fail_check,FRN,"Page non chargée");
             else
             {
-                QString state;
+                int state;
 
                 if(m_Fct->FindTexte("En attente"))
-                    state = "En attente";
+                    state = open;
                 else if(m_Fct->FindTexte("En traitement"))
-                    state = "En traitement";
+                    state = open;
                 else if(m_Fct->FindTexte("En préparation"))
-                    state = "En préparation";
+                    state = open;
                 else if(m_Fct->FindTexte("Livrée"))
-                    state = "Livrée";
+                    state = Close;
                 else if(m_Fct->FindTexte("Partiellement livrée"))
-                    state = "Partiellement livrée";
+                    state = partial;
                 else if(m_Fct->FindTexte("Partiellement facturée"))
-                    state = "Partiellement facturée";
+                    state = partial;
                 else if(m_Fct->FindTexte("Facturée"))
-                    state = "Facturée";
+                    state = Close;
                 else if(m_Fct->FindTexte("Terminée"))
-                    state = "Terminée";
+                    state = Close;
+                else if(m_Fct->FindTexte("Annulée"))
+                    m_DB->Requete("DELETE FROM En_Cours WHERE Numero_Commande='" + invoice + "' AND Fournisseur='" + FRN + "'");
 
-                if(!state.isEmpty())
-                    m_DB->Requete("UPDATE En_Cours SET Etat='" + state + "' WHERE Numero_Commande='" + invoice + "' AND Fournisseur='" + FRN + "'");
+                if(state != 0)
+                    m_DB->Requete("UPDATE En_Cours SET Etat='" + QString::number(state) + "' WHERE Numero_Commande='" + invoice + "' AND Fournisseur='" + FRN + "'");
                 return true;
             }
         }

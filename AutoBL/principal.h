@@ -54,7 +54,7 @@ public slots:
     void About();
     void Test_Rexel();
     void Afficher_Message_Box(QString header, QString texte, bool warning = 0);
-    void Afficher_Fichiers_Excel(int l = 0, int c = 0, int tri = 10);
+    void Afficher_tNomFichier(int l = 0, int c = 0, int tri = 10);
     void Afficher_Dossier_Travail();
     void Purge_Bl();
     void Dble_Clique_tNomFichier(int l, int c);

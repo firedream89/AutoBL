@@ -84,7 +84,7 @@
           </column>
           <column>
            <property name="text">
-            <string>Etat Rexel</string>
+            <string>Etat</string>
            </property>
            <property name="toolTip">
             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Etat de la commande Rexel :&lt;/p&gt;&lt;p&gt;-En cours : Commande incomplète&lt;/p&gt;&lt;p&gt;-Fermée : Commande livrée&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>

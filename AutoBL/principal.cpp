@@ -42,13 +42,13 @@ Principal::Principal(QWidget *parent) :
 
     //Ouverture des fichiers logs et errors
     m_Logs.setFileName(m_Lien_Work + "/Logs/logs.txt");
-    m_Errors.setFileName(m_Lien_Work + "/Logs/errors.txt");
+    //m_Errors.setFileName(m_Lien_Work + "/Logs/errors.txt");
     qDebug() << "Ouverture Logs " << m_Logs.open(QIODevice::WriteOnly | QIODevice::Append);
-    m_Errors.open(QIODevice::WriteOnly | QIODevice::Append);
+    //m_Errors.open(QIODevice::WriteOnly | QIODevice::Append);
 
     //Chargement des classes de l'application et fonctions nécéssaires
     Affichage_Info("-----------------------------AutoBL " + version + "------------------------------------");
-    Affichage_Erreurs("-----------------------------AutoBL " + version + "------------------------------------");
+    //Affichage_Erreurs("-----------------------------AutoBL " + version + "------------------------------------");
     m_Erreurs = 0;
     ui->e_Erreurs->setText("");
     ui->e_Erreur2->setText(QString::number(m_Erreurs));
@@ -64,7 +64,7 @@ Principal::Principal(QWidget *parent) :
     MAJ();
 
     m_Tri = 0;
-    Afficher_Fichiers_Excel();
+    Afficher_tNomFichier();
     mdp = new QLineEdit;
     mdp->setEchoMode(QLineEdit::Password);
     Login_False();
@@ -355,7 +355,7 @@ void Principal::Sauvegarde_Parametres()
                 ui->rapport_Erreur->setChecked(true);
         premierDemarrage = false;
         Sauvegarde_Parametres();
-        Afficher_Fichiers_Excel();
+        Afficher_tNomFichier();
     }
 
     Affichage_Info("Sauvegarde des paramètres terminés",true);
@@ -426,14 +426,14 @@ void Principal::Demarrage_Auto_BC(bool Demarrage_Timer)
     }
     else if(!Demarrage_Timer)
     {
-        Affichage_Info("DEBUG | Demarrage Auto | Boucle");
+        DEBUG << "DEBUG | Demarrage Auto | Boucle";
         //boucle de 1mn pour attente avant redemarrage
         QTimer t;
         QEventLoop l;
         connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
         t.start(60000);
         l.exec();
-        Affichage_Info("DEBUG | Demarrage Auto | Fin Boucle");
+        DEBUG << "DEBUG | Demarrage Auto | Fin Boucle";
         Demarrage_Auto_BC(true);
     }
 }
@@ -552,8 +552,10 @@ void Principal::Affichage_Temps_Restant()
         ui->tabWidget->setTabText(1,tr("Information"));
 }
 
-void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
+void Principal::Afficher_tNomFichier(int l,int c,int tri)
 {
+    DEBUG << "Traitement affichage tableau";
+
     ui->tNomFichier->blockSignals(true);
     ui->tNomFichier->clearContents();
     QFlag flag = ~Qt::ItemIsEditable;
@@ -578,23 +580,14 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
     if(login) ui->tNomFichier->showColumn(8);
     else ui->tNomFichier->hideColumn(8);
 
-    QColor setColor;
-    setColor.setNamedColor("#9bffff");
     while(req.next())
     {
-
         //Contrôle des nouveau bons
-        if(req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
-            m_DB->Requete("UPDATE En_Cours SET Ajout='Telecharger' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'AND Fournisseur='" + req.value("Fournisseur").toString() + "'");
-        else
-            m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "' AND Fournisseur='" + req.value("Fournisseur").toString() + "'");
+        if(req.value("Ajout").toInt() == download && !req.value("Nom_Chantier").toString().at(0).isDigit() && !req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
+            m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'AND Fournisseur='" + req.value("Fournisseur").toString() + "'");
 
-        bool t(false);
-        if(req.value("Ajout").toString() != "Ok")
-            t = true;
-        if(login)
-            t = true;
-        if(t)
+        //Création de la ligne
+        if(req.value("Ajout").toInt() != endAdd || login)
         {
             ui->tNomFichier->insertRow(0);
             QStringList d = req.value("Date").toString().split("-");
@@ -626,39 +619,52 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
                 }
             }
 
-            //Ajout couleur une ligne sur 2
-            ui->tNomFichier->setAlternatingRowColors(true);
-        }
-    }
+            ///Ajout des verrous items + couleur
+            ui->tNomFichier->item(0,0)->setFlags(flag);
+            ui->tNomFichier->item(0,1)->setFlags(flag);
 
-    for(int cpt = 0;cpt < ui->tNomFichier->rowCount();cpt++)
-    {
-        ui->tNomFichier->item(cpt,0)->setFlags(flag);
-        ui->tNomFichier->item(cpt,1)->setFlags(flag);
-        if(ui->tNomFichier->item(cpt,6)->text() == "Livrée En Totalité" || ui->tNomFichier->item(cpt,6)->text() == "Livrée Et Facturée")
-            ui->tNomFichier->item(cpt,6)->setTextColor(QColor(0,255,0));
-        else if(ui->tNomFichier->item(cpt,6)->text() == "Partiellement Livrée")
-            ui->tNomFichier->item(cpt,6)->setTextColor(QColor(200,200,0));
-        else
-            ui->tNomFichier->item(cpt,6)->setTextColor(QColor(255,0,0));
-        if(ui->tNomFichier->item(cpt,1)->text() == "Erreur")
-            ui->tNomFichier->item(cpt,1)->setTextColor(QColor(255,0,0));
-        else if(ui->tNomFichier->item(cpt,1)->text() == "Telecharger" || ui->tNomFichier->item(cpt,1)->text() == "Modifier")
-            ui->tNomFichier->item(cpt,1)->setTextColor(QColor(200,200,0));
-        else
-            ui->tNomFichier->item(cpt,1)->setTextColor(QColor(0,255,0));
-        ui->tNomFichier->item(cpt,1)->setFlags(flag);
-        if(ui->tNomFichier->item(cpt,1)->text() != "Erreur" && ui->tNomFichier->item(cpt,1)->text() != "Modifier" && !login &&
-                ui->tNomFichier->item(cpt,1)->text() != ""  && ui->tNomFichier->item(cpt,1)->text() != "Telecharger")
-            ui->tNomFichier->item(cpt,2)->setFlags(flag);
-        ui->tNomFichier->item(cpt,4)->setFlags(flag);
-        ui->tNomFichier->item(cpt,5)->setFlags(flag);
-        ui->tNomFichier->item(cpt,6)->setFlags(flag);
+            //Couleur des items(Etat)
+            if(ui->tNomFichier->item(0,6)->text().toInt() == Close)
+            {
+                ui->tNomFichier->item(0,6)->setText("Livrée en totalité");
+                ui->tNomFichier->item(0,6)->setTextColor(QColor(0,255,0));
+            }
+            else if(ui->tNomFichier->item(0,6)->text().toInt() == partial)
+            {
+                ui->tNomFichier->item(0,6)->setText("Partiellement livrée");
+                ui->tNomFichier->item(0,6)->setTextColor(QColor(200,200,0));
+            }
+            else
+            {
+                ui->tNomFichier->item(0,6)->setText(tr("En préparation"));
+                ui->tNomFichier->item(0,6)->setTextColor(QColor(255,0,0));
+            }
+
+            //Couleur et verrouillage des items(Ajout)
+            if(ui->tNomFichier->item(0,1)->text().toInt() == error)
+                ui->tNomFichier->item(0,1)->setTextColor(QColor(255,0,0));
+            else if(ui->tNomFichier->item(0,1)->text().toInt() == download || ui->tNomFichier->item(0,1)->text().toInt() == updateRef)
+                ui->tNomFichier->item(0,1)->setTextColor(QColor(200,200,0));
+            else
+                ui->tNomFichier->item(0,1)->setTextColor(QColor(0,255,0));
+            ui->tNomFichier->item(0,1)->setFlags(flag);
+            if(ui->tNomFichier->item(0,1)->text().toInt() != error && ui->tNomFichier->item(0,1)->text().toInt() != updateRef && !login
+                    && ui->tNomFichier->item(0,1)->text().toInt() != download)
+                ui->tNomFichier->item(0,2)->setFlags(flag);
+            ui->tNomFichier->item(0,4)->setFlags(flag);
+            ui->tNomFichier->item(0,5)->setFlags(flag);
+            ui->tNomFichier->item(0,6)->setFlags(flag);
+
+            //Mise à jour colonne 1 int > string
+            ui->tNomFichier->item(0,1)->setText(m_DB->enum_State(ui->tNomFichier->item(0,1)->text().toInt()));
+        }
     }
 
     if(l > 0)//retour à la dernière ligne selectionnée
         ui->tNomFichier->setCurrentCell(l,c);
 
+    //Paramètres tableau
+    ui->tNomFichier->setAlternatingRowColors(true);
     ui->tNomFichier->blockSignals(false);
     ui->tNomFichier->resizeColumnsToContents();
     ui->tNomFichier->resizeRowsToContents();
@@ -668,9 +674,10 @@ void Principal::Afficher_Fichiers_Excel(int l,int c,int tri)
                             ui->tNomFichier->columnWidth(6) + ui->tNomFichier->columnWidth(7) +
                             ui->tNomFichier->columnWidth(8) + ui->tNomFichier->columnWidth(9) +
                             105,ui->tNomFichier->size().height());
-    qDebug() << "Affichage tableau - redimensionnement l=" << ui->tNomFichier->size().width()+75;
 
     this->resize(ui->tNomFichier->size());
+
+    DEBUG << "Affichage tableau terminé";
 }
 
 //Esabora/////////////////////////////
@@ -734,7 +741,7 @@ void Principal::Demarrage()
             Affichage_Erreurs(tr("Des erreurs se sont produite durant la procédure d'ajout de bon"));
 
 
-    Afficher_Fichiers_Excel();
+    Afficher_tNomFichier();
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='20'");
     req.next();
     m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(req.value("Valeur").toInt()+nbBC) + "' WHERE ID='20'");
@@ -760,7 +767,7 @@ void Principal::Demarrer_Frn()
     if(!m_Frn->Start())
         Affichage_Erreurs("Des erreurs se sont produites durant la recherche de bons");
     Update_Fen_Info();
-    Afficher_Fichiers_Excel();
+    Afficher_tNomFichier();
 }
 
 void Principal::Arret()
@@ -907,15 +914,15 @@ void Principal::Test_Esabora()
     return;
     if(m_Esabora->Lancement_API())
     {
-        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
+        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
         while(req.next())
         {
             if(!m_Esabora->Ajout_BC(req.value("Numero_Commande").toString()))
             {
                 Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué").arg(req.value("Numero_Commande").toString()));
-                m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
 
-                if(req.value("Ajout").toString() != "Modifier")
+                if(req.value("Ajout").toInt() != updateRef)
                 {
                     QFile file(m_Lien_Work + "/Pj/" + req.value("Numero_Commande").toString() + ".xlsx");
                     if(QFile::copy(m_Lien_Work + "/Pj/" + file.fileName(),m_Lien_Work + "/Pj/" + file.fileName()))
@@ -924,14 +931,7 @@ void Principal::Test_Esabora()
             }
             else
             {
-                m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-
-                if(req.value("Ajout") != "Modifier")
-                {
-                    QFile file(m_Lien_Work + "/Pj/" + req.value("Numero_Commande").toString() + ".xlsx");
-                    if(QFile::copy(m_Lien_Work + "/Pj/" + file.fileName(),m_Lien_Work + "/Pj/Terminer/" + file.fileName()))
-                        file.remove();
-                }
+                m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
             }
         }
         if(!m_Esabora->Fermeture_API())
@@ -950,7 +950,7 @@ void Principal::Test_BC()
 {
     if(m_Esabora->Lancement_API())
     {
-        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
+        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
         if(req.next())
         {
             m_Tache->Affichage_En_Cours();
@@ -964,19 +964,12 @@ void Principal::Test_BC()
                 if(m_Esabora->GetEtat() == 1)
                 {
                     Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué, BC Vide à supprimer !").arg(req.value("Numero_Commande").toString()));
-                    m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                 }
             }
             else
             {
                 m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-
-                if(req.value("Ajout") != "Modifier")
-                {
-                    QFile file(m_Lien_Work + "/Pj/" + fxlsx);
-                    if(QFile::copy(m_Lien_Work + "/Pj/" + fxlsx,m_Lien_Work + "/Pj/Terminer/" + fxlsx))
-                        file.remove();
-                }
             }
         }
         m_Esabora->Fermeture_API();
@@ -1000,7 +993,7 @@ void Principal::Test_BL()
                     else
                     {
                         Affichage_Info("Principal | Ajout BL N°" + ui->tNomFichier->item(cpt,3)->text() + " Réussi");
-                        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,4)->text() + "'");
+                        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,4)->text() + "'");
                     }
                 }
                 else
@@ -1026,7 +1019,7 @@ void Principal::Remove_Row_DB()
 {
     int l = ui->tNomFichier->currentRow();
     if(QMessageBox::question(this,"","Voulez-vous vraiment placer ce bon en terminé ?") == QMessageBox::Yes)
-        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
+        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
 }
 
 void Principal::Restaurer_DB()
@@ -1179,11 +1172,11 @@ void Principal::Modif_Cell_TNomFichier(int l,int c)
         if(QMessageBox::question(this,"",tr("Voulez vous vraiment modifier la référence de chantier ?")) == 16384)
         {
             if(ui->tNomFichier->item(l,2)->text().at(0).isDigit() && ui->tNomFichier->item(l,2)->text().at(ui->tNomFichier->item(l,2)->text().count()-1).isDigit())
-                m_DB->Requete("UPDATE En_Cours SET Nom_Chantier='" + ui->tNomFichier->item(l,2)->text() + "', Ajout='Modifier' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
+                m_DB->Requete("UPDATE En_Cours SET Nom_Chantier='" + ui->tNomFichier->item(l,2)->text() + "', Ajout='"+QString::number(updateRef)+"' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
             else
                 QMessageBox::information(this,"",tr("La référence de chantier doit être un nombre !"));
         }
-        Afficher_Fichiers_Excel(l,c);
+        Afficher_tNomFichier(l,c);
     }
     else if(c == 8)//Modif numero esabora
     {
@@ -1191,7 +1184,7 @@ void Principal::Modif_Cell_TNomFichier(int l,int c)
         {
             m_DB->Requete("UPDATE En_Cours SET Numero_BC_Esabora='" + ui->tNomFichier->item(l,8)->text() + "' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
         }
-        Afficher_Fichiers_Excel();
+        Afficher_tNomFichier();
     }
 
 }
@@ -1223,17 +1216,17 @@ void Principal::menu_TNomFichier(QPoint point)
 
 void Principal::Tri_TNomFichier_Date()
 {
-    Afficher_Fichiers_Excel(ui->tNomFichier->currentRow(),ui->tNomFichier->currentColumn(),0);
+    Afficher_tNomFichier(ui->tNomFichier->currentRow(),ui->tNomFichier->currentColumn(),0);
 }
 
 void Principal::Tri_TNomFichier_Nom()
 {
-    Afficher_Fichiers_Excel(ui->tNomFichier->currentRow(),ui->tNomFichier->currentColumn(),1);
+    Afficher_tNomFichier(ui->tNomFichier->currentRow(),ui->tNomFichier->currentColumn(),1);
 }
 
 void Principal::Tri_TNomFichier_Ref()
 {
-    Afficher_Fichiers_Excel(ui->tNomFichier->currentRow(),ui->tNomFichier->currentColumn(),2);
+    Afficher_tNomFichier(ui->tNomFichier->currentRow(),ui->tNomFichier->currentColumn(),2);
 }
 
 //Fenêtre login//////////////////
@@ -1262,7 +1255,7 @@ void Principal::Login_False()
             ui->tabWidget->removeTab(3);
             ui->tabWidget->removeTab(2);
             login = false;
-            Afficher_Fichiers_Excel();
+            Afficher_tNomFichier();
             m_Tache->Login(false);
         }
         else if(ui->tabWidget->isTabEnabled(3))
@@ -1288,7 +1281,7 @@ void Principal::Login_True()
             if(mdp->text().split(" ").at(1) == "dbg")
                 ui->tabWidget->addTab(ui->Debug,"Débuggage");
         login = true;
-        Afficher_Fichiers_Excel();
+        Afficher_tNomFichier();
         m_Tache->Login(true);
     }
     ui->tabWidget->setCurrentIndex(0);

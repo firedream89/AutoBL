@@ -21,7 +21,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
         return false;
 
     ///Ajout des BC sur esabora
-    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
+    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
     Ouverture_Liste_BC();
     qDebug() << "Liste BC ouverte";
     while(req.next() && !m_Arret)
@@ -88,7 +88,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                 }
                 else
                 {
-                    m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    m_DB->Requete("UPDATE En_Cours SET Ajout='" + QString::number(add) + "' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     nbBC++;
                 }
             }      
@@ -103,7 +103,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                     else if(GetEtat() == 1)
                     {
                         err->Err(BC,req.value("Numero_Commande").toString(),ESAB);
-                        m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     }
                 }
                 else
@@ -141,7 +141,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
             {
                 nbBL++;
                 emit Info(tr("Principal | Ajout BL N°%0 Réussi").arg(req.value("Numero_Livraison").toString()));
-                m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + m_List_Cmd.at(cpt) + "'");
+                m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + m_List_Cmd.at(cpt) + "'");
             }
         }
         else
@@ -878,7 +878,7 @@ void Esabora::Semi_Auto(QString NumeroCommande)
     Traitement_Fichier_Config("Semi_Auto","///" + NumeroCommande + ".");
 
     if(QMessageBox::question(m_fen,"","L'ajout du bon de commande à t'il réussi ?") == QMessageBox::Yes)
-        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + NumeroCommande + "'");
+        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + NumeroCommande + "'");
 
     emit Message("","Le bon de livraison doit être validé manuellement.",false);
     qDebug() << "Fin Esabora::Semi_Auto()";
