@@ -31,7 +31,7 @@ public slots:
     bool Lancement_API();
     bool Ajout_BC(QString Numero_Commande);
     bool Fermeture_API();
-    bool Ajout_BL(QString Numero_Commande_Esab,QString Numero_BL);
+    bool Ajout_BL(QString Numero_Commande_Esab, QString Numero_BL);
     void Set_Liste_Matos(QStringList liste);
     void Semi_Auto(QString NumeroCommande);
     void Reset_Liste_Matos();

@@ -23,16 +23,22 @@ bool SocolecFr::Start()
         if(!Create_List_Invoice(firstInit))
             error = true;
 
-        //Update Etat
+        //Update State
         req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "' AND (Etat='" + QString::number(open) + "' OR "
                                                                                                  "Etat='" + QString::number(partial) + "')");
         while(req.next())
+        {
+            m_Fct->Info(tr("Mise à jour état commande %0").arg(req.value("Numero_Commande").toString()));
             Update_State(req.value("Numero_Commande").toString());
+        }
 
         //Update Delivery
         req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "' AND Numero_Livraison=''");
         while(req.next())
+        {
+            m_Fct->Info(tr("Récupération des bons de livraison commande %1").arg(req.value("Numero_Commande").toString()));
             Update_Delivery(req.value("Numero_COmmande").toString());
+        }
     }
     else
         return false;
@@ -147,13 +153,14 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
             text = flux.readLine();
             if(text.split(">").count() > 1)
             {
-                DEBUG << text;
                 text = text.split(">").at(1);
                 text.replace("Ã©","é");
-                DEBUG << text;
-                if(text == "En attente" || text == "En traitement" || text == "En préparation" || text == "Livrée" || text == "Partiellement livrée" ||
-                        text == "Partiellement facturée" || text == "Facturée" || text == "Terminée")
-                    etat = text;
+                if(text == "En attente" || text == "En traitement" || text == "En préparation")
+                    etat = "0";
+                else if(text == "Partiellement livrée" || text == "Partiellement facturée")
+                    etat = "1";
+                else if(text == "Livrée" || text == "Facturée" || text == "Terminée")
+                    etat = "2";
                 else if(text == "Annulée")
                     skip = true;
                 else
@@ -167,10 +174,11 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
                 m_Fct->FrnError(variable,FRN,"Etat");
                 return false;
             }
-            if(!skip)
+            QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + invoice_Number + "' AND Fournisseur='" + FRN + "'");
+            if(!skip && !req.next())
             {
                 int ID(0);
-                QSqlQuery req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
+                req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
                 req.next();
                 ID = req.value(0).toInt();
                 ID++;
@@ -181,6 +189,8 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
                     return true;
                 }
             }
+            else if(!skip)
+                break;
         }
     }
     return false;
@@ -287,6 +297,9 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)//Ajout prise en 
     //Retourne une list d'un tableau de commande
     //0 = nb commande
     //boucle de 7 strings designation,reference,fabricant,fab,prix unitaire,quantité livré,quantité restante
+
+    DEBUG << "Socolec.fr | Connexion";
+    Connexion();
 
     DEBUG << "Socolec.fr | Récupération du lien";
     QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + InvoiceNumber + "' AND Fournisseur='" + FRN + "'");

@@ -3,7 +3,7 @@
 
 /////////////////////////////////
 QString version("1.41"); //Version De L'application
-QString ver("1412");
+QString ver("1413");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -576,7 +576,6 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
         ui->tNomFichier->removeRow(0);
 
     //Affichage de la colonne numéro BC esabora si logué
-    //if(ui->tNomFichier->horizontalHeaderItem(8)->text() != "Fournisseur") ;
     if(login) ui->tNomFichier->showColumn(8);
     else ui->tNomFichier->hideColumn(8);
 
@@ -1519,7 +1518,7 @@ void Principal::Add_Fournisseur()
     QSqlQuery req = m_DB->Requete("SELECT MAX(ID) FROM Options");
     req.next();
     m_DB->Requete("INSERT INTO Options VALUES('" + QString::number(req.value(0).toInt()+1) + "','FrnADD','" + ui->listFrnDispo->selectedItems().at(0)->text() + "')");
-    req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom ='FrnADD' ORDER BY ID ASC");
+
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnDispo->selectedItems().at(0)->text() + "'");
     QStringList f;
     if(req.next())
@@ -1533,6 +1532,7 @@ void Principal::Add_Fournisseur()
         Load_Param_Fournisseur();
     }
     ui->listFrnDispo->clear();
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom ='FrnADD' ORDER BY ID ASC");
     req.next();
     if(req.value("Valeur").toString().split("|").count() > 1)
     {
@@ -1564,6 +1564,11 @@ void Principal::Del_Fournisseur()
 
 void Principal::Save_Param_Fournisseur()
 {
+    if(ui->eFrnMail->text().isEmpty() || ui->eFrnMDP->text().isEmpty() || ui->eFrnUserName->text().isEmpty() || ui->eFrnRcc->text().isEmpty())
+    {
+        QMessageBox::information(this,"","Tout les champs doivent être remplis !");
+        return;
+    }
     QString r = ui->eFrnUserName->text() + "|" + ui->eFrnMail->text() + "|" + ui->eFrnMDP->text();
     QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
     if(req.next())
@@ -1574,11 +1579,21 @@ void Principal::Save_Param_Fournisseur()
         req.next();
         m_DB->Requete("INSERT INTO Options VALUES('" + QString::number(req.value(0).toInt()+1) + "','" + ui->lFrn->text() + "','" + m_DB->Encrypt(r) + "')");
     }
+    req = m_DB->Requete("SELECT * FROM Options WHERE Nom='" + ui->lFrn->text() + "Rcc'");
+    if(req.next())
+        m_DB->Requete("UPDATE Options SET Valeur='" + ui->eFrnRcc->text() + "' WHERE Nom='" + ui->lFrn->text() + "Rcc'");
+    else
+    {
+        req = m_DB->Requete("SELECT MAX(ID) FROM Options");
+        req.next();
+        m_DB->Requete("INSERT INTO Options VALUES('" + QString::number(req.value(0).toInt()+1) + "','" + ui->lFrn->text() + "Rcc','" + ui->eFrnRcc->text() + "')");
+    }
     if(m_Frn->Update_Var(ui->lFrn->text(),ui->eFrnMail->text(),ui->eFrnMDP->text(),ui->eFrnUserName->text()))
         Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour",true);
     else
     {
         m_Frn->Add(ui->lFrn->text(),ui->eFrnMail->text(),ui->eFrnMDP->text(),ui->eFrnUserName->text());
+        Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour",true);
     }
 }
 
@@ -1603,6 +1618,7 @@ void Principal::Load_Param_Fournisseur()
     ui->eFrnUserName->clear();
     ui->eFrnMail->clear();
     ui->eFrnMDP->clear();
+    ui->eFrnRcc->clear();
     if(ui->listFrnAjouter->selectedItems().isEmpty())
         return;
     QStringList l = m_Frn->Get_Frn_Inf(ui->listFrnAjouter->currentItem()->text()).split("|");
@@ -1632,6 +1648,10 @@ void Principal::Load_Param_Fournisseur()
             ui->eFrnUserName->setText(l.at(0));
             ui->eFrnMail->setText(l.at(1));
             ui->eFrnMDP->setText(l.at(2));
+
+            req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->lFrn->text() + "Rcc'");
+            if(req.next())
+                ui->eFrnRcc->setText(req.value("Valeur").toString());
         }
     }
 }
@@ -1733,24 +1753,6 @@ QString Principal::HashMDP(QString mdp)
 void Principal::AddError(QString error)
 {
     QDateTime t;
-
-    if(error.contains("DB | E101")) error = tr("La requète sur la base de données à échouée");
-    else if(error.contains("DB | E102")) error = tr("La préparation de la requète sur la base de données à échouée");
-    else if(error.contains("DB | E001")) error = tr("Ouverture de la base de données échouée");
-    else if(error.contains("DB | E002")) error = tr("Base de données indisponible");
-    else if(error.contains("DB | E301")) error = tr("La sauvegarde de la base de données à échouée");
-    else if(error.contains("Esabora | E201") || error.contains("Esabora | E301") || error.contains("Esabora | E502")
-            || error.contains("Rexel | E103") || error.contains("Rexel | E104")) error = tr("Ouverture du fichier ") + error.split(" ").last() + tr(" échouée");
-    else if(error.contains("Esabora | E202") || error.contains("Esabora | E510") || error.contains("Esabora | E511") || error.contains("Esabora | E505")) error = tr("Erreur dans la procédure d'ajout de bon");
-    else if(error.contains("Esabora | E203")) error = tr("Démarrage d'Esabora échouée");
-    else if(error.contains("Esabora | E401") || error.contains("Esabora | E501")) error = tr("Le fichier ") + error.split(" ").last() + tr(" n'existe pas");
-    else if(error.contains("Esabora | E402")) error = tr("Validation du bon ") + error.split(" ").last() + tr(" échouée");
-    else if(error.contains("Esabora | E514") || error.contains("Esabora | E512") || error.contains("Esabora | E513")) error = tr("La référence du matériel n'a pas été trouvée (Ligne incomplète)");
-    else if(error.contains("Esabora | E510")) error = tr("La référence du matériel n'a pas été trouvée (Ligne incomplète)");
-    else if(error.contains("Esabora | E509")) error = tr("La vérification de fenêtre Esabora à échouée");
-    else if(error.contains("Esabora | E504")) error = tr("Le déplacement de la souris à échoué");
-    else if(error.contains("Rexel | E001") || error.contains("Rexel | E002") || error.contains("Rexel | E101") || error.contains("Rexel | E102")) error = tr("Chargement de la page échouée");
-    else if(error.contains("Rexel | E106") || error.contains("Rexel | E107")) error = "Une information n'a pas pu être récupérée";
     ui->eArgErreurs->addItem(t.currentDateTime().toString("dd/MM/yyyy hh:mm ") + error);
 }
 

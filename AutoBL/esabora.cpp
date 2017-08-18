@@ -32,6 +32,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
         {
             if(!liste_Matos.isEmpty())
                 DEBUG << "Liste matériels Vide !";
+
             //Vérif Fabriquant
             QStringList list;
             QFile file(m_Lien_Work + "/Config/Fab.esab");
@@ -77,6 +78,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                 i += 6;
             }
             liste_Matos = list;
+
 
             if(req.value("Nom_Chantier").toString() == "0")//Ajout BC au Stock
             {
@@ -267,7 +269,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
     QEventLoop loop;
     QTimer tmp;
     connect(&tmp,SIGNAL(timeout()),&loop,SLOT(quit()));
-    QSqlQuery req = m_DB->Requete("SELECT Nom_Chantier FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
+    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
     req.next();
     QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='14'");
     r.next();
@@ -307,9 +309,14 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
         {
             QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_BC_Esabora='" + bL.split(" ").at(0) + "'");
             req.next();
-            Clavier("-AutoBL : Bon de commande " + req.value("Numero_Commande").toString());
+            Clavier("-AutoBL : " + req.value("Fournisseur").toString() + " : BC " + req.value("Numero_Commande").toString());
         }
-        else if(temp == "{FOURNISSEUR}") Clavier("-rex");
+        else if(temp == "{FOURNISSEUR}")
+        {
+            QString v;
+            QSqlQuery t = m_DB->Requete("SELECT * FROM Options WHERE Nom='" + req.value("Fournisseur").toString() + "Rcc'");
+            Clavier("-" + t.value("Valeur").toString());
+        }
         else if(temp == "{BOUCLE}")
         {
             //boucle de 6 strings designation,reference,fabricant,prix unitaire,quantité livré,quantité restante
@@ -909,6 +916,24 @@ void Esabora::Apprentissage(QString &entreprise,QString &BDD)
     else
         QDesktopServices::openUrl(m_Lien_Esabora);
 
+    if(Lancement_API())
+    {
+        HWND hwnd = GetForegroundWindow();
+        LPWSTR buf;
+        buf = new WCHAR[128];
+        if(GetWindowTextW(hwnd,buf,350))
+        {
+            QString var;
+            var = var.fromStdWString(buf);
+            if(var.contains("REPERTOIRE") && var.contains("SESSION"))
+            {
+                QStringList v = var.split(" - ");
+                entreprise = v.at(0);
+                BDD = v.at(2).split(" : ").at(1);
+            }
+        }
+    }
+    /*
     QEventLoop l;
     QTimer t;
     connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
@@ -920,20 +945,7 @@ void Esabora::Apprentissage(QString &entreprise,QString &BDD)
     Clavier("Entrée");
     t.start(2000);
     l.exec();
-    HWND hwnd = GetForegroundWindow();
-    LPWSTR buf;
-    buf = new WCHAR[128];
-    if(GetWindowTextW(hwnd,buf,350))
-    {
-        QString var;
-        var = var.fromStdWString(buf);
-        if(var.contains("REPERTOIRE") && var.contains("SESSION"))
-        {
-            QStringList v = var.split(" - ");
-            entreprise = v.at(0);
-            BDD = v.at(2).split(" : ").at(1);
-        }
-    }
+    */
     Clavier("Alt+F4");
     qDebug() << "Fin Esabora::Apprentissage()";
 }
