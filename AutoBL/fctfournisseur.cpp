@@ -33,13 +33,11 @@ void FctFournisseur::Loop(int tMax)
 
 bool FctFournisseur::WebLoad(QString lien)
 {
-    bool intCo = true;
     for(int cpt=0;cpt<1;cpt++)
     {
         Set_Load(false);
         web->load(QUrl(lien));
         Loop(30000);
-        intCo = FindTexte("Aucune connexion Internet");
         if(timer->isActive())
             if(!FindTexte("Aucune connexion Internet"))
                 return true;

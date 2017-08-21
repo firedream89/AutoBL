@@ -22,7 +22,7 @@
     <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>0</number>
+       <number>2</number>
       </property>
       <property name="elideMode">
        <enum>Qt::ElideNone</enum>
@@ -84,7 +84,7 @@
           </column>
           <column>
            <property name="text">
-            <string>Etat Rexel</string>
+            <string>Etat</string>
            </property>
            <property name="toolTip">
             <string>&lt;html&gt;&lt;head/&gt;&lt;body&gt;&lt;p&gt;Etat de la commande Rexel :&lt;/p&gt;&lt;p&gt;-En cours : Commande incomplète&lt;/p&gt;&lt;p&gt;-Fermée : Commande livrée&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
@@ -278,7 +278,7 @@
         <item>
          <widget class="QTabWidget" name="tabWidget_2">
           <property name="currentIndex">
-           <number>0</number>
+           <number>1</number>
           </property>
           <widget class="QWidget" name="tab_2">
            <attribute name="title">
@@ -610,17 +610,31 @@
                 </property>
                </widget>
               </item>
-              <item row="3" column="0">
+              <item row="4" column="0">
                <widget class="QPushButton" name="bFrnSave">
                 <property name="text">
                  <string>Sauvegarder</string>
                 </property>
                </widget>
               </item>
-              <item row="3" column="1">
+              <item row="4" column="1">
                <widget class="QPushButton" name="bFrnTest">
                 <property name="text">
                  <string>Test de connexion</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="0">
+               <widget class="QLabel" name="lFrnMDP_2">
+                <property name="text">
+                 <string>Nom fournisseur esabora</string>
+                </property>
+               </widget>
+              </item>
+              <item row="3" column="1">
+               <widget class="QLineEdit" name="eFrnRcc">
+                <property name="echoMode">
+                 <enum>QLineEdit::Normal</enum>
                 </property>
                </widget>
               </item>

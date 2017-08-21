@@ -13,6 +13,20 @@
 
 #define DEBUG qDebug()
 
+typedef enum {
+    download,
+    error,
+    updateRef,
+    add,
+    endAdd
+}State;
+
+typedef enum{
+    open,
+    partial,
+    Close
+}FRNState;
+
 class DB: public QObject
 {
     Q_OBJECT
@@ -25,6 +39,7 @@ public:
     QStringList Find_Fournisseur_From_Invoice(QString invoice);
     QString Encrypt(QString text);
     QString Decrypt(QString text);
+    QString enum_State(int state);
 
 public slots:
     void Sav();

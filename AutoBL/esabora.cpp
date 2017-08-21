@@ -21,7 +21,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
         return false;
 
     ///Ajout des BC sur esabora
-    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='Telecharger' OR Ajout='Modifier'");
+    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
     Ouverture_Liste_BC();
     qDebug() << "Liste BC ouverte";
     while(req.next() && !m_Arret)
@@ -30,6 +30,56 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
         emit Info(tr("Ajout du bon de commande %0").arg(req.value("Numero_Commande").toString()));
         if(Get_List_Matos(req.value("Numero_Commande").toString()))
         {
+            if(!liste_Matos.isEmpty())
+                DEBUG << "Liste matériels Vide !";
+
+            //Vérif Fabriquant
+            QStringList list;
+            QFile file(m_Lien_Work + "/Config/Fab.esab");
+            if(!file.open(QIODevice::ReadWrite))
+                err->Err(open_File,ESAB,"Fab.esab");
+            QTextStream flux(&file);
+
+            for(int i=0;i<liste_Matos.count();i++)
+            {
+                list.append(liste_Matos.at(i));
+                list.append(liste_Matos.at(i+1));
+                list.append(liste_Matos.at(i+2));
+                if(liste_Matos.at(i+3).isEmpty() && !liste_Matos.at(i+2).isEmpty())//si Fabricant connu mais pas Fab
+                {
+                    file.seek(0);
+                    while(!flux.atEnd())//vérif si Fab déjà connu
+                    {
+                        QString var = flux.readLine();
+                        if(var.split(";").at(0) == liste_Matos.at(i+2))
+                        {
+                            list.append(var.split(";").at(1));
+                            file.seek(0);
+                            break;
+                        }
+                    }
+                    if(file.atEnd())//Sinon rechercher Fab sur esabora
+                    {
+                        QString var = Find_Fabricant(liste_Matos.at(i+2));
+                        if(!var.isEmpty())
+                        {
+                            list.append(var);
+                            file.seek(SEEK_END);
+                            flux << liste_Matos.at(i+2) + ";" + var + "\r\n";
+                            file.seek(0);
+                        }
+                    }
+                }
+                else
+                    list.append(liste_Matos.at(i+3));
+                list.append(liste_Matos.at(i+4));
+                list.append(liste_Matos.at(i+5));
+                list.append(liste_Matos.at(i+6));
+                i += 6;
+            }
+            liste_Matos = list;
+
+
             if(req.value("Nom_Chantier").toString() == "0")//Ajout BC au Stock
             {
                 if(!Ajout_Stock(req.value("Numero_Commande").toString()))
@@ -40,7 +90,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                 }
                 else
                 {
-                    m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    m_DB->Requete("UPDATE En_Cours SET Ajout='" + QString::number(add) + "' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     nbBC++;
                 }
             }      
@@ -55,7 +105,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                     else if(GetEtat() == 1)
                     {
                         err->Err(BC,req.value("Numero_Commande").toString(),ESAB);
-                        m_DB->Requete("UPDATE En_Cours SET Ajout='Erreur' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     }
                 }
                 else
@@ -93,7 +143,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
             {
                 nbBL++;
                 emit Info(tr("Principal | Ajout BL N°%0 Réussi").arg(req.value("Numero_Livraison").toString()));
-                m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + m_List_Cmd.at(cpt) + "'");
+                m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + m_List_Cmd.at(cpt) + "'");
             }
         }
         else
@@ -140,6 +190,23 @@ bool Esabora::Ouverture_Liste_BC()
     return false;
 }
 
+QString Esabora::Find_Fabricant(QString Fab)
+{
+    QClipboard *pp = QApplication::clipboard();
+    pp->clear();
+    if(!Verification_Fenetre("Recherche Produits"))
+        if(!Traitement_Fichier_Config("Open_Cat"))
+        {
+            err->Err(Traitement,ESAB,"Find_Fabricant");
+            return QString();
+        }
+    Traitement_Fichier_Config("Cat",Fab);
+    if(pp->text().isEmpty())
+        DEBUG << "Constructeur " + Fab + " non trouvé sur Esabora";
+    return pp->text();
+
+}
+
 bool Esabora::Ajout_BC(QString Numero_Commande)
 {
     qDebug() << "Esabora::Ajout_BC()";
@@ -177,7 +244,7 @@ bool Esabora::Ajout_BL(QString Numero_Commande_Esab, QString Numero_BL)
     return true;
 }
 ///Erreur 5xx
-bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
+bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//Ajouter {Boucle_Constructeur}
 {
     qDebug() << "Esabora::Traitement_Fichier_Config()";
     etat = 0;
@@ -202,7 +269,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
     QEventLoop loop;
     QTimer tmp;
     connect(&tmp,SIGNAL(timeout()),&loop,SLOT(quit()));
-    QSqlQuery req = m_DB->Requete("SELECT Nom_Chantier FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
+    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
     req.next();
     QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='14'");
     r.next();
@@ -242,9 +309,14 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
         {
             QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_BC_Esabora='" + bL.split(" ").at(0) + "'");
             req.next();
-            Clavier("-AutoBL : Bon de commande " + req.value("Numero_Commande").toString());
+            Clavier("-AutoBL : " + req.value("Fournisseur").toString() + " : BC " + req.value("Numero_Commande").toString());
         }
-        else if(temp == "{FOURNISSEUR}") Clavier("-rex");
+        else if(temp == "{FOURNISSEUR}")
+        {
+            QString v;
+            QSqlQuery t = m_DB->Requete("SELECT * FROM Options WHERE Nom='" + req.value("Fournisseur").toString() + "Rcc'");
+            Clavier("-" + t.value("Valeur").toString());
+        }
         else if(temp == "{BOUCLE}")
         {
             //boucle de 6 strings designation,reference,fabricant,prix unitaire,quantité livré,quantité restante
@@ -308,6 +380,14 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                 Clavier("Tab");
                 cpt += 6;
             }
+        }
+        else if(temp == "{BOUCLE_CONSTRUCTEUR}")
+        {
+            Clavier("-" + bL.toUpper());
+            Clavier("Ctrl+C");
+            tmp.start(1000);
+            loop.exec();
+            QClipboard *pp = QApplication::clipboard();
         }
         else if(temp[0] == '=')
         {
@@ -400,6 +480,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
         }
         else err->Err(Traitement,temp,ESAB);
     }
+    liste_Matos.clear();
     qDebug() << "Fin Esabora::Traitement_Fichier_Config()";
     return true;
 }
@@ -804,7 +885,7 @@ void Esabora::Semi_Auto(QString NumeroCommande)
     Traitement_Fichier_Config("Semi_Auto","///" + NumeroCommande + ".");
 
     if(QMessageBox::question(m_fen,"","L'ajout du bon de commande à t'il réussi ?") == QMessageBox::Yes)
-        m_DB->Requete("UPDATE En_Cours SET Ajout='Ok' WHERE Numero_Commande='" + NumeroCommande + "'");
+        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + NumeroCommande + "'");
 
     emit Message("","Le bon de livraison doit être validé manuellement.",false);
     qDebug() << "Fin Esabora::Semi_Auto()";
@@ -835,6 +916,24 @@ void Esabora::Apprentissage(QString &entreprise,QString &BDD)
     else
         QDesktopServices::openUrl(m_Lien_Esabora);
 
+    if(Lancement_API())
+    {
+        HWND hwnd = GetForegroundWindow();
+        LPWSTR buf;
+        buf = new WCHAR[128];
+        if(GetWindowTextW(hwnd,buf,350))
+        {
+            QString var;
+            var = var.fromStdWString(buf);
+            if(var.contains("REPERTOIRE") && var.contains("SESSION"))
+            {
+                QStringList v = var.split(" - ");
+                entreprise = v.at(0);
+                BDD = v.at(2).split(" : ").at(1);
+            }
+        }
+    }
+    /*
     QEventLoop l;
     QTimer t;
     connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
@@ -846,20 +945,7 @@ void Esabora::Apprentissage(QString &entreprise,QString &BDD)
     Clavier("Entrée");
     t.start(2000);
     l.exec();
-    HWND hwnd = GetForegroundWindow();
-    LPWSTR buf;
-    buf = new WCHAR[128];
-    if(GetWindowTextW(hwnd,buf,350))
-    {
-        QString var;
-        var = var.fromStdWString(buf);
-        if(var.contains("REPERTOIRE") && var.contains("SESSION"))
-        {
-            QStringList v = var.split(" - ");
-            entreprise = v.at(0);
-            BDD = v.at(2).split(" : ").at(1);
-        }
-    }
+    */
     Clavier("Alt+F4");
     qDebug() << "Fin Esabora::Apprentissage()";
 }

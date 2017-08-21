@@ -1,20 +1,21 @@
-#ifndef MINIMALFOURNISSEUR_H
-#define MINIMALFOURNISSEUR_H
+#ifndef SOCOLECFR_H
+#define SOCOLECFR_H
 
 #include "db.h"
 #include "fctfournisseur.h"
 #include <QDebug>
+#include <QObject>
 
 #define DEBUG qDebug()
-#define FRN ""
-#define INF "Nom d'utilisateur|Email|Mot de passe"
+#define FRN "Socolec.fr"
+#define INF "Numéro de compte|Email|Mot de passe"
 
-class MinimalFournisseur: public QObject
-{   
+class SocolecFr: public QObject
+{
     Q_OBJECT
 
 public:
-    MinimalFournisseur(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db);
+    SocolecFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db);
     bool Start();
     QStringList Get_Invoice(const QString InvoiceNumber);
     void Set_Var(const QString login,const QString mdp,const QString comp);
@@ -23,8 +24,9 @@ public:
 
 private slots:
     bool Connexion();
-    bool Create_List_Invoice();
-    bool Connexion();
+    bool Create_List_Invoice(bool firstInit = 0);
+    bool Update_State(QString invoice);
+    bool Update_Delivery(QString invoice);
 
 signals:
     void Info(const QString i);
@@ -36,4 +38,4 @@ private:
     DB *m_DB;
 };
 
-#endif // MINIMALFOURNISSEUR_H
+#endif // SOCOLECFR_H

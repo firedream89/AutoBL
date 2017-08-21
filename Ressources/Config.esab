@@ -5,6 +5,7 @@ Pause 7
 Tab
 {MDP}
 Entrée
+Entrée
 Pause 2
 =%2 - SESSION : 1 - REPERTOIRE : %1 Focus
 [/Open]
@@ -14,6 +15,26 @@ Alt+G+A+C non
 Pause 2
 =Liste des commandes Focus
 [/Liste_BC]
+
+[Open_Cat]
+Alt+P+C non
+Pause 2
+=Recherche Produits
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+Tab
+[/Open_Cat]
+
+[Cat]
+{BOUCLE_CONSTRUCTEUR}
+[/Cat]
 
 [New_BC]
 Alt+A oui
