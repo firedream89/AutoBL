@@ -1,7 +1,7 @@
 # AutoBL
 Application permettant d'automatiser la création de bon de commande sur Esabora.elec
 
-Cette application ne fonctionne actuellement qu'avec Rexel.fr(la Socolec sera bientôt disponible).
+Cette application ne fonctionne actuellement avec Rexel.fr et Socolec.fr.
 
 ATTENTION : L'application est incompatible avec l'antivirus AVAST(Faux positif)
 
