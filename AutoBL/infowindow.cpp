@@ -21,7 +21,7 @@ InfoWindow::~InfoWindow()
 
 }
 
-void InfoWindow::Add_Label(QString name, QString text)
+void InfoWindow::Add_Label(QString name, bool row)
 {
     QFormLayout *l = w->findChild<QFormLayout*>();
     if(l == NULL)
@@ -31,8 +31,10 @@ void InfoWindow::Add_Label(QString name, QString text)
     }
     QLabel *lb = new QLabel;
     lb->setObjectName(name);
-    lb->setText(text);
-    l->addRow(name,lb);
+    if(row)
+        l->addRow(name,lb);
+    else
+        l->addWidget(lb);
 }
 
 void InfoWindow::Update_Label(QString label, QString text)
@@ -44,6 +46,19 @@ void InfoWindow::Update_Label(QString label, QString text)
         return;
     }
     l->setText(text);
+}
+
+QString InfoWindow::Get_Label_Text(QString label)
+{
+    if(w->findChild<QLabel*>(label) != NULL)
+        return w->findChild<QLabel*>(label)->text();
+    else
+        return QString();
+}
+
+void InfoWindow::Show()
+{
+    w->show();
 }
 
 void InfoWindow::Close()

@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.41"); //Version De L'application
-QString ver("1413");
+QString version("1.42"); //Version De L'application
+QString ver("1420");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -1074,20 +1074,16 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
     }   
     else if(c == 5)//Affichage Tableau matos
     {
-        QDialog *d = new QDialog(this);
-        QLabel *label = new QLabel(tr("Préparation du tableau\nVeuillez patienter..."));
-        label->setObjectName("Update");
-        QGridLayout *gl = new QGridLayout;
-        gl->addWidget(label);
-        d->setLayout(gl);
-        d->setObjectName("Chargement");
-        d->setWindowFlags(Qt::Tool | Qt::CustomizeWindowHint);
-        d->show();
+        //Affichage chargement
+        InfoWindow *load = new InfoWindow(this,"",1);
+        load->Add_Label("Update",false);
+        load->Update_Label("Update",tr("Préparation du tableau\nVeuillez patienter..."));
+        load->Show();
 
         QStringList list = m_Frn->Get_Invoice_List(ui->tNomFichier->item(l,9)->text(),ui->tNomFichier->item(l,5)->text());
         DEBUG << list;
 
-        d->close();
+        load->Close();
         QTableWidget *tbl = new QTableWidget;
         tbl->insertColumn(0);
         tbl->insertColumn(0);
@@ -1131,9 +1127,8 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
         tbl->resizeRowsToContents();
         tbl->resize(tbl->columnWidth(0)+tbl->columnWidth(1)+tbl->columnWidth(2)+tbl->columnWidth(3)+
                     tbl->columnWidth(4)+tbl->columnWidth(5)+tbl->columnWidth(6)+100,tbl->height());
-        delete label;
-        delete gl;
-        delete d;
+
+        //Create table window
         QDialog *f = new QDialog(this);
         QGridLayout *l = new QGridLayout(f);
         l->addWidget(tbl);
@@ -1659,55 +1654,43 @@ void Principal::Load_Param_Fournisseur()
 //Fenêtre Info/////////////////
 void Principal::Create_Fen_Info(QString label1, QString label2, QString label3, QString label4)
 {
-    QDialog *f = new QDialog(this,Qt::Tool | Qt::CustomizeWindowHint);
-    f->setObjectName("FenInfo");
-    QFormLayout *l = new QFormLayout(f);
-    QLabel *i1 = new QLabel;
-    i1->setObjectName(label1);
-    if(label1 == "Info")
-        l->addRow(i1);
+    InfoWindow *f = new InfoWindow(this,"",1);
+
+    if(label1.isEmpty())
+    {
+        DEBUG << "Principal | Error label1 is empty";
+        f->Close();
+    }
     else
-        l->addRow(label1,i1);
+    {
+        if(label1 == "Info")
+            f->Add_Label(label1,false);
+        else
+            f->Add_Label(label1);
+    }
     if(!label2.isEmpty())
-    {
-        QLabel *i2 = new QLabel;
-        i2->setObjectName(label2);
-        l->addRow(label2,i2);
-    }
+        f->Add_Label(label2);
     if(!label3.isEmpty())
-    {
-        QLabel *i3 = new QLabel;
-        i3->setObjectName(label3);
-        l->addRow(label3,i3);
-    }
+        f->Add_Label(label3);
     if(!label4.isEmpty())
-    {
-        QLabel *i4 = new QLabel;
-        i4->setObjectName(label4);
-        l->addRow(label4,i4);
-    }
-    connect(f,SIGNAL(rejected()),f,SLOT(deleteLater()));
-    connect(f,SIGNAL(accepted()),f,SLOT(deleteLater()));
-    f->show();
+        f->Add_Label(label4);
+
+    f->Show();
 }
 
 void Principal::Update_Fen_Info(QString label, QString info)
 {
-    if(this->findChild<QDialog*>("FenInfo") != NULL)
-        this->findChild<QDialog*>("FenInfo")->findChild<QLabel*>(label)->setText(info);
+    InfoWindow *f = new InfoWindow(this,"",1);
+    f->Update_Label(label,info);
 }
 
 void Principal::Update_Fen_Info(QString info)
 {
-    if(this->findChild<QDialog*>("FenInfo") != NULL)
-    {
-        if(info.isEmpty())
-        {
-            this->findChild<QDialog*>("FenInfo")->close();
-            this->findChild<QDialog*>("FenInfo")->deleteLater();
-        }
-        this->findChild<QDialog*>("FenInfo")->findChild<QLabel*>("Info")->setText(info);
-    }
+    InfoWindow *f = new InfoWindow(this,"",1);
+    if(info.isEmpty())
+        f->Close();
+    else
+        f->Update_Label("Info",info);
 }
 
 void Principal::Fournisseur_Actuel(QString nom)
@@ -1718,29 +1701,16 @@ void Principal::Fournisseur_Actuel(QString nom)
 //Fenêtre chargement///////////
 void Principal::Update_Load_Window(QString text)
 {
-    if(this->findChild<QDialog*>("Chargement") != NULL)
-    {
-        if(this->findChild<QDialog*>("Chargement")->findChild<QLabel*>("Update")->text().split("\n").count() != 2)
-            return;
-        QString l = this->findChild<QDialog*>("Chargement")->findChild<QLabel*>("Update")->text().split("\n").at(1);
-        this->findChild<QDialog*>("Chargement")->findChild<QLabel*>("Update")->setText(text + "\n" + l);
-    }
+    InfoWindow *f = new InfoWindow(this,"",1);
+    if(f->Get_Label_Text("Update").split("\n").count() != 2)
+        return;
+    f->Update_Label("Update",text + "\n" + f->Get_Label_Text("Update").split("\n").at(1));
 }
 
 void Principal::Destroy_Chargement()
 {
-    if(this->findChild<QDialog*>("Chargement") != NULL)
-    {
-        if(this->findChild<QDialog*>("Chargement")->findChild<QLayout*>() != NULL)
-            this->findChild<QDialog*>("Chargement")->findChild<QLayout*>()->deleteLater();
-        else if(this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>() != NULL)
-        {
-            this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>()->clearContents();
-            //this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>()->deleteLater();
-        }
-        //this->findChild<QDialog*>("Chargement")->findChild<QGridLayout*>()->deleteLater();
-        this->findChild<QDialog*>("Chargement")->deleteLater();
-    }
+    InfoWindow *f = new InfoWindow(this,"",1);
+    f->Close();
 }
 
 //Fonctions////////////////////
@@ -1773,28 +1743,20 @@ void Principal::Quitter()
 
 void Principal::LoadWeb(int valeur)
 {
-    if(this->findChild<QDialog *>("Chargement") != NULL)
+    InfoWindow *f = new InfoWindow(this,"",0);
+    QString text = f->Get_Label_Text("Update");
+    if(!text.isEmpty())
     {
-            QLabel *l = this->findChild<QDialog *>("Chargement")->findChildren<QLabel *>().at(0);
-            QString s = l->text();
-            if(l->text().contains("%"))
-                s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
-            l->setText(s + " " + QString::number(valeur) + "%");
+        if(text.contains("%"))
+            text.remove(text.count()-text.split(" ").last().count()-1,text.count()-1);
+        f->Update_Label("Update",text + " " + QString::number(valeur) + "%");
     }
-    else if(this->findChild<QDialog *>("traitement") != NULL)
-    {
-        QLabel *l = this->findChild<QDialog *>("traitement")->findChild<QLabel *>("Info");
-        QString s = l->text();
-        if(l->text().contains("%"))
-            s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
-        l->setText(s + " " + QString::number(valeur) + "%");
-    }
-    else if(this->findChild<QDialog *>("FenInfo") != NULL)
-    {
-        QLabel *l = this->findChild<QDialog *>("FenInfo")->findChild<QLabel *>("Info");
-        QString s = l->text();
-        if(l->text().contains("%"))
-            s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
-        l->setText(s + " " + QString::number(valeur) + "%");
-    }
+
+    text.clear();
+    text = f->Get_Label_Text("Info");
+    if(text.isEmpty())
+        return;
+    if(text.contains("%"))
+        text.remove(text.count()-text.split(" ").last().count()-1,text.count()-1);
+    f->Update_Label("Info",text + " " + QString::number(valeur) + "%");
 }

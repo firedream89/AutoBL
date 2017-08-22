@@ -17,6 +17,7 @@
 #include "tache.h"
 #include "esabora.h"
 #include "fournisseur.h"
+#include "infowindow.h"
 ////////////
 ///ADD #define PKEY ""
 ///ADD #define MAJLINK ""

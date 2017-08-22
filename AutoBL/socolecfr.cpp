@@ -20,10 +20,12 @@ bool SocolecFr::Start()
     if(Connexion())
     {
         m_Fct->Info("Chargement des commandes...");
+        DEBUG << "Socolec | Connected";
         if(!Create_List_Invoice(firstInit))
             error = true;
 
         //Update State
+        DEBUG << "Socolec | Update State";
         req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "' AND (Etat='" + QString::number(open) + "' OR "
                                                                                                  "Etat='" + QString::number(partial) + "')");
         while(req.next())
@@ -33,7 +35,8 @@ bool SocolecFr::Start()
         }
 
         //Update Delivery
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "' AND Numero_Livraison=''");
+        DEBUG << "Socolec | Update Delivery";
+        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "' AND Numero_Livraison='' AND Etat ='" + QString::number(Close) + "'");
         while(req.next())
         {
             m_Fct->Info(tr("Récupération des bons de livraison commande %1").arg(req.value("Numero_Commande").toString()));
@@ -88,109 +91,144 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
     //Enregistrement de la page
     m_Fct->SaveHtml();
 
-    //Ouverture de la page
-    QFile f(m_WorkLink + "/web_Temp.txt");
-    if(!f.open(QIODevice::ReadOnly))
+    //Traitement des informations    
+    bool endScan(false);
+    while(!endScan)
     {
-        m_Fct->FrnError(open_File,FRN,f.fileName());
-        return false;
-    }
-    QTextStream flux(&f);
+        QString text,link,name,ref,date,etat,invoice_Number,nextPage;
 
-    //Traitement des informations
-    QString text,link,name,ref,date,etat,invoice_Number;
-    while(!f.atEnd())
-    {
-        bool skip(false);
-        text = flux.readLine();
-        if(text.contains("tr style=\"cursor: pointer;\""))//Point de départ d'une ligne du tableau
+        //Ouverture de la page
+        QFile f(m_WorkLink + "/web_Temp.txt");
+        if(!f.open(QIODevice::ReadOnly))
         {
-            if(text.split("'").count() > 1)
-                link = text.split("'").at(1);
-            else
-            {
-                m_Fct->FrnError(variable,FRN,"link");
-                return false;
-            }
-            text = flux.readLine();
-            if(text.split(">").count() > 1)
-            {
-                text = text.split(">").at(1).split("<").at(0).split("&").at(0);
-                date = text.split("/").at(2) + "-" + text.split("/").at(1) + "-" + text.split("/").at(0);
-            }
-            else
-            {
-                m_Fct->FrnError(variable,FRN,"date");
-                return false;
-            }
+            m_Fct->FrnError(open_File,FRN,f.fileName());
+            return false;
+        }
+        QTextStream flux(&f);
 
-            flux.readLine();
-            flux.readLine();
-            flux.readLine();
-            flux.readLine();
-            flux.readLine();
+        while(!f.atEnd())
+        {
+            bool skip(false);
             text = flux.readLine();
-            if(text.split(">").count() > 3)//Ref chantier
-                ref = text.split(">").at(2).split("<").at(0);
-            else
+            if(text.contains("tr style=\"cursor: pointer;\""))//Point de départ d'une ligne du tableau
             {
-                m_Fct->FrnError(variable,FRN,"Référence chantier");
-                return false;
-            }
-            text = flux.readLine();
-            if(text.split(">").count() > 3)//Nom chantier
-                name = text.split(">").at(2).split("<").at(0);
-            else
-                DEBUG << "Pas de nom de chantier";
-            flux.readLine();
-            flux.readLine();
-            text = flux.readLine();
-            text.replace("\t","");
-            DEBUG << "Ajout commande " << text;
-            invoice_Number = text;
-            flux.readLine();
-            flux.readLine();
-            text = flux.readLine();
-            if(text.split(">").count() > 1)
-            {
-                text = text.split(">").at(1);
-                text.replace("Ã©","é");
-                if(text == "En attente" || text == "En traitement" || text == "En préparation")
-                    etat = "0";
-                else if(text == "Partiellement livrée" || text == "Partiellement facturée")
-                    etat = "1";
-                else if(text == "Livrée" || text == "Facturée" || text == "Terminée")
-                    etat = "2";
-                else if(text == "Annulée")
-                    skip = true;
+                if(text.split("'").count() > 1)
+                    link = text.split("'").at(1);
                 else
                 {
-                    m_Fct->FrnError(variable,FRN,"Valeur Etat");
+                    m_Fct->FrnError(variable,FRN,"link");
                     return false;
                 }
+                text = flux.readLine();
+                if(text.split(">").count() > 1)
+                {
+                    text = text.split(">").at(1).split("<").at(0).split("&").at(0);
+                    date = text.split("/").at(2) + "-" + text.split("/").at(1) + "-" + text.split("/").at(0);
+                }
+                else
+                {
+                    m_Fct->FrnError(variable,FRN,"date");
+                    return false;
+                }
+
+                flux.readLine();
+                flux.readLine();
+                flux.readLine();
+                flux.readLine();
+                flux.readLine();
+                text = flux.readLine();
+                if(text.split(">").count() > 3)//Ref chantier
+                    ref = text.split(">").at(2).split("<").at(0);
+                else
+                {
+                    m_Fct->FrnError(variable,FRN,"Référence chantier");
+                    return false;
+                }
+                text = flux.readLine();
+                if(text.split(">").count() > 3)//Nom chantier
+                    name = text.split(">").at(2).split("<").at(0);
+                else
+                    DEBUG << "Pas de nom de chantier";
+                flux.readLine();
+                flux.readLine();
+                text = flux.readLine();
+                text.replace("\t","");
+                DEBUG << "Ajout commande " << text;
+                invoice_Number = text;
+                flux.readLine();
+                flux.readLine();
+                text = flux.readLine();
+                if(text.split(">").count() > 1)
+                {
+                    text = text.split(">").at(1);
+                    text.replace("Ã©","é");
+                    if(text == "En attente" || text == "En traitement" || text == "En préparation")
+                        etat = "0";
+                    else if(text == "Partiellement livrée" || text == "Partiellement facturée")
+                        etat = "1";
+                    else if(text == "Livrée" || text == "Facturée" || text == "Terminée")
+                        etat = "2";
+                    else if(text == "Annulée")
+                        skip = true;
+                    else
+                    {
+                        m_Fct->FrnError(variable,FRN,"Valeur Etat");
+                        return false;
+                    }
+                }
+                else
+                {
+                    m_Fct->FrnError(variable,FRN,"Etat");
+                    return false;
+                }
+                QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + invoice_Number + "' AND Fournisseur='" + FRN + "'");
+                if(!skip && !req.next())
+                {
+                    int ID(0);
+                    req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
+                    req.next();
+                    ID = req.value(0).toInt();
+                    ID++;
+                    m_DB->Requete("INSERT INTO En_Cours VALUES('" + QString::number(ID) + "','" + date + "','" + ref + "','" + invoice_Number + "','','" + link + "','" + etat + "','','" + name + "','0','','" + FRN + "')");
+                    if(firstInit)
+                    {
+                        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE ID='" + QString::number(ID) + "'");
+                        return true;
+                    }
+                }
+                else
+                {
+                    endScan = true;
+                    break;
+                }
+            }
+            else if(text.contains("Suivant"))
+            {
+                if(text.split("\"").count() > 1)
+                    nextPage = text.split("\"").at(1);
+            }
+        }
+
+        //Next Page
+        f.close();
+        if(!endScan)
+        {
+            if(nextPage.isEmpty())
+            {
+                m_Fct->FrnError(variable,FRN,"nextPage is empty");
+                endScan = true;
             }
             else
             {
-                m_Fct->FrnError(variable,FRN,"Etat");
-                return false;
-            }
-            QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + invoice_Number + "' AND Fournisseur='" + FRN + "'");
-            if(!skip && !req.next())
-            {
-                int ID(0);
-                req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
-                req.next();
-                ID = req.value(0).toInt();
-                ID++;
-                m_DB->Requete("INSERT INTO En_Cours VALUES('" + QString::number(ID) + "','" + date + "','" + ref + "','" + invoice_Number + "','','" + link + "','" + etat + "','','" + name + "','0','','" + FRN + "')");
-                if(firstInit)
+                if(!m_Fct->WebLoad(nextPage))
                 {
-                    m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE ID='" + QString::number(ID) + "'");
-                    return true;
+                    m_Fct->FrnError(load,FRN,"Liste des commandes, page suivante");
+                    return false;
                 }
+
+                //Enregistrement de la page
+                m_Fct->SaveHtml();
             }
-            else if(!skip)
-                break;
         }
     }
     return false;
@@ -366,14 +404,19 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)//Ajout prise en 
                                 flux.readLine();
                                 flux.readLine();
                                 flux.readLine();
+                                while(!flux.readLine().contains("<td style=\"text-align:right;\">"));
                                 var = flux.readLine();
                                 var.replace(" ","");
+                                var.replace(",",".");
+                                var2.replace(",",".");
+                                var = QString::number(var.toDouble() / var2.split("\"").at(5).toDouble());
+                                var.replace(".",",");
                                 list.append(var);//prix
                                 if(var2.split("\"").count() >= 6)
                                     list.append(var2.split("\"").at(5));//Quantité
                                 else
                                     m_Fct->FrnError(variable,FRN,"Quantité");
-                                list.append("");//Restant
+                                list.append("NC");//Restant
                                 etat = 0;
                             }
                         }

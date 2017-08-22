@@ -145,14 +145,12 @@ bool RexelFr::Create_List_Invoice()
             bool skip(false);
             QString ligne = flux.readLine();
 
-            //N° de commande Rexel : 4421-000192238  Statut : Livrée en totalité Total : 460,87 €
-            if(ligne.contains("N° de commande Rexel") && ligne.split(" ").last() != "Rexel")
+            //N° de commande : 4421-000192238  Statut : Livrée en totalité Total : 460,87 €
+            if(ligne.contains("N° de commande:") && ligne.split(" ").last() != "Rexel")
             {
                 etat.clear();
                 nomChantier.clear();
                 numeroCommande.clear();
-                DEBUG << ligne;
-                DEBUG << ligne.split(":");
                 bool error(false);
 
                 //Contrôle
