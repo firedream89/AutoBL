@@ -96,8 +96,6 @@ public slots:
     void Update_Fen_Info(QString label,QString info);
     void Update_Fen_Info(QString info = 0);
     void Fournisseur_Actuel(QString nom);
-    void Update_Load_Window(QString text);
-    void Destroy_Chargement();
     QString HashMDP(QString mdp);
     void Show_List_Sav();
     void Restaurer_DB();

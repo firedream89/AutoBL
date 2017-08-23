@@ -330,15 +330,18 @@ bool SocolecFr::Update_State(QString invoice)
     return false;
 }
 
-QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)//Ajout prise en compte annulée
+QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
 {
     //Retourne une list d'un tableau de commande
     //0 = nb commande
     //boucle de 7 strings designation,reference,fabricant,fab,prix unitaire,quantité livré,quantité restante
 
     DEBUG << "Socolec.fr | Connexion";
-    Connexion();
+    m_Fct->Change_Load_Window(tr("Connexion..."));
+    if(!Connexion())
+        return QStringList(0);
 
+    m_Fct->Change_Load_Window(tr("Chargement de la commande..."));
     DEBUG << "Socolec.fr | Récupération du lien";
     QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + InvoiceNumber + "' AND Fournisseur='" + FRN + "'");
     if(!req.next())

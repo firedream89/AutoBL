@@ -13,12 +13,14 @@ InfoWindow::InfoWindow(QWidget *parent,QString windowTitle, int type)
         w->setObjectName("InfoWindow");
         w->setWindowTitle(windowTitle);
         QFormLayout *l = new QFormLayout(w);
+        lw = 1000;
     }
 }
 
 InfoWindow::~InfoWindow()
 {
-
+    w->close();
+    w->deleteLater();
 }
 
 void InfoWindow::Add_Label(QString name, bool row)
@@ -40,15 +42,28 @@ void InfoWindow::Add_Label(QString name, bool row)
 void InfoWindow::Update_Label(QString label, QString text)
 {
     QLabel *l = w->findChild<QLabel*>(label);
+
     if(l == NULL)
     {
         DEBUG << "InfoWindow | label non trouvé !";
         return;
     }
     l->setText(text);
+
+
+    if(w->findChild<QFormLayout*>()->rowCount() == 1)
+    {
+        qDebug() << l->width() << w->width() << lw << w->findChild<QFormLayout*>()->rowCount();
+        if(lw < l->width())
+        {
+            qDebug() << "Update size";
+            w->setMinimumWidth(l->width()+50);
+        }
+        lw = l->width();
+    }
 }
 
-QString InfoWindow::Get_Label_Text(QString label)
+QString InfoWindow::Get_Label_Text(QString label) const
 {
     if(w->findChild<QLabel*>(label) != NULL)
         return w->findChild<QLabel*>(label)->text();
@@ -56,12 +71,12 @@ QString InfoWindow::Get_Label_Text(QString label)
         return QString();
 }
 
-void InfoWindow::Show()
+void InfoWindow::Show() const
 {
     w->show();
 }
 
-void InfoWindow::Close()
+void InfoWindow::Close() const
 {
     w->close();
     w->deleteLater();

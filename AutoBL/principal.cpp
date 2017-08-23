@@ -124,7 +124,7 @@ Principal::Principal(QWidget *parent) :
     connect(m_Frn,SIGNAL(LoadProgress(int)),this,SLOT(LoadWeb(int)));
     connect(m_Frn,SIGNAL(En_Cours_Info(QString)),this,SLOT(Update_Fen_Info(QString)));
     connect(m_Frn,SIGNAL(En_Cours_Fournisseur(QString)),this,SLOT(Fournisseur_Actuel(QString)));
-    connect(m_Frn,SIGNAL(Change_Load_Window(QString)),this,SLOT(Update_Load_Window(QString)));
+    connect(m_Frn,SIGNAL(Change_Load_Window(QString)),this,SLOT(Update_Fen_Info(QString)));
 
     connect(m_Esabora,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
     connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(AddError(QString)));
@@ -1076,8 +1076,8 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
     {
         //Affichage chargement
         InfoWindow *load = new InfoWindow(this,"",1);
-        load->Add_Label("Update",false);
-        load->Update_Label("Update",tr("Préparation du tableau\nVeuillez patienter..."));
+        load->Add_Label("Info",false);
+        load->Update_Label("Info",tr("Préparation du tableau\nVeuillez patienter..."));
         load->Show();
 
         QStringList list = m_Frn->Get_Invoice_List(ui->tNomFichier->item(l,9)->text(),ui->tNomFichier->item(l,5)->text());
@@ -1687,6 +1687,12 @@ void Principal::Update_Fen_Info(QString label, QString info)
 void Principal::Update_Fen_Info(QString info)
 {
     InfoWindow *f = new InfoWindow(this,"",1);
+
+    //Chargement tableau commande
+    if(f->Get_Label_Text("Info").split("\n").count() == 2)
+        f->Update_Label("Info",info + "\n" + f->Get_Label_Text("Info").split("\n").at(1));
+
+    //Fermeture fenêtre ou mise à jour texte
     if(info.isEmpty())
         f->Close();
     else
@@ -1696,21 +1702,6 @@ void Principal::Update_Fen_Info(QString info)
 void Principal::Fournisseur_Actuel(QString nom)
 {
     Update_Fen_Info("Fournisseur",nom);
-}
-
-//Fenêtre chargement///////////
-void Principal::Update_Load_Window(QString text)
-{
-    InfoWindow *f = new InfoWindow(this,"",1);
-    if(f->Get_Label_Text("Update").split("\n").count() != 2)
-        return;
-    f->Update_Label("Update",text + "\n" + f->Get_Label_Text("Update").split("\n").at(1));
-}
-
-void Principal::Destroy_Chargement()
-{
-    InfoWindow *f = new InfoWindow(this,"",1);
-    f->Close();
 }
 
 //Fonctions////////////////////
@@ -1744,16 +1735,7 @@ void Principal::Quitter()
 void Principal::LoadWeb(int valeur)
 {
     InfoWindow *f = new InfoWindow(this,"",0);
-    QString text = f->Get_Label_Text("Update");
-    if(!text.isEmpty())
-    {
-        if(text.contains("%"))
-            text.remove(text.count()-text.split(" ").last().count()-1,text.count()-1);
-        f->Update_Label("Update",text + " " + QString::number(valeur) + "%");
-    }
-
-    text.clear();
-    text = f->Get_Label_Text("Info");
+    QString text = f->Get_Label_Text("Info");
     if(text.isEmpty())
         return;
     if(text.contains("%"))

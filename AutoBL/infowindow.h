@@ -10,6 +10,8 @@
 
 #define DEBUG qDebug()
 
+static int lw;
+
 class InfoWindow: public QObject
 {
     Q_OBJECT
@@ -18,9 +20,9 @@ public:
     ~InfoWindow();
     void Add_Label(QString name, bool row = true);
     void Update_Label(QString label, QString text);
-    QString Get_Label_Text(QString label);
-    void Show();
-    void Close();
+    QString Get_Label_Text(QString label) const;
+    void Show() const;
+    void Close() const;
 
 private:
     QDialog *w;
