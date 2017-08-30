@@ -83,8 +83,7 @@ bool RexelFr::Create_List_Invoice()
     if(!m_Fct->WebLoad("https://www.rexel.fr/frx/my-account/orders"))
         m_Fct->FrnError(load,REXEL,"https://www.rexel.fr/frx/my-account/orders");
 
-    if(!m_Fct->FindTexte("Suivi de commandes"))
-        m_Fct->FrnError(fail_check,REXEL);
+    if(!m_Fct->FindTexte("Suivi de commandes")) { m_Fct->FrnError(fail_check,REXEL); }
 
     ///Récupération du texte de page de commandes et placement en fichier
     QTimer t;
@@ -133,7 +132,7 @@ bool RexelFr::Create_List_Invoice()
         if(!req.next())
             premierDemarrage = true;
 
-        while(!flux.atEnd() && !fin)
+        while(flux.atEnd() == false && fin == false)
         {
             int id = 0;
             req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");

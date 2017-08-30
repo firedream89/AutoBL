@@ -21,8 +21,7 @@ bool SocolecFr::Start()
     {
         m_Fct->Info("Chargement des commandes...");
         DEBUG << "Socolec | Connected";
-        if(!Create_List_Invoice(firstInit))
-            error = true;
+        if(!Create_List_Invoice(firstInit)) { error = true; }
 
         //Update State
         DEBUG << "Socolec | Update State";
@@ -99,7 +98,7 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
 
         //Ouverture de la page
         QFile f(m_WorkLink + "/web_Temp.txt");
-        if(!f.open(QIODevice::ReadOnly))
+        if(f.open(QIODevice::ReadOnly) == false)
         {
             m_Fct->FrnError(open_File,FRN,f.fileName());
             return false;
@@ -300,7 +299,7 @@ bool SocolecFr::Update_State(QString invoice)
                 m_Fct->FrnError(fail_check,FRN,"Page non chargée");
             else
             {
-                int state;
+                int state(0);
 
                 if(m_Fct->FindTexte("En attente"))
                     state = open;
@@ -385,7 +384,7 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
                                 QString var2 = flux.readLine();
                                 if(var2.contains("obj[CodeEnseigne].ManufacturerSKU"))
                                 {
-                                    if(var.split("\"").count() >= 2 && var.split("\"").count() >= 2)
+                                    if(var.split("\"").count() >= 2 && var2.split("\"").count() >= 2)
                                     {
                                         list.append(var2.split("\"").at(1));//Référence
                                         list.append(var.split("\"").at(1));//Fabricant

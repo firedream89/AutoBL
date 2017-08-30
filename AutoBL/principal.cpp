@@ -83,12 +83,10 @@ Principal::Principal(QWidget *parent) :
         DEBUG << "Copie du Config.esab en cours...";
         bool err(false);
         QFile file(m_Lien_Work + "/Config/Config.esab");
-        err = file.remove();
+        file.remove();
         err = QFile::copy(qApp->applicationDirPath() + "/Config.esab",m_Lien_Work + "/Config/Config.esab");
-        if(err)
-            DEBUG << "Copie de Config.esab échoué";
-        else
-            DEBUG << "Copie de Config.esab réussis";
+        if(err) { DEBUG << "Copie de Config.esab échoué"; }
+        else { DEBUG << "Copie de Config.esab réussis"; }
     }
 
     //Chargement des paramètres
@@ -273,10 +271,7 @@ void Principal::Init_Config()
     ///Semi Automatique
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='22'");
     req.next();
-    if(req.value("Valeur").toInt() == 1 && 0)
-        ui->semiAuto->setChecked(true);
-    else
-        ui->semiAuto->setChecked(false);
+    ui->semiAuto->setChecked(false);
     ///Nom Entreprise Esabora
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
     req.next();
@@ -303,13 +298,11 @@ void Principal::Sauvegarde_Parametres()
     m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(ui->eLogin->text()) + "' WHERE Nom='Login'");
     m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(ui->eMDP->text()) + "' WHERE Nom='MDP'");
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->lienEsabora->text() + "' WHERE Nom='LienEsabora'");
-    if(!ui->mDPA->text().isEmpty())
-        m_DB->Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'");
+    if(!ui->mDPA->text().isEmpty()) { m_DB->Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'"); }
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->nBDDEsab->text() + "' WHERE ID='12'");
     m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpCmd->value()) + "' WHERE ID='14'");
     m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpBoucleRexel->value()) + "' WHERE ID='19'");
-    if(ui->autoPurgeDB->isChecked())
-        m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='17'");
+    if(ui->autoPurgeDB->isChecked()) { m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='17'"); }
     else
         m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='17'");
     if(ui->ajoutAutoBL->isChecked())
@@ -569,7 +562,7 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
     else if(tri == 2)///Tri par Référence
         req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Nom_Chantier");
 
-    if(!req.exec())
+    if(req.exec() == false)
         Affichage_Erreurs("Requete affichage des fichiers échoué !",true);
 
     while(ui->tNomFichier->rowCount() > 0)
@@ -910,34 +903,7 @@ void Principal::Test_Rexel()
 
 void Principal::Test_Esabora()
 {
-    return;
-    if(m_Esabora->Lancement_API())
-    {
-        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
-        while(req.next())
-        {
-            if(!m_Esabora->Ajout_BC(req.value("Numero_Commande").toString()))
-            {
-                Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué").arg(req.value("Numero_Commande").toString()));
-                m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
 
-                if(req.value("Ajout").toInt() != updateRef)
-                {
-                    QFile file(m_Lien_Work + "/Pj/" + req.value("Numero_Commande").toString() + ".xlsx");
-                    if(QFile::copy(m_Lien_Work + "/Pj/" + file.fileName(),m_Lien_Work + "/Pj/" + file.fileName()))
-                        file.remove();
-                }
-            }
-            else
-            {
-                m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-            }
-        }
-        if(!m_Esabora->Fermeture_API())
-            Affichage_Erreurs("Fermeture d'Esabora échoué");
-    }
-    else
-        Affichage_Erreurs("Démarrage d'Esabora échoué");
 }
 
 bool Principal::test()

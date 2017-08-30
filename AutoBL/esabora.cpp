@@ -5,6 +5,8 @@ Esabora::Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora,
     m_fen(fen),m_Login(Login),m_MDP(MDP),m_Lien_Esabora(Lien_Esabora),m_Lien_Work(Lien_Travail),m_DB(db),err(e)
 {
     qDebug() << "Init Class Esabora";
+
+    etat = 0;
 }
 
 Esabora::~Esabora()
@@ -387,7 +389,6 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
             Clavier("Ctrl+C");
             tmp.start(1000);
             loop.exec();
-            QClipboard *pp = QApplication::clipboard();
         }
         else if(temp[0] == '=')
         {

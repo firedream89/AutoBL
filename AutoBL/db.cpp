@@ -111,8 +111,7 @@ void DB::Init()
     }
 
     if(query.prepare("ALTER TABLE En_Cours ADD Fournisseur TEXT"))
-        if(!query.exec())
-            m_Error->Err(updateDB,"","DB");
+        if(!query.exec()) { m_Error->Err(updateDB,"","DB"); }
 
     Requete("UPDATE En_Cours SET Fournisseur='Rexel.fr' WHERE Fournisseur=''");
     Requete("UPDATE En_Cours SET Etat='0' WHERE Etat='En préparation' AND Fournisseur='Rexel.fr'");
@@ -219,8 +218,7 @@ QStringList DB::Find_Fournisseur_From_Invoice(QString invoice)
 {
     QStringList list;
     QSqlQuery req = Requete("SELECT Fournisseur FROM En_Cours WHERE Numero_Commande='" + invoice + "'");
-    while(req.next())
-        list.append(req.value(0).toString());
+    while(req.next()) { list.append(req.value(0).toString()); }
     return list;
 }
 
