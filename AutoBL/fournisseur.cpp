@@ -108,11 +108,13 @@ bool Fournisseur::Update_Var(const QString& frn,const QString& login,const QStri
 {
     DEBUG << "UPDATE " << frn;
     for(int cpt = 0;cpt<fournisseurs.count();cpt++)
+    {
         if(fournisseurs.at(cpt).contains(frn))
         {
             fournisseurs.replaceInStrings(fournisseurs.at(cpt),"nom=" + frn + "&login=" + login + "&mdp=" + mdp + "&comp=" + complement);
             return true;
         }
+    }
     return false;
 }
 

@@ -17,7 +17,9 @@ Principal::Principal(QWidget *parent) :
     for(int i = 0;i<qApp->arguments().count();i++)
         if(qApp->arguments().at(i).contains("-UpdateBDD="))
             if(qApp->arguments().at(i).split("=").at(1) == "1")
+            {
                 QMessageBox::warning(0,"AutoBL",tr("Une erreur s'est produite durant la Restauration/mise à jour de la base de données."));
+            }
 
     //Traitement des variables de l'application
     m_Lien_Work = QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0);
@@ -98,7 +100,9 @@ Principal::Principal(QWidget *parent) :
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
     while(req.next())
         if(!m_Frn->Add(req.value(0).toString()))
+        {
             Affichage_Erreurs(tr("Ajout du fournisseur %1 échoué").arg(req.value(0).toString()));
+        }
 
     m_Esabora = new Esabora(this,ui->eLogin->text(),ui->eMDP->text(),ui->lienEsabora->text(),m_Lien_Work,m_DB,m_Error);
     QThread *thread = new QThread;
@@ -255,8 +259,7 @@ void Principal::Init_Config()
     ///Variable Ajout Auto des BL
     req = m_DB->Requete("SELECT * FROM Options WHERE ID='13'");
     req.next();
-    if(req.value("Valeur").toInt() == 1)
-        ui->ajoutAutoBL->setChecked(true);
+    if(req.value("Valeur").toInt() == 1) { ui->ajoutAutoBL->setChecked(true); }
     ///Variable démarrage avec windows
     QSettings settings2("Microsoft","Windows\\CurrentVersion\\Run");
     if(settings2.value("AutoBL").toString() != "")
@@ -298,7 +301,7 @@ void Principal::Sauvegarde_Parametres()
     m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(ui->eLogin->text()) + "' WHERE Nom='Login'");
     m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(ui->eMDP->text()) + "' WHERE Nom='MDP'");
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->lienEsabora->text() + "' WHERE Nom='LienEsabora'");
-    if(!ui->mDPA->text().isEmpty()) { m_DB->Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'"); }
+    if(ui->mDPA->text().isEmpty() == false) { m_DB->Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'"); }
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->nBDDEsab->text() + "' WHERE ID='12'");
     m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpCmd->value()) + "' WHERE ID='14'");
     m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpBoucleRexel->value()) + "' WHERE ID='19'");
@@ -316,9 +319,13 @@ void Principal::Sauvegarde_Parametres()
         m_DB->Requete("UPDATE En_Cours SET Ajout_BL='0'");
     }
     if(ui->semiAuto->isChecked())
+    {
         m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='22'");
+    }
     else
+    {
         m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='22'");
+    }
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->nEntrepriseEsab->text() + "' WHERE ID='23'");
 
     QSettings settings2("Microsoft","Windows\\CurrentVersion\\Run");
@@ -553,17 +560,24 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
     ui->tNomFichier->clearContents();
     QFlag flag = ~Qt::ItemIsEditable;
     QSqlQuery req;
-    if(tri == 10)
-        tri = m_Tri;
+    if(tri == 10) { tri = m_Tri; }
     if(tri == 0)///Tri par Date
+    {
         req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Date");
+    }
     else if(tri == 1)///Tri par Etat Esabora
+    {
         req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Ajout");
+    }
     else if(tri == 2)///Tri par Référence
+    {
         req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Nom_Chantier");
+    }
 
     if(req.exec() == false)
+    {
         Affichage_Erreurs("Requete affichage des fichiers échoué !",true);
+    }
 
     while(ui->tNomFichier->rowCount() > 0)
         ui->tNomFichier->removeRow(0);
@@ -576,7 +590,9 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
     {
         //Contrôle des nouveau bons
         if(req.value("Ajout").toInt() == download && !req.value("Nom_Chantier").toString().at(0).isDigit() && !req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
+        {
             m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'AND Fournisseur='" + req.value("Fournisseur").toString() + "'");
+        }
 
         //Création de la ligne
         if(req.value("Ajout").toInt() != endAdd || login)

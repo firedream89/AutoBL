@@ -50,7 +50,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                 if(liste_Matos.at(i+3).isEmpty() && !liste_Matos.at(i+2).isEmpty())//si Fabricant connu mais pas Fab
                 {
                     file.seek(0);
-                    while(!flux.atEnd())//vérif si Fab déjà connu
+                    while(flux.atEnd() == false)//vérif si Fab déjà connu
                     {
                         QString var = flux.readLine();
                         if(var.split(";").at(0) == liste_Matos.at(i+2))
@@ -84,7 +84,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
 
             if(req.value("Nom_Chantier").toString() == "0")//Ajout BC au Stock
             {
-                if(!Ajout_Stock(req.value("Numero_Commande").toString()))
+                if(Ajout_Stock(req.value("Numero_Commande").toString()) == false)
                 {
                     Abort();
                     Ouverture_Liste_BC();
@@ -188,7 +188,7 @@ bool Esabora::Lancement_API()
 bool Esabora::Ouverture_Liste_BC()
 {
     qDebug() << "Esabora::Ouverture_Liste_BC()";
-    if(Traitement_Fichier_Config("Liste_BC")) return true;
+    if(Traitement_Fichier_Config("Liste_BC")) { return true; }
     return false;
 }
 
@@ -519,21 +519,15 @@ bool Esabora::Clavier(QString commande)
     qDebug() << "Esabora::Clavier()";
     if(commande == "Purge")
     {
-        if(GetKeyState(VK_LMENU) < 0)
-            keybd_event(VK_LMENU,0,KEYEVENTF_KEYUP,0);
-        if(GetKeyState(VK_SHIFT) < 0)
-            keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
-        if(GetKeyState(VK_LCONTROL) < 0)
-            keybd_event(VK_LCONTROL,0,KEYEVENTF_KEYUP,0);
+        if(GetKeyState(VK_LMENU) < 0) { keybd_event(VK_LMENU,0,KEYEVENTF_KEYUP,0); }
+        if(GetKeyState(VK_SHIFT) < 0) { keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0); }
+        if(GetKeyState(VK_LCONTROL) < 0) { keybd_event(VK_LCONTROL,0,KEYEVENTF_KEYUP,0); }
         return true;
     }
 
-    if(GetKeyState(VK_LMENU) < 0)
-        keybd_event(VK_LMENU,0,KEYEVENTF_KEYUP,0);
-    if(GetKeyState(VK_SHIFT) < 0)
-        keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
-    if(GetKeyState(VK_LCONTROL) < 0)
-        keybd_event(VK_LCONTROL,0,KEYEVENTF_KEYUP,0);
+    if(GetKeyState(VK_LMENU) < 0) { keybd_event(VK_LMENU,0,KEYEVENTF_KEYUP,0); }
+    if(GetKeyState(VK_SHIFT) < 0) { keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0); }
+    if(GetKeyState(VK_LCONTROL) < 0) { keybd_event(VK_LCONTROL,0,KEYEVENTF_KEYUP,0); }
 
     QEventLoop l;
     QTimer t;

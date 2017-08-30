@@ -169,13 +169,21 @@ bool RexelFr::Create_List_Invoice()
 
                 //status
                 if(ligne.contains("Livrée en totalité") || ligne.contains("Livrée et facturée"))
+                {
                     etat = QString::number(Close);
+                }
                 else if(ligne.contains("Partiellement livrée"))
+                {
                     etat = QString::number(partial);
+                }
                 else if(ligne.contains("Annulée"))
+                {
                     skip = true;
+                }
                 else
+                {
                     etat = QString::number(open);
+                }
 
                 //Lien chantier
                 lienChantier = "https://www.rexel.fr/frx/my-account/orders/" + numeroCommande;
@@ -398,8 +406,7 @@ QStringList RexelFr::Get_Invoice(const QString InvoiceNumber)
     //0 = nb commande
     //boucle de 6 strings designation,reference,fabricant,prix unitaire,quantité livré,quantité restante
     m_Fct->Change_Load_Window(tr("Connexion à Rexel.fr"));
-    if(!Connexion())
-        return QStringList("Erreur");
+    if(!Connexion()) { return QStringList("Erreur"); }
     m_Fct->Change_Load_Window(tr("Chargement de la commande"));
     if(!m_Fct->WebLoad("https://www.rexel.fr/frx/my-account/orders/" + InvoiceNumber))
     {
