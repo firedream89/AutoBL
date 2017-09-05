@@ -26,7 +26,9 @@ FctFournisseur::~FctFournisseur()
 void FctFournisseur::Loop(int tMax)
 {
     if(tMax == 0)
+    {
         tMax = 30000;
+    }
     timer->start(tMax);
     loop->exec();
 }
@@ -39,10 +41,13 @@ bool FctFournisseur::WebLoad(QString lien)
         web->load(QUrl(lien));
         Loop(30000);
         if(timer->isActive())
-            if(!FindTexte("Aucune connexion Internet"))
-                return true;
+        {
+            if(FindTexte("Aucune connexion Internet") == false) { return true; }
+        }
             else
+        {
                 m_Error->Err(noConnected,"",FCT);
+        }
         web->stop();
     }
 
@@ -55,10 +60,14 @@ bool FctFournisseur::FindTexte(QString texte)
     QString t;
 
     web->page()->toPlainText([&t,&end](const QString result){t = result;end = true;});
-    while(!end)
+    while(end == false)
+    {
         Loop(500);
+    }
     if(t.contains(texte))
+    {
         test = true;
+    }
 
     DEBUG << "find " << test;
     return test;
@@ -70,12 +79,13 @@ bool FctFournisseur::SaveText()
 
     QFile fichier(m_WorkLink + "/web_Temp.txt");
     fichier.resize(0);
-    if(!fichier.open(QIODevice::WriteOnly))
-        return false;
+    if(fichier.open(QIODevice::WriteOnly) == false) { return false; }
     QTextStream flux(&fichier);
     web->page()->toPlainText([&flux,&end](const QString result){flux << result;end = true;});
-    while(!end)
+    while(end == false)
+    {
         Loop(500);
+    }
     fichier.close();
     return true;
 }

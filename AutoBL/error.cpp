@@ -9,8 +9,10 @@ Error::Error(QString work_Link)
 {
     qDebug() << "Init classe Error";
     m_Errors.setFileName(work_Link + "/Logs/errors.txt");
-    if(!m_Errors.open(QIODevice::WriteOnly | QIODevice::Append))
+    if(m_Errors.open(QIODevice::WriteOnly | QIODevice::Append) == false)
+    {
         Err(open_File,"Log error","Général");
+    }
 
     //Chargement des classes de l'application et fonctions nécéssaires
     Write_Error("--------------------------Run AutoBL-----------------------------");
@@ -37,9 +39,13 @@ QString Error::Err(int code, QString e, QString fromClass)
         break;
     case fail_check:
         if(e.isEmpty())
+        {
             err = tr("Vérification de la page échouée");
+        }
         else
+        {
             err = tr("Vérification de la page échouée (%1)").arg(e);
+        }
         break;
     case variable:
         err = tr("Lecture de la variable %1 échouée").arg(e);
@@ -106,8 +112,10 @@ QString Error::Err(int code, QString e, QString fromClass)
         break;
     }
 
-    if(!fromClass.isEmpty())
+    if(fromClass.isEmpty() == false)
+    {
         err = fromClass + " | " + err;
+    }
     emit sError(err);
     Write_Error(err);
     return err;

@@ -605,7 +605,7 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
     while(req.next())
     {
         //Contrôle des nouveau bons
-        if(req.value("Ajout").toInt() == download && !req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit() == false)
+        if(req.value("Ajout").toInt() == download && req.value("Nom_Chantier").toString().at(0).isDigit() == false && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit() == false)
         {
             m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'AND Fournisseur='" + req.value("Fournisseur").toString() + "'");
         }
@@ -812,7 +812,7 @@ void Principal::Demarrage()
 void Principal::Demarrer_Frn()
 {
     Create_Fen_Info("Fournisseur","Info");
-    if(!m_Frn->Start())
+    if(m_Frn->Start() == false)
     {
         Affichage_Erreurs("Des erreurs se sont produites durant la recherche de bons");
     }
@@ -949,7 +949,7 @@ void Principal::Help(bool p)
     else
     {
         QFile f("Help/accueil.txt");
-        if(!f.open(QIODevice::ReadOnly))
+        if(f.open(QIODevice::ReadOnly) == false)
         {
             Affichage_Erreurs("Principal | E080 | Erreur dans l'ouverture du fichier general.txt");
         }
@@ -1505,7 +1505,7 @@ bool Principal::Post_Report()
         w.page()->runJavaScript("document.getElementById('sj').value=" + rapport.fileName().split(".").at(0) + ";",[&l](const QVariant r){l.quit();});
         l.exec();
         QString text;
-        while(!rapport.atEnd())
+        while(rapport.atEnd() == false)
         {
             text += rapport.readLine();
         }
@@ -1772,11 +1772,11 @@ void Principal::Create_Fen_Info(QString label1, QString label2, QString label3, 
     {
         f->Add_Label(label2);
     }
-    if(!label3.isEmpty() == false)
+    if(label3.isEmpty() == false)
     {
         f->Add_Label(label3);
     }
-    if(!label4.isEmpty() == false)
+    if(label4.isEmpty() == false)
     {
         f->Add_Label(label4);
     }

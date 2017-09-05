@@ -251,7 +251,7 @@ bool Esabora::Ajout_BC(QString Numero_Commande)
 bool Esabora::Ajout_BL(QString Numero_Commande_Esab, QString Numero_BL)
 {
     qDebug() << "Esabora::Ajout_BL()";
-    if(!Traitement_Fichier_Config("Valid_BL",Numero_Commande_Esab + " " + Numero_BL))
+    if(Traitement_Fichier_Config("Valid_BL",Numero_Commande_Esab + " " + Numero_BL) == false)
     {
         err->Err(BL,Numero_Commande_Esab,ESAB);
         qDebug() << "Ajout_BL - Echec Traitement Valid_BL";
@@ -903,14 +903,14 @@ bool Esabora::Souris(QString commande)
     qDebug() << "Esabora::Souris()";
     int x = 0,y = 0;
     bool clique = false;
-    if(commande.split(" ").count() != 4)
-        return false;
+    if(commande.split(" ").count() != 4) { return false; }
     x = commande.split(" ").at(1).toInt();
     y = commande.split(" ").at(2).toInt();
     if(commande.split(" ").at(3) == "oui")
+    {
         clique = true;
-    if(!SetCursorPos(x,y))
-        return false;
+    }
+    if(SetCursorPos(x,y) == false) { return false; }
     if(clique)
     {
         mouse_event(MOUSEEVENTF_LEFTDOWN,0,0,0,0);
@@ -932,7 +932,7 @@ bool Esabora::Verification_Fenetre(QString fenetre)
     if(hWnds == NULL)
     {
         hWnds = FindWindow(NULL,L"AVERTISSEMENT");
-        if(hWnds == NULL) return false;
+        if(hWnds == NULL) { return false; }
         else
         {
             Clavier("Entrée");
@@ -941,8 +941,8 @@ bool Esabora::Verification_Fenetre(QString fenetre)
             connect(&t,SIGNAL(timeout()),&loop,SLOT(quit()));
             t.start(2000);
             loop.exec();
-            if(Verification_Fenetre(fenetre)) return true;
-            else return false;
+            if(Verification_Fenetre(fenetre)) { return true; }
+            else { return false; }
         }
     }
     else return true;
@@ -953,20 +953,20 @@ bool Esabora::Verification_Focus(QString fen, bool focus)
     qDebug() << "Esabora::Verification_Focus()";
     HWND hWnds = FindWindow(NULL,fen.toStdWString().c_str());
     HWND h = GetForegroundWindow();
-    if(hWnds == h && focus) return true;
+    if(hWnds == h && focus) { return true; }
     else if(hWnds != h && !focus)
     {
         QString message;
         Verification_Message_Box(message);
         return true;
     }
-    else return false;
+    else { return false; }
 }
 ///Erreur 6xx
 bool Esabora::Ajout_Stock(QString numero_Commande)
 {
     qDebug() << "Esabora::Ajout_Stock()";
-    if(!Traitement_Fichier_Config("Ajout_Stock","///" + numero_Commande + ".tmp"))
+    if(Traitement_Fichier_Config("Ajout_Stock","///" + numero_Commande + ".tmp") == false)
     {
         err->Err(Traitement,"",ESAB);
         qDebug() << "Ajout_Stock - Echec dans le traitement du Bon de commande";
@@ -983,7 +983,7 @@ void Esabora::Semi_Auto(QString NumeroCommande)
     QSqlQuery r2 = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='12'");
     r.next();
     r2.next();
-    if(!Verification_Fenetre(r.value("Valeur").toString() + " - SESSION : 1 - REPERTOIRE : " + r2.value("Valeur").toString()))
+    if(Verification_Fenetre(r.value("Valeur").toString() + " - SESSION : 1 - REPERTOIRE : " + r2.value("Valeur").toString()) == false)
     {
         emit Message("Erreur","Esabora n'est pas ouvert !",true);
         return;
@@ -997,7 +997,9 @@ void Esabora::Semi_Auto(QString NumeroCommande)
     Traitement_Fichier_Config("Semi_Auto","///" + NumeroCommande + ".");
 
     if(QMessageBox::question(m_fen,"","L'ajout du bon de commande à t'il réussi ?") == QMessageBox::Yes)
+    {
         m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + NumeroCommande + "'");
+    }
 
     emit Message("","Le bon de livraison doit être validé manuellement.",false);
     qDebug() << "Fin Esabora::Semi_Auto()";
@@ -1104,21 +1106,37 @@ bool Esabora::Verification_Message_Box(QString &message)
         if(img.operator ==(img2))//Si les screens correspondent
         {
             if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "Aucun_acticle_a_receptionner.PNG")
+            {
                 emit Info("DEBUG : Aucun article à réceptionner !");
+            }
             else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "c_non_repertorie.PNG")
+            {
                 emit Info("DEBUG : Chantier non répertorié !");
+            }
             else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "f_non_repertorie.PNG")
+            {
                 emit Info("DEBUG : Fournisseur non répertorié !");
+            }
             else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "i_non_repertorie.PNG")
+            {
                 emit Info("DEBUG : Interlocuteur non répertorié !");
+            }
             else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "l_deja_livre.PNG")
+            {
                 emit Info("DEBUG : Modification de ligne déjà livrée !");
+            }
             else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "livraison_total.PNG")
+            {
                 emit Info("DEBUG : Livraison total");
+            }
             else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "quitter.PNG")
+            {
                 emit Info("DEBUG : Quitter en perdant les données ?");
+            }
             else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "Sauvegarder.PNG")
+            {
                 emit Info("DEBUG : Sauvegarder ?");
+            }
             else
             {
                 emit Info("DEBUG : MessageBox introuvable ! " + dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt));
@@ -1149,10 +1167,8 @@ bool Esabora::Get_List_Matos(QString invoice)
     t.start(60000);
     //l.exec();
 
-    if(t.isActive())
-        return true;
-    else
-        return false;
+    if(t.isActive()) { return true; }
+    else { return false; }
 }
 
 void Esabora::Stop()

@@ -3,13 +3,19 @@
 InfoWindow::InfoWindow(QWidget *parent,QString windowTitle, int type)
 {
     if(parent->findChild<QDialog*>("InfoWindow") != NULL)
+    {
         w = parent->findChild<QDialog*>("InfoWindow");
+    }
     else
     {
         if(type == 1)
+        {
             w = new QDialog(parent,Qt::Tool | Qt::CustomizeWindowHint);
+        }
         else
+        {
             w = new QDialog(parent);
+        }
         w->setObjectName("InfoWindow");
         w->setWindowTitle(windowTitle);
         QFormLayout *l = new QFormLayout(w);
@@ -34,9 +40,13 @@ void InfoWindow::Add_Label(QString name, bool row)
     QLabel *lb = new QLabel;
     lb->setObjectName(name);
     if(row)
+    {
         l->addRow(name,lb);
+    }
     else
+    {
         l->addWidget(lb);
+    }
 }
 
 void InfoWindow::Update_Label(QString label, QString text)
@@ -66,9 +76,13 @@ void InfoWindow::Update_Label(QString label, QString text)
 QString InfoWindow::Get_Label_Text(QString label) const
 {
     if(w->findChild<QLabel*>(label) != NULL)
+    {
         return w->findChild<QLabel*>(label)->text();
+    }
     else
+    {
         return QString();
+    }
 }
 
 void InfoWindow::Show() const

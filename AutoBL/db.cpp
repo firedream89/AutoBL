@@ -43,8 +43,10 @@ QSqlQuery DB::Requete(QString r)
 
     if(req.prepare(r))
     {
-        if(!req.exec())
+        if(req.exec() == false)
+        {
             m_Error->Err(requete,r,"DB");
+        }
     }
     else
         m_Error->Err(requete,r,"DB");
@@ -60,13 +62,15 @@ void DB::Init()
     db.setDatabaseName(qApp->applicationDirPath() + "/bdd.db");
     db.setHostName("127.0.0.1");
 
-    if(!db.open())
+    if(db.open() == false)
     {
         m_Error->Err(openDB);
         return;
     }
     else
+    {
         emit Info("Ouverture de la Database réussi ! " + db.hostName() + " " + db.driverName());
+    }
 
     //test DB
     QSqlQuery req;
@@ -111,7 +115,9 @@ void DB::Init()
     }
 
     if(query.prepare("ALTER TABLE En_Cours ADD Fournisseur TEXT"))
-        if(!query.exec()) { m_Error->Err(updateDB,"","DB"); }
+    {
+        if(query.exec() == false) { m_Error->Err(updateDB,"","DB"); }
+    }
 
     Requete("UPDATE En_Cours SET Fournisseur='Rexel.fr' WHERE Fournisseur=''");
     Requete("UPDATE En_Cours SET Etat='0' WHERE Etat='En préparation' AND Fournisseur='Rexel.fr'");
@@ -124,14 +130,16 @@ void DB::Init()
     //Test DB
     req = Requete("SELECT * FROM Options");
 
-    if(!req.next())//si DB inaccessible, lancer la mise à jour de la DB
+    if(req.next() == false)//si DB inaccessible, lancer la mise à jour de la DB
     {
         db.close();
         QDesktopServices::openUrl(QUrl("bin/MAJ_BDD.exe"));
         qApp->exit(0);
     }
     else
+    {
         emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());
+    }
 
     //Update variable Ajout
     Requete("UPDATE En_Cours SET Ajout='0' WHERE Ajout='Telecharger'");
@@ -162,20 +170,19 @@ void DB::Sav()
 
     bool ok(true);
 
-    if(f.lastModified().operator ==(fBDD.lastModified()) || f1.lastModified().operator ==(fBDD.lastModified()) || f2.lastModified().operator ==(fBDD.lastModified()))
-        return;
+    if(f.lastModified().operator ==(fBDD.lastModified()) || f1.lastModified().operator ==(fBDD.lastModified()) || f2.lastModified().operator ==(fBDD.lastModified())) { return; }
 
-    if(!sav.exists())
+    if(sav.exists() == false)
     {
         ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav.db");
         emit Info("DB | Sauvegarde de la DB(sav)");
     }
-    else if(!sav2.exists())
+    else if(sav2.exists() == false)
     {
         ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav2.db");
         emit Info("DB | Sauvegarde de la DB(sav2)");
     }
-    else if(!sav3.exists())
+    else if(sav3.exists() == false)
     {
         ok = sav.copy(qApp->applicationDirPath() + "/bdd.db",qApp->applicationDirPath() + "/bddSav3.db");
         emit Info("DB | Sauvegarde de la DB(sav3)");
@@ -201,8 +208,10 @@ void DB::Sav()
             emit Info("DB | Sauvegarde de la DB(sav3)");
         }
     }
-    if(!ok)
+    if(ok == false)
+    {
         m_Error->Err(saveDB);
+    }
 }
 
 void DB::Purge()
@@ -230,17 +239,27 @@ QString DB::Encrypt(QString text)
     for(int i = 0;i<text.count();i++)
     {
         if(idk == k.count())
+        {
             idk = 0;
+        }
         int t = text.at(i).unicode();
         t -= k.at(idk).toInt();
         if(t > 250)
+        {
             t = t - 250;
+        }
         else if(t < 0)
+        {
             t = t + 250;
+        }
         if(t == 34)//si '
+        {
             t = 251;
+        }
         else if(t == 39)//ou "
+        {
             t = 252;
+        }
         crypt += QChar(t).toLatin1();
         idk++;
     }
@@ -255,17 +274,27 @@ QString DB::Decrypt(QString text)
     for(int i = 0;i<text.count();i++)
     {
         if(idk == k.count())
+        {
             idk = 0;
+        }
         int t = text.at(i).unicode();
         if(t == 251)//retour a '
+        {
             t = 34;
+        }
         else if(t == 252)//retour a "
+        {
             t = 39;
+        }
         t += k.at(idk).toInt();
         if(t < 0)
+        {
             t = t + 250;
+        }
         else if(t > 250)
+        {
             t = t - 250;
+        }
         decrypt += QChar(t).toLatin1();
         idk++;
     }
@@ -276,16 +305,11 @@ QString DB::enum_State(int state)
 {
     QString var;
 
-    if(state == download)
-        var = "Télécharger";
-    else if(state == error)
-        var = "Erreur";
-    else if(state == updateRef)
-        var = "Modifier";
-    else if(state == add)
-        var = "Bon ajouté";
-    else if(state == endAdd)
-        var = "Ok";
+    if(state == download) { var = "Télécharger"; }
+    else if(state == error) { var = "Erreur"; }
+    else if(state == updateRef) { var = "Modifier"; }
+    else if(state == add) { var = "Bon ajouté"; }
+    else if(state == endAdd) { var = "Ok"; }
     else
     {
         m_Error->Err(variable,"enum_State","DB");
