@@ -341,21 +341,21 @@ void Principal::Sauvegarde_Parametres()
 
     if(premierDemarrage)
     {
-        if(!ui->ajoutAutoBL->isChecked())
+        if(ui->ajoutAutoBL->isChecked() == false)
         {
             if(QMessageBox::question(this,"","Souhaitez-vous que les bons de livraisons soit ajoutés automatiquement ?") == QMessageBox::Yes)
             {
                 ui->ajoutAutoBL->setChecked(true);
             }
         }
-        if(!ui->autoPurgeDB->isChecked())
+        if(ui->autoPurgeDB->isChecked() == false)
         {
             if(QMessageBox::question(this,"","Souhaitez-vous que la base de données d'AutoBL supprime les bons validés de plus de 2 mois ?") == QMessageBox::Yes)
             {
                 ui->autoPurgeDB->setChecked(true);
             }
         }
-        if(!ui->rapport_Erreur->isChecked())
+        if(ui->rapport_Erreur->isChecked() == false)
         {
             if(QMessageBox::question(this,"","Souhaitez-vous qu'AutoBL envoie les rapports d'erreurs pour faciliter le débuggage(aucune information personnel n'est transmise) ?") == QMessageBox::Yes)
             {
@@ -427,7 +427,7 @@ void Principal::Demarrage_Auto_BC(bool Demarrage_Timer)
          }
          if(ui->autoPurgeDB->isChecked()) { m_DB->Purge(); }
     }
-    else if(!Demarrage_Timer)
+    else if(Demarrage_Timer == false)
     {
         DEBUG << "DEBUG | Demarrage Auto | Boucle";
         //boucle de 1mn pour attente avant redemarrage
@@ -605,7 +605,7 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
     while(req.next())
     {
         //Contrôle des nouveau bons
-        if(req.value("Ajout").toInt() == download && !req.value("Nom_Chantier").toString().at(0).isDigit() && !req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
+        if(req.value("Ajout").toInt() == download && !req.value("Nom_Chantier").toString().at(0).isDigit() && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit() == false)
         {
             m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'AND Fournisseur='" + req.value("Fournisseur").toString() + "'");
         }
@@ -682,7 +682,7 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
                 ui->tNomFichier->item(0,1)->setTextColor(QColor(0,255,0));
             }
             ui->tNomFichier->item(0,1)->setFlags(flag);
-            if(ui->tNomFichier->item(0,1)->text().toInt() != error && ui->tNomFichier->item(0,1)->text().toInt() != updateRef && !login
+            if(ui->tNomFichier->item(0,1)->text().toInt() != error && ui->tNomFichier->item(0,1)->text().toInt() != updateRef && login == false
                     && ui->tNomFichier->item(0,1)->text().toInt() != download)
             {
                 ui->tNomFichier->item(0,2)->setFlags(flag);
@@ -772,7 +772,7 @@ void Principal::Demarrage()
     Create_Fen_Info("Fournisseur","Info");
     if(ui->activ_Rexel->isChecked())
     {
-        if(!m_Frn->Start())
+        if(m_Frn->Start() == false)
         {
             Affichage_Erreurs("Des erreurs se sont produites durant la recherche de bons");
         }
@@ -782,9 +782,9 @@ void Principal::Demarrage()
     int nbBC(0),nbBL(0);
     ///Démarrage d'esabora
     bool automatic = ui->ajoutAutoBL->isChecked();
-    if(!m_Arret && ui->activ_Esab->isChecked())
+    if(m_Arret == false && ui->activ_Esab->isChecked())
     {
-        if(!m_Esabora->Start(automatic,nbBC,nbBL))
+        if(m_Esabora->Start(automatic,nbBC,nbBL) == false)
         {
             Affichage_Erreurs(tr("Des erreurs se sont produite durant la procédure d'ajout de bon"));
         }
@@ -920,7 +920,7 @@ void Principal::About()
 void Principal::Afficher_Message_Box(QString header,QString texte, bool warning)
 {
 
-    if(!warning)
+    if(warning == false)
     {
         QMessageBox::information(this,header,texte);
     }
@@ -937,7 +937,7 @@ void Principal::Help(bool p)
     if(p)
     {
         QFile f("Help/accueil.txt");
-        if(!f.open(QIODevice::ReadOnly))
+        if(f.open(QIODevice::ReadOnly) == false)
         {
             Affichage_Erreurs("Principal | E080 | Erreur dans l'ouverture du fichier general.txt");
         }
@@ -998,7 +998,7 @@ void Principal::Test_BC()
         {
             m_Tache->Affichage_En_Cours();
             QString fxlsx = req.value("Numero_Commande").toString() + ".xlsx";
-            if(!m_Esabora->Ajout_BC(req.value("Numero_Commande").toString()))
+            if(m_Esabora->Ajout_BC(req.value("Numero_Commande").toString())== false)
             {
                 if(m_Esabora->GetEtat() == 0)
                 {
@@ -1022,6 +1022,7 @@ void Principal::Test_BC()
 void Principal::Test_BL()
 {
     if(m_Esabora->Lancement_API())
+    {
         for(int cpt=0;cpt<ui->tNomFichier->rowCount();cpt++)
         {
             if(ui->tNomFichier->item(cpt,7)->checkState() == Qt::Checked)
@@ -1029,7 +1030,7 @@ void Principal::Test_BL()
                 QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,5)->text() + "'");
                 if(req.next())
                 {
-                    if(!m_Esabora->Ajout_BL(req.value("Numero_BC_Esabora").toString(),ui->tNomFichier->item(cpt,4)->text()))
+                    if(m_Esabora->Ajout_BL(req.value("Numero_BC_Esabora").toString(),ui->tNomFichier->item(cpt,4)->text()) == false)
                     {
                         Affichage_Erreurs(tr("Principal | Ajout BL N°%0 échoué").arg(ui->tNomFichier->item(cpt,4)->text()));
                     }
@@ -1046,6 +1047,7 @@ void Principal::Test_BL()
                 cpt = ui->tNomFichier->rowCount();
             }
         }
+    }
     m_Esabora->Fermeture_API();
 }
 
@@ -1092,7 +1094,7 @@ void Principal::Restaurer_DB()
         var = "/bddSav3.db";
     }
 
-    if(!var.isEmpty())
+    if(var.isEmpty() == false)
     {
         QDesktopServices::openUrl(QUrl(qApp->applicationDirPath() + "/MAJ_BDD.exe -restore=" + var));
         qApp->exit(0);
@@ -1180,7 +1182,7 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
         l->addWidget(tbl);
         f->resize(tbl->width(),tbl->height());
         f->exec();
-        while(!f->isHidden())
+        while(f->isHidden() == false)
         {
             QTimer t;
             QEventLoop l;
@@ -1305,7 +1307,9 @@ void Principal::Login_False()
             m_Tache->Login(false);
         }
         else if(ui->tabWidget->isTabEnabled(3))
+        {
             ui->tabWidget->removeTab(3);
+        }
     }
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -1443,7 +1447,7 @@ bool Principal::Post_Report()
             w.page()->runJavaScript("document.getElementById('sj').value='" + rapport.fileName().split(".").at(0) + "';",[&l](const QVariant r){l.quit();});
             l.exec();
             QString text;
-            while(!rapport.atEnd())
+            while(rapport.atEnd() == false)
             {
                 text += rapport.readLine();
             }
@@ -1477,10 +1481,10 @@ bool Principal::Post_Report()
         f.setFileName(m_Lien_Work + "/Logs/debug.log");
         f.open(QIODevice::ReadOnly);
         flux << "- Debug -\r\n";
-        while(!f.atEnd())
+        while(f.atEnd() == false)
         {
             QString v = f.readLine();
-            if(!v.contains("Cannot create accessible interface for object:"))
+            if(v.contains("Cannot create accessible interface for object:") == false)
             {
                 flux << v << "\r\n";
             }
@@ -1764,15 +1768,15 @@ void Principal::Create_Fen_Info(QString label1, QString label2, QString label3, 
             f->Add_Label(label1);
         }
     }
-    if(!label2.isEmpty())
+    if(label2.isEmpty() == false)
     {
         f->Add_Label(label2);
     }
-    if(!label3.isEmpty())
+    if(!label3.isEmpty() == false)
     {
         f->Add_Label(label3);
     }
-    if(!label4.isEmpty())
+    if(!label4.isEmpty() == false)
     {
         f->Add_Label(label4);
     }
@@ -1827,7 +1831,7 @@ void Principal::AddError(QString error)
 
 void Principal::Quitter()
 {
-    if(!m_Arret)
+    if(m_Arret == false)
     {
         m_Arret = true;
         QEventLoop l;

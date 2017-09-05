@@ -19,27 +19,30 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
     m_Arret = false;
     m_List_Cmd.clear();
 
-    if(!Lancement_API())
-        return false;
+    if(Lancement_API() == false) { return false; }
 
     ///Ajout des BC sur esabora
     QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
     Ouverture_Liste_BC();
     qDebug() << "Liste BC ouverte";
-    while(req.next() && !m_Arret)
+    while(req.next() && m_Arret == false)
     {
         qDebug() << "Ajout BC";
         emit Info(tr("Ajout du bon de commande %0").arg(req.value("Numero_Commande").toString()));
         if(Get_List_Matos(req.value("Numero_Commande").toString()))
         {
-            if(!liste_Matos.isEmpty())
+            if(liste_Matos.isEmpty() == false)
+            {
                 DEBUG << "Liste matériels Vide !";
+            }
 
             //Vérif Fabriquant
             QStringList list;
             QFile file(m_Lien_Work + "/Config/Fab.esab");
-            if(!file.open(QIODevice::ReadWrite))
+            if(file.open(QIODevice::ReadWrite) == false)
+            {
                 err->Err(open_File,ESAB,"Fab.esab");
+            }
             QTextStream flux(&file);
 
             for(int i=0;i<liste_Matos.count();i++)
@@ -47,7 +50,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                 list.append(liste_Matos.at(i));
                 list.append(liste_Matos.at(i+1));
                 list.append(liste_Matos.at(i+2));
-                if(liste_Matos.at(i+3).isEmpty() && !liste_Matos.at(i+2).isEmpty())//si Fabricant connu mais pas Fab
+                if(liste_Matos.at(i+3).isEmpty() && liste_Matos.at(i+2).isEmpty() == false)//si Fabricant connu mais pas Fab
                 {
                     file.seek(0);
                     while(flux.atEnd() == false)//vérif si Fab déjà connu
@@ -63,7 +66,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                     if(file.atEnd())//Sinon rechercher Fab sur esabora
                     {
                         QString var = Find_Fabricant(liste_Matos.at(i+2));
-                        if(!var.isEmpty())
+                        if(var.isEmpty() == false)
                         {
                             list.append(var);
                             file.seek(SEEK_END);
@@ -98,12 +101,14 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
             }      
             else//Ajout BC sur numéro de chantier
             {
-                if(!Ajout_BC(req.value("Numero_Commande").toString()))
+                if(Ajout_BC(req.value("Numero_Commande").toString()) == false)
                 {
                     Abort();
                     Ouverture_Liste_BC();
                     if(GetEtat() == 0)
+                    {
                         err->Err(Not_BC,req.value("Numero_Commande").toString(),ESAB);
+                    }
                     else if(GetEtat() == 1)
                     {
                         err->Err(BC,req.value("Numero_Commande").toString(),ESAB);
@@ -115,7 +120,9 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                     m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     nbBC++;
                     if(automatic)
+                    {
                         m_List_Cmd.append(req.value("Numero_Commande").toString());
+                    }
                 }
             }
         }
@@ -127,16 +134,20 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
     ///Ajout des BL sur esabora
     req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout_BL='1' AND Ajout='Bon Ajouté'");
     while(req.next())
+    {
         m_List_Cmd.append(req.value("Numero_Commande").toString());
+    }
 
     for(int cpt=0;cpt<m_List_Cmd.count();cpt++)
     {
         if(m_Arret)
+        {
             cpt = m_List_Cmd.count();
+        }
         QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + m_List_Cmd.at(cpt) + "'");
         if(req.next())
         {
-            if(!Ajout_BL(req.value("Numero_BC_Esabora").toString(),req.value("Numero_Livraison").toString()))
+            if(Ajout_BL(req.value("Numero_BC_Esabora").toString(),req.value("Numero_Livraison").toString()) == false)
             {
                 Abort();
                 err->Err(BL,req.value("Numero_Livraison").toString(),ESAB);
@@ -163,8 +174,10 @@ bool Esabora::Lancement_API()
     qDebug() << "Esabora::Lancement_API()";
     p.setProgram(m_Lien_Esabora);
     if(m_Lien_Esabora.contains("Simul_Esabora"))
+    {
         p.start();
-    else if(!QDesktopServices::openUrl(m_Lien_Esabora))
+    }
+    else if(QDesktopServices::openUrl(m_Lien_Esabora) == false)
     {
         err->Err(Run_Esabora,"",ESAB);
         qDebug() << "Lancement_API - Echec ouverture d'Esabora.elec";
@@ -172,7 +185,7 @@ bool Esabora::Lancement_API()
         return false;
     }
 
-    if(!Traitement_Fichier_Config("Open"))
+    if(Traitement_Fichier_Config("Open") == false)
     {
         err->Err(open_File,"Config.esab",ESAB);
         qDebug() << "Lancement_API - Echec du traitement du login sur Esabora.elec";
@@ -196,15 +209,19 @@ QString Esabora::Find_Fabricant(QString Fab)
 {
     QClipboard *pp = QApplication::clipboard();
     pp->clear();
-    if(!Verification_Fenetre("Recherche Produits"))
-        if(!Traitement_Fichier_Config("Open_Cat"))
+    if(Verification_Fenetre("Recherche Produits") == false)
+    {
+        if(Traitement_Fichier_Config("Open_Cat") == false)
         {
             err->Err(Traitement,ESAB,"Find_Fabricant");
             return QString();
         }
+    }
     Traitement_Fichier_Config("Cat",Fab);
     if(pp->text().isEmpty())
+    {
         DEBUG << "Constructeur " + Fab + " non trouvé sur Esabora";
+    }
     return pp->text();
 
 }
@@ -252,13 +269,13 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
     etat = 0;
     QFile fichier(m_Lien_Work + "/Config/Config.esab");
     emit Info("Ouverture fichier Config.esab");
-    if(!fichier.exists())
+    if(fichier.exists() == false)
     {
         err->Err(open_File,fichier.fileName(),ESAB);
         qDebug() << "Traitement_Fichier_Config - Echec le fichier " << fichier.fileName() << "n'existe pas";
         return false;
     }
-    if(!fichier.open(QIODevice::ReadOnly))
+    if(fichier.open(QIODevice::ReadOnly) == false)
     {
         err->Err(open_File,fichier.fileName(),ESAB);
         qDebug() << "Traitement_Fichier_Config - Echec d'ouverture du fichier " << fichier.fileName();
@@ -277,11 +294,11 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
     r.next();
     int varTmp = r.value("Valeur").toDouble() * 1000;
     qDebug() << "Esabora::Traitement_Fichier_Config - Recherche de " << file << "dans le fichier Config";
-    while(!flux.atEnd() && !flux.readLine().contains(file));
+    while(flux.atEnd() == false && flux.readLine().contains(file) == false) {}
 
-    if(flux.atEnd()) return false;
+    if(flux.atEnd()) { return false; }
     qDebug() << "Esabora::Traitement_Fichier_Config - " << file << "trouvé dans le fichier";
-    while(!flux.atEnd())
+    while(flux.atEnd() == false)
     {
         tmp.start(varTmp);
         loop.exec();
@@ -293,20 +310,20 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
 
         if(temp.contains("/*"))
         {
-            while(!flux.readLine().contains("*/"));
+            while(flux.readLine().contains("*/") == false){}
             temp = flux.readLine();
         }
-        else if(temp == "{LOGIN}") Clavier("-" + m_Login);
-        else if(temp == "{MDP}") Clavier("-" + m_MDP);
+        else if(temp == "{LOGIN}") { Clavier("-" + m_Login); }
+        else if(temp == "{MDP}") { Clavier("-" + m_MDP); }
         else if(temp == "{CHANTIER}")
         {///Si le chantier est trouvé, sinon si la variable contient 0 ajout au stock
-            if(req.value("Nom_Chantier").toString() != "" && req.value("Nom_Chantier").toString() != "0") Clavier("-" + req.value("Nom_Chantier").toString());
-            else if(req.value("Nom_Chantier").toString() == "0") Clavier("-Stock");
+            if(req.value("Nom_Chantier").toString() != "" && req.value("Nom_Chantier").toString() != "0") { Clavier("-" + req.value("Nom_Chantier").toString()); }
+            else if(req.value("Nom_Chantier").toString() == "0") { Clavier("-Stock"); }
         }
-        else if(temp == "{INTERLOCUTEUR}") Clavier("-Autobl");
-        else if(temp == "{BC}") Clavier("-" + bL);
-        else if(temp == "{NUMERO_COMMANDE_ESABORA}") Clavier("-" + bL.split(" ").at(0));
-        else if(temp == "{BL}") Clavier("-" + bL.split(" ").at(1));
+        else if(temp == "{INTERLOCUTEUR}") { Clavier("-Autobl"); }
+        else if(temp == "{BC}") { Clavier("-" + bL); }
+        else if(temp == "{NUMERO_COMMANDE_ESABORA}") { Clavier("-" + bL.split(" ").at(0)); }
+        else if(temp == "{BL}") { Clavier("-" + bL.split(" ").at(1)); }
         else if(temp == "{COMMENTAIRE}")
         {
             QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_BC_Esabora='" + bL.split(" ").at(0) + "'");
@@ -332,7 +349,9 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
             for(int cpt=0;cpt<liste_Matos.count();cpt++)
             {
                 if(liste_Matos.count()-cpt < 7)
+                {
                     err->Err(variable,"Ligne incomplète : " + liste_Matos.at(cpt),ESAB);
+                }
                 QEventLoop lp;
                 QTimer t;
                 connect(&t,SIGNAL(timeout()),&lp,SLOT(quit()));
@@ -353,7 +372,9 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
                     Clavier("Tab");
                 }
                 if(liste_Matos.at(cpt+1) == "")//Si Référence est vide
+                {
                     err->Err(designation,"Ref=" + liste_Matos.at(cpt) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB);
+                }
                 Clavier("-" + liste_Matos.at(cpt+1));//Ref
                 Clavier("Tab");
                 pp->clear();
@@ -396,8 +417,10 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
             if(bL.split("/").count() > 1)
             {
                 QSqlQuery r = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
-                if(!r.next())
+                if(r.next() == false)
+                {
                     err->Err(requete,r.lastError().text(),ESAB);
+                }
 
                 t = r.value("Numero_BC_Esabora").toString();
                 temp.replace("%0",t);
@@ -413,9 +436,11 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
             QString fen = temp.split("=").at(1);
             fen.replace("Focus","");
             if(fen.at(fen.count()-1) == ' ')
+            {
                 fen.remove(fen.count()-1,fen.count()-1);
+            }
             emit Info(fen);
-            if(!Verification_Fenetre(fen))
+            if(Verification_Fenetre(fen) == false)
             {
                 err->Err(Window,fen,ESAB);
                 return false;
@@ -424,14 +449,18 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
             {
                 bool t = false;
                 if(temp.split(" ").last() == "Focus")
+                {
                     t = true;
-                if(!Verification_Focus(fen,t))
+                }
+                if(Verification_Focus(fen,t) == false)
                 {
                     err->Err(Focus,fen,ESAB);
                     Clavier("Entrée");
                     Abort();
                     if(file == "New_BC")
+                    {
                         Ouverture_Liste_BC();
+                    }
                     return false;
                 }
                 emit Info("Esabora | Verification de fenêtre Réussis");
@@ -446,8 +475,10 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
         }
         else if(temp.split(" ").at(0) == "Souris")
         {
-            if(!Souris(temp))
+            if(Souris(temp) == false)
+            {
                err->Err(Mouse,"",ESAB);
+            }
             m_Tmp = "";
         }
         else if(temp.split(" ").at(0) == "Copier")
@@ -464,17 +495,21 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
                 return false;
             }
             if(temp.split(" ").at(1) == "Numero_BC_Esabora")
+            {
                 m_DB->Requete("UPDATE En_Cours SET Numero_BC_Esabora='" + pP->text() + "' WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
+            }
         }
         else if(temp.at(0) == '|')
         {
             etat = temp.split(" ").at(1).toInt();
         }
-        else if(temp.contains(file)) return true;
+        else if(temp.contains(file)) { return true; }
         else if(temp != "")
         {
             if(temp.split(" ").last() == "oui" || temp.split(" ").last() == "non")
+            {
                 temp = temp.remove(temp.count() - (temp.split(" ").last().count() + 1),temp.count());
+            }
 
             qDebug() << temp;
             Clavier(temp);
@@ -539,7 +574,9 @@ bool Esabora::Clavier(QString commande)
     {
         ligne.clear();
         for(int cpt=1;cpt<=commande.count();cpt++)
+        {
             ligne.append(commande.at(cpt));
+        }
         addition = false;
     }
 
@@ -550,7 +587,7 @@ bool Esabora::Clavier(QString commande)
         qDebug() << "Before : " << GetKeyState(VK_SHIFT) << GetKeyState(VK_LMENU) << GetKeyState(VK_LCONTROL);
         //Verif majuscule
         if((var.at(0).isUpper() || var.at(0) == '/' || var.at(0) == '.') && GetKeyState(VK_SHIFT) >= 0 && GetKeyState(VK_LMENU) >= 0 &&
-                !addition)
+                addition == false)
         {
             keybd_event(VK_SHIFT,0,0,0);
         }
@@ -566,56 +603,74 @@ bool Esabora::Clavier(QString commande)
         else if(var == "Alt")
         {
             if(GetKeyState(VK_SHIFT) < 0)
+            {
                 keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+            }
             if(GetKeyState(VK_LMENU) >= 0)
+            {
                 keybd_event(VK_LMENU,0,0,0);
+            }
         }
         else if(var == "Tab")
         {
             if(GetKeyState(VK_SHIFT) < 0)
+            {
                 keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+            }
             keybd_event(VK_TAB,0,0,0);
             keybd_event(VK_TAB,0,KEYEVENTF_KEYUP,0);
         }
         else if(var == "Entrée")
         {
             if(GetKeyState(VK_SHIFT) < 0)
+            {
                 keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+            }
             keybd_event(VK_RETURN,0,0,0);
             keybd_event(VK_RETURN,0,KEYEVENTF_KEYUP,0);
         }
         else if(var == "Echap")
         {
             if(GetKeyState(VK_SHIFT) < 0)
+            {
                     keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+            }
             keybd_event(VK_ESCAPE,0,0,0);
             keybd_event(VK_ESCAPE,0,KEYEVENTF_KEYUP,0);
         }
         else if(var == "Gauche")
         {
             if(GetKeyState(VK_SHIFT) < 0)
+            {
                 keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+            }
             keybd_event(VK_LEFT,0,0,0);
             keybd_event(VK_LEFT,0,KEYEVENTF_KEYUP,0);
         }
         else if(var == "Droite")
         {
             if(GetKeyState(VK_SHIFT) < 0)
+            {
                 keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+            }
             keybd_event(VK_RIGHT,0,0,0);
             keybd_event(VK_RIGHT,0,KEYEVENTF_KEYUP,0);
         }
         else if(var == "Haut")
         {
             if(GetKeyState(VK_SHIFT) < 0)
+            {
                 keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+            }
             keybd_event(VK_UP,0,0,0);
             keybd_event(VK_UP,0,KEYEVENTF_KEYUP,0);
         }
         else if(var == "Bas")
         {
             if(GetKeyState(VK_SHIFT) < 0)
+            {
                 keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+            }
             keybd_event(VK_DOWN,0,0,0);
             keybd_event(VK_DOWN,0,KEYEVENTF_KEYUP,0);
         }
@@ -625,61 +680,117 @@ bool Esabora::Clavier(QString commande)
             keybd_event(VK_F4,0,KEYEVENTF_KEYUP,0);
         }
         else if(var == "A" || var == "a")
+        {
             keybd_event('A',0,0,0);
+        }
         else if(var == "B" || var == "b")
+        {
             keybd_event('B',0,0,0);
+        }
         else if(var == "C" || var == "c")
+        {
             keybd_event('C',0,0,0);
+        }
         else if(var == "D" || var == "d")
+        {
             keybd_event('D',0,0,0);
+        }
         else if(var == "E" || var == "e")
+        {
             keybd_event('E',0,0,0);
+        }
         else if(var == "é")
+        {
             keybd_event('2',0,0,0);
+        }
         else if(var == "F" || var == "f")
+        {
             keybd_event('F',0,0,0);
+        }
         else if(var == "G" || var == "g")
+        {
             keybd_event('G',0,0,0);
+        }
         else if(var == "H" || var == "h")
+        {
             keybd_event('H',0,0,0);
+        }
         else if(var == "I" || var == "i")
+        {
             keybd_event('I',0,0,0);
+        }
         else if(var == "J" || var == "j")
+        {
             keybd_event('J',0,0,0);
+        }
         else if(var == "K" || var == "k")
+        {
             keybd_event('K',0,0,0);
+        }
         else if(var == "L" || var == "l")
+        {
             keybd_event('L',0,0,0);
+        }
         else if(var == "M" || var == "m")
+        {
             keybd_event('M',0,0,0);
+        }
         else if(var == "N" || var == "n")
+        {
             keybd_event('N',0,0,0);
+        }
         else if(var == "O" || var == "o")
+        {
             keybd_event('O',0,0,0);
+        }
         else if(var == "P" || var == "p")
+        {
             keybd_event('P',0,0,0);
+        }
         else if(var == "Q" || var == "q")
+        {
             keybd_event('Q',0,0,0);
+        }
         else if(var == "R" || var == "r")
+        {
             keybd_event('R',0,0,0);
+        }
         else if(var == "S" || var == "s")
+        {
             keybd_event('S',0,0,0);
+        }
         else if(var == "T" || var == "t")
+        {
             keybd_event('T',0,0,0);
+        }
         else if(var == "U" || var == "u")
+        {
             keybd_event('U',0,0,0);
+        }
         else if(var == "V" || var == "v")
+        {
             keybd_event('V',0,0,0);
+        }
         else if(var == "W" || var == "w")
+        {
             keybd_event('W',0,0,0);
+        }
         else if(var == "X" || var == "x")
+        {
             keybd_event('X',0,0,0);
+        }
         else if(var == "Y" || var == "y")
+        {
             keybd_event('Y',0,0,0);
+        }
         else if(var == "Z" || var == "z")
+        {
             keybd_event('Z',0,0,0);
+        }
         else if(var == " ")
+        {
             keybd_event(' ',0,0,0);
+        }
         else if(var == "-")
         {
             keybd_event(54,0,0,0);
@@ -771,11 +882,17 @@ bool Esabora::Clavier(QString commande)
 
 
     if(GetKeyState(VK_SHIFT) < 0)
+    {
         keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0);
+    }
     if(GetKeyState(VK_LMENU) < 0)
+    {
         keybd_event(VK_LMENU,0,KEYEVENTF_KEYUP,0);
+    }
     if(GetKeyState(VK_LCONTROL) < 0)
+    {
         keybd_event(VK_LCONTROL,0,KEYEVENTF_KEYUP,0);
+    }
 
     qDebug() << "Fin Esabora::Clavier()";
     return true;
