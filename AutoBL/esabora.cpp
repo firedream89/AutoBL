@@ -954,7 +954,7 @@ bool Esabora::Verification_Focus(QString fen, bool focus)
     HWND hWnds = FindWindow(NULL,fen.toStdWString().c_str());
     HWND h = GetForegroundWindow();
     if(hWnds == h && focus) { return true; }
-    else if(hWnds != h && !focus)
+    else if(hWnds != h && focus == false)
     {
         QString message;
         Verification_Message_Box(message);

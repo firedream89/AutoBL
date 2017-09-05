@@ -99,8 +99,10 @@ bool FctFournisseur::SaveHtml()
         return false;
 
     web->page()->toHtml([&fichier,&end](const QString &result){ fichier.write(result.toUtf8()); end = true; });
-    while(!end)
+    while(end == false)
+    {
         Loop(500);
+    }
     fichier.close();
     return true;
 }

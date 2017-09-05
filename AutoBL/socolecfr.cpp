@@ -374,8 +374,7 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
 
     DEBUG << "Socolec.fr | Connexion";
     m_Fct->Change_Load_Window(tr("Connexion..."));
-    if(Connexion() == false)
-        return QStringList(0);
+    if(Connexion() == false) { return QStringList(0); }
 
     m_Fct->Change_Load_Window(tr("Chargement de la commande..."));
     DEBUG << "Socolec.fr | Récupération du lien";
@@ -455,7 +454,7 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
                                 flux.readLine();
                                 flux.readLine();
                                 flux.readLine();
-                                while(flux.readLine().contains("<td style=\"text-align:right;\">") == false);
+                                while(flux.readLine().contains("<td style=\"text-align:right;\">") == false) {}
                                 var = flux.readLine();
                                 var.replace(" ","");
                                 var.replace(",",".");
