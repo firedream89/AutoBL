@@ -23,7 +23,7 @@ bool SocolecFr::Start()
     {
         m_Fct->Info("Chargement des commandes...");
         DEBUG << "Socolec | Connected";
-        if(!Create_List_Invoice(firstInit)) { error = true; }
+        if(Create_List_Invoice(firstInit) == false) { error = true; }
 
         //Update State
         DEBUG << "Socolec | Update State";

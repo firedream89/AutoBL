@@ -95,8 +95,7 @@ bool FctFournisseur::SaveHtml()
     bool end(false);
     QFile fichier(m_WorkLink + "/web_Temp.txt");
     fichier.resize(0);
-    if(!fichier.open(QIODevice::WriteOnly))
-        return false;
+    if(fichier.open(QIODevice::WriteOnly) == false) { return false; }
 
     web->page()->toHtml([&fichier,&end](const QString &result){ fichier.write(result.toUtf8()); end = true; });
     while(end == false)
@@ -112,8 +111,10 @@ QVariant FctFournisseur::InsertJavaScript(QString script)
     bool end(false);
     QVariant r;
     web->page()->runJavaScript(script, [&r,&end](const QVariant &result){ r = result; end = true; });
-    while(!end)
+    while(end == false)
+    {
         Loop(500);
+    }
     return r;
 }
 

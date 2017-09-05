@@ -193,6 +193,7 @@ bool Fournisseur::Test_Connexion(const QString &nom)
 QStringList Fournisseur::Find_Fournisseur(QString nom)
 {
     for(int cpt = 0;cpt<fournisseurs.count();cpt++)
+    {
         if(fournisseurs.at(cpt).contains(nom))
         {
             QStringList l;
@@ -201,6 +202,7 @@ QStringList Fournisseur::Find_Fournisseur(QString nom)
             l.append(fournisseurs.at(cpt).split("&").at(3).split("=").at(1));
             return l;
         }
+    }
     DEBUG << "Fournisseur non trouvé !";
     return QStringList();
 }
