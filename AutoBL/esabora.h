@@ -41,6 +41,7 @@ public slots:
     void Abort();
     bool Ajout_Stock(QString numero_Commande);
     void Stop();
+    QString Test_Find_Fabricant(QString fab);
 
 private slots:
     bool Clavier(QString commande);

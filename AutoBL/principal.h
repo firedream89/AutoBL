@@ -37,7 +37,6 @@ class Principal : public QMainWindow
 public:
     explicit Principal(QWidget *parent = 0);
     ~Principal();
-    bool test();
     void Erreur(int code,int string,QString info);
 
 public slots:
@@ -100,6 +99,7 @@ public slots:
     void Show_List_Sav();
     void Restaurer_DB();
     void Demarrer_Frn();
+    bool test();
 
 signals:
     void FinAjout();

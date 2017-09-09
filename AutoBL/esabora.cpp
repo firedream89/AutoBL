@@ -207,6 +207,7 @@ QString Esabora::Find_Fabricant(QString Fab)
 {
     QClipboard *pp = QApplication::clipboard();
     pp->clear();
+    DEBUG << "Contrôle/Ouverture Catalogue";
     if(Verification_Fenetre("Recherche Produits") == false)
     {
         if(Traitement_Fichier_Config("Open_Cat") == false)
@@ -215,7 +216,13 @@ QString Esabora::Find_Fabricant(QString Fab)
             return QString();
         }
     }
-    Traitement_Fichier_Config("Cat",Fab);
+    DEBUG << "Recherche du Fabricant";
+    if(Traitement_Fichier_Config("Cat",Fab) == false)
+    {
+        err->Err(Traitement,ESAB,"Find_Fabricant");
+        return QString();
+    }
+    DEBUG << "Test si Fabricant trouvé";
     if(pp->text().isEmpty())
     {
         DEBUG << "Constructeur " + Fab + " non trouvé sur Esabora";
@@ -292,7 +299,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
     r.next();
     int varTmp = r.value("Valeur").toDouble() * 1000;
     qDebug() << "Esabora::Traitement_Fichier_Config - Recherche de " << file << "dans le fichier Config";
-    while(flux.atEnd() == false && flux.readLine().contains(file) == false) {}
+    while(flux.atEnd() == false && flux.readLine().contains("[" + file + "]") == false) {}
 
     if(flux.atEnd()) { return false; }
     qDebug() << "Esabora::Traitement_Fichier_Config - " << file << "trouvé dans le fichier";
@@ -405,9 +412,12 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
         else if(temp == "{BOUCLE_CONSTRUCTEUR}")
         {
             Clavier("-" + bL.toUpper());
+            tmp.start(500);
+            loop.exec();
             Clavier("Ctrl+C");
             tmp.start(1000);
             loop.exec();
+            Clavier("Ctrl+A");
         }
         else if(temp[0] == '=')
         {
@@ -1172,4 +1182,9 @@ bool Esabora::Get_List_Matos(QString invoice)
 void Esabora::Stop()
 {
     m_Arret = true;
+}
+
+QString Esabora::Test_Find_Fabricant(QString fab)
+{
+    return Find_Fabricant(fab);
 }

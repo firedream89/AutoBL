@@ -37,7 +37,9 @@ bool RexelFr::Start()
                 qDebug() << "BOUCLE Récupération d'un BL";
                 m_Fct->Info(tr("Récupération des bons de livraison commande %1").arg(req.value("Numero_Commande").toString()));
                 if(Check_Delivery(req.value("Numero_Commande").toString()) == false)
+                {
                     m_Fct->FrnError(load,REXEL,req.value("Numero_Livraison").toString());
+                }
             }
         }
         qDebug() << "BOUCLE Fin Récupération des BL";
@@ -218,7 +220,11 @@ bool RexelFr::Create_List_Invoice()
                     infoChantier = flux.readLine();
                     ligne = flux.readLine();
                 }
-
+                if(ligne.contains("Type de commande"))
+                {
+                    flux.readLine();
+                    ligne = flux.readLine();
+                }
                 //Numero chantier
                 if(ligne.contains("Réf. cde :"))
                 {

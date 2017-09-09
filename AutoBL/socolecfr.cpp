@@ -368,7 +368,7 @@ bool SocolecFr::Update_State(QString invoice)
 
 QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
 {
-    //Retourne une list d'un tableau de commande
+    //Retourne une liste d'un tableau de commande
     //0 = nb commande
     //boucle de 7 strings designation,reference,fabricant,fab,prix unitaire,quantité livré,quantité restante
 

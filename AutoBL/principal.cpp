@@ -140,7 +140,7 @@ Principal::Principal(QWidget *parent) :
     connect(this,SIGNAL(End_Get_Tableau_Matos()),m_Esabora,SIGNAL(ReceptionListeMatos()));
 
     connect(ui->bLienEsabora,SIGNAL(clicked(bool)),this,SLOT(Emplacement_Esabora()));
-    connect(ui->bTestEsabora,SIGNAL(clicked(bool)),this,SLOT(Test_Esabora()));
+    connect(ui->bTestEsabora,SIGNAL(clicked(bool)),this,SLOT(test()));
     connect(ui->actionAbout_Qt,SIGNAL(triggered(bool)),qApp,SLOT(aboutQt()));
     connect(ui->actionAbout,SIGNAL(triggered(bool)),this,SLOT(About()));
     connect(ui->bLogInfo,SIGNAL(clicked(bool)),this,SLOT(Affichage_Dossier_Logs()));
@@ -198,8 +198,6 @@ Principal::Principal(QWidget *parent) :
         m_DB->Requete("UPDATE Options SET Valeur='' WHERE ID='11'");
         QMessageBox::information(this,"","Le mot de passe de l'application à été réinitialisé !");
     }
-
-    qDebug() << test();
 }
 
 Principal::~Principal()
@@ -986,6 +984,14 @@ void Principal::Test_Esabora()
 
 bool Principal::test()
 {
+    QTimer t;
+    QEventLoop l;
+    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
+    t.start(2000);
+    l.exec();
+    QString v2("Legrand");
+    QString v = m_Esabora->Test_Find_Fabricant(v2);
+    QMessageBox::information(this,"","Find_Fabricant : " + v2 + " = " + v);
     return true;
 }
 
@@ -1318,10 +1324,8 @@ void Principal::Login_True()
 {
     QString mdph = mdp->text().split(" ").at(0);
     QByteArray mdpb = QCryptographicHash::hash(mdph.toLatin1(),QCryptographicHash::Sha256);
-    DEBUG << mdpb.toHex();
     QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='11'");
     req.next();
-    DEBUG << req.value(0);
     if(req.value("Valeur").toString() != mdpb.toHex())
     {
         QMessageBox::information(this,"Erreur","Mot de passe faux !");
