@@ -253,4 +253,5 @@ QString Fournisseur::Get_Frn_Inf(QString frn) const
     {
         m_Error->Err(variable,"Get_Frn_Inf",FRN);
     }
+
 }

@@ -142,10 +142,11 @@ void DB::Init()
     }
 
     //Update variable Ajout
-    Requete("UPDATE En_Cours SET Ajout='0' WHERE Ajout='Telecharger'");
+    Requete("UPDATE En_Cours SET Ajout='0' WHERE Ajout=''");
+    Requete("UPDATE En_Cours SET Ajout='0' WHERE Ajout='Télécharger'");
     Requete("UPDATE En_Cours SET Ajout='1' WHERE Ajout='Erreur'");
     Requete("UPDATE En_Cours SET Ajout='2' WHERE Ajout='Modifier'");
-    Requete("UPDATE En_COurs SET Ajout='3' WHERE Ajout='Bon ajouté'");
+    Requete("UPDATE En_Cours SET Ajout='3' WHERE Ajout='Bon Ajouté'");
     Requete("UPDATE En_Cours SET AJout='4' WHERE Ajout='Ok'");
 
 

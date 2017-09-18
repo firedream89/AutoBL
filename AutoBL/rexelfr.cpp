@@ -230,11 +230,6 @@ bool RexelFr::Create_List_Invoice()
                 {
                     nomChantier = flux.readLine();
                 }
-                else
-                {
-                    m_Fct->FrnError(variable,REXEL,"Référence");
-                    error = true;
-                }
 
                 //Contrôle
                 if(etat.isEmpty())
@@ -250,6 +245,7 @@ bool RexelFr::Create_List_Invoice()
                 else if(nomChantier.isEmpty())
                 {
                     m_Fct->FrnError(variable,REXEL,"Numéro de chantier");
+                    error = true;
                 }
                 DEBUG << etat << numeroCommande << nomChantier;
 
@@ -307,7 +303,7 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
         DEBUG << "Recuperation_BL - Page déjà chargée";
         dCharger = true;
     }
-    if(m_Fct->FindTexte("Bons De Livraison (BL)") == false)
+    if(m_Fct->FindTexte("Bons de livraison (BL)") == false)
     {
         m_Fct->FrnError(fail_check,REXEL);
     }

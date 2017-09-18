@@ -339,6 +339,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
         {
             QString v;
             QSqlQuery t = m_DB->Requete("SELECT * FROM Options WHERE Nom='" + req.value("Fournisseur").toString() + "Rcc'");
+            t.next();
             Clavier("-" + t.value("Valeur").toString());
         }
         else if(temp == "{BOUCLE}")
@@ -966,6 +967,9 @@ bool Esabora::Verification_Focus(QString fen, bool focus)
     {
         QString message;
         Verification_Message_Box(message);
+        //
+        // Boucle controle multi fenetre, tentative de focus
+        //
         return true;
     }
     else { return false; }
