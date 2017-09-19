@@ -268,7 +268,7 @@ bool Esabora::Ajout_BL(QString Numero_Commande_Esab, QString Numero_BL)
     return true;
 }
 ///Erreur 5xx
-bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//Ajouter {Boucle_Constructeur}
+bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
 {
     qDebug() << "Esabora::Traitement_Fichier_Config()";
     etat = 0;
@@ -389,7 +389,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)//A
                 Clavier("Ctrl+C");
                 t.start(1000);
                 lp.exec();
-                if(pp->text() == "" || pp->text() == liste_Matos.at(cpt+1))//Si La désignation n'a pas été trouvé
+                if(pp->text() == "" || pp->text() == liste_Matos.at(cpt+1) || liste_Matos.at(cpt+1).isEmpty())//Si La désignation n'a pas été trouvé
                 {
                     err->Err(designation,"Ref=" + liste_Matos.at(cpt+1) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB);
                     pp->clear();
@@ -1191,4 +1191,10 @@ void Esabora::Stop()
 QString Esabora::Test_Find_Fabricant(QString fab)
 {
     return Find_Fabricant(fab);
+}
+
+bool Esabora::Copy()
+{
+    QClipboard *cb = QApplication::clipboard();
+    return true;
 }
