@@ -29,7 +29,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
         emit Info(tr("Ajout du bon de commande %0").arg(req.value("Numero_Commande").toString()));
         if(Get_List_Matos(req.value("Numero_Commande").toString()))
         {
-            if(liste_Matos.isEmpty() == false)
+            if(liste_Matos.isEmpty() || liste_Matos.count() < 7)
             {
                 DEBUG << "Liste matériels Vide !";
             }
@@ -170,10 +170,31 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
 bool Esabora::Lancement_API()
 {
     qDebug() << "Esabora::Lancement_API()";
+
+    QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='12'");
+    r.next();
+    QString db = r.value("Valeur").toString();
+    r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
+    r.next();
+    QString ent = r.value("Valeur").toString();
+
     p.setProgram(m_Lien_Esabora);
     if(m_Lien_Esabora.contains("Simul_Esabora"))
     {
         p.start();
+    }
+    else if(Verification_Fenetre(ent + " - SESSION : 1 - REPERTOIRE : " + db))
+    {
+        if(Verification_Focus(ent + " - SESSION : 1 - REPERTOIRE : " + db,true))
+        {
+            DEBUG << "Esabora Ouvert et au premier plan";
+            Abort();
+            Fermeture_API();
+        }
+        else
+        {
+            DEBUG << "Esabora déjà ouvert";
+        }
     }
     else if(QDesktopServices::openUrl(m_Lien_Esabora) == false)
     {
@@ -303,6 +324,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
 
     if(flux.atEnd()) { return false; }
     qDebug() << "Esabora::Traitement_Fichier_Config - " << file << "trouvé dans le fichier";
+    DEBUG << "Var bL = " << bL;
     while(flux.atEnd() == false)
     {
         tmp.start(varTmp);
@@ -960,31 +982,53 @@ bool Esabora::Verification_Fenetre(QString fenetre)
 bool Esabora::Verification_Focus(QString fen, bool focus)
 {
     qDebug() << "Esabora::Verification_Focus()";
+    QEventLoop loop;
+    QTimer t;
+    connect(&t,SIGNAL(timeout()),&loop,SLOT(quit()));
     HWND hWnds = FindWindow(NULL,fen.toStdWString().c_str());
     HWND h = GetForegroundWindow();
     if(hWnds == h && focus) { return true; }
     else if(hWnds != h && focus == false)
     {
         QString message;
-        Verification_Message_Box(message);
-        //
-        // Boucle controle multi fenetre, tentative de focus
-        //
+        DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
         return true;
+    }
+    else if(hWnds != h && focus)
+    {
+        QString message;
+        DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
+        if(Verification_Fenetre("AVERTISSEMENT"))
+        {
+            DEBUG << "'AVERTISSEMENT' Detected !";
+            Clavier("Entrée");
+            t.start(2000);
+            loop.exec();
+        }
+        if(Verification_Fenetre("RX - Agent de Mise à Jour"))
+        {
+            DEBUG << "'UPDATE Widget' Detected !";
+            SetForegroundWindow(hWnds);
+            t.start(2000);
+            loop.exec();
+            h = GetForegroundWindow();
+            if(hWnds == h) { return true; }
+            else { return false; }
+        }
     }
     else { return false; }
 }
 ///Erreur 6xx
 bool Esabora::Ajout_Stock(QString numero_Commande)
 {
-    qDebug() << "Esabora::Ajout_Stock()";
+    DEBUG << "Esabora::Ajout_Stock()";
     if(Traitement_Fichier_Config("Ajout_Stock","///" + numero_Commande + ".tmp") == false)
     {
         err->Err(Traitement,"",ESAB);
-        qDebug() << "Ajout_Stock - Echec dans le traitement du Bon de commande";
+        DEBUG << "Ajout_Stock - Echec dans le traitement du Bon de commande";
         return false;
     }
-    qDebug() << "Fin Esabora::Ajout_Stock()";
+    DEBUG << "Fin Esabora::Ajout_Stock()";
     return true;
 }
 
@@ -1059,19 +1103,6 @@ void Esabora::Apprentissage(QString &entreprise,QString &BDD)
             }
         }
     }
-    /*
-    QEventLoop l;
-    QTimer t;
-    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
-    t.start(3000);
-    l.exec();
-    Clavier("-" + m_Login);
-    Clavier("Tab");
-    Clavier("-" + m_MDP);
-    Clavier("Entrée");
-    t.start(2000);
-    l.exec();
-    */
     Clavier("Alt+F4");
     qDebug() << "Fin Esabora::Apprentissage()";
 }
@@ -1195,6 +1226,26 @@ QString Esabora::Test_Find_Fabricant(QString fab)
 
 bool Esabora::Copy()
 {
+    QEventLoop l;
+    QTimer t;
+    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
     QClipboard *cb = QApplication::clipboard();
-    return true;
+    cb->clear();
+    t.start(1000);
+    l.exec();
+    bool test = Clavier("Ctrl+C");
+    t.start(1000);
+    l.exec();
+    return test;
+}
+
+bool Esabora::Paste()
+{
+    QEventLoop l;
+    QTimer t;
+    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
+    bool test = Clavier("Ctrl+V");
+    t.start(1000);
+    l.exec();
+    return test;
 }

@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.42"); //Version De L'application
-QString ver("1420");
+QString version("1.43 DEV2"); //Version De L'application
+QString ver("1430");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -1416,115 +1416,106 @@ bool Principal::Post_Report()
     QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Nom_BDD'");
     r.next();
     QString nur = r.value(0).toString();
+
+    //Create Report
+    QFile rapport("Rapport_" + QDateTime::currentDateTime().toString("dd-MM-yyyy hh-mm") + ".esab");
+    rapport.open(QIODevice::WriteOnly);
+    QTextStream flux(&rapport);
+    flux << "---------------- Rapport AutoBL " << nur << " " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
+
     if(this->findChildren<QDialog *>("rapport de bug").count() > 0)
     {
         if(this->findChildren<QDialog *>().at(0)->windowTitle() == "Rapport de bug")
         {
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setEnabled(false);
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Création du rapport...");
-            QFile rapport("Rapport_" + QDateTime::currentDateTime().toString("dd-MM-yyyy hh-mm") + ".esab");
-            rapport.open(QIODevice::WriteOnly);
-            QTextStream flux(&rapport);
-            QFile f(m_Lien_Work + "/Logs/logs.txt");
-            f.open(QIODevice::ReadOnly);
-            flux << "---------------- Rapport AutoBL " << nur << " " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
+
             flux << "Commentaire : " << this->findChildren<QDialog *>().at(0)->findChildren<QTextEdit *>().at(0)->toPlainText();
-            flux << "- Logs -\r\n" << f.readAll() << "\r\n";
-            f.close();
-            f.setFileName(m_Lien_Work + "/Logs/errors.txt");
-            f.open(QIODevice::ReadOnly);
-            flux << "- Erreurs -\r\n" << f.readAll() << "\r\n";
-            f.close();
 
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Envoi du rapport...");
-            rapport.close();
-            rapport.open(QIODevice::ReadOnly);
-
-            QWebEngineView w;
-            w.load(QString(MAJLINK) + "mail.php");
-            QTimer t;
-            QEventLoop l;
-            connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
-            connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
-            t.start(30000);
-            l.exec();
-            w.page()->runJavaScript("document.getElementById('sj').value='" + rapport.fileName().split(".").at(0) + "';",[&l](const QVariant r){l.quit();});
-            l.exec();
-            QString text;
-            while(rapport.atEnd() == false)
-            {
-                text += rapport.readLine();
-            }
-            text.replace("\r\n","<br/>");
-            w.page()->runJavaScript("document.getElementById('msg').value='<html><head></head><body>" + text + "</body></html>';",[&l](const QVariant r){l.quit();});
-            l.exec();
-            w.page()->runJavaScript("document.getElementById('frm').submit();",[&l](const QVariant r){l.quit();});
-            l.exec();
-
-            this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Rapport envoyé !");
-            l.exec();
-
-            rapport.close();
-            rapport.remove();
         }
     }
-    else
+
+    //Create Report
+    QFile f(m_Lien_Work + "/Logs/logs.txt");
+    f.open(QIODevice::ReadOnly);
+    QTextStream f2(&f);
+    flux << "- Logs -\r\n" << f2.readAll() << "\r\n";
+    f.close();
+    f.setFileName(m_Lien_Work + "/Logs/errors.txt");
+    f.open(QIODevice::ReadOnly);
+    QTextStream f3(&f);
+    flux << "- Erreurs -\r\n" << f3.readAll() << "\r\n";
+    f.close();
+    f.setFileName(m_Lien_Work + "/Logs/debug.log");
+    f.open(QIODevice::ReadOnly);
+    f.errorString();
+    QTextStream f4(&f);
+    flux << "- Debug -\r\n";
+    flux << f4.readAll() << "\r\n";
+    f.close();
+    rapport.close();
+
+    //Send Report
+    rapport.open(QIODevice::ReadOnly);
+    rapport.seek(0);
+    QWebEngineView w;
+    w.load(QString(MAJLINK) + "mail.php");
+    QTimer t;
+    QEventLoop l;
+    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
+    connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+    t.start(30000);
+    l.exec();
+    w.page()->runJavaScript("document.getElementById('sj').value='" + rapport.fileName().split(".").at(0) + "';",[&l](const QVariant r){l.quit();});
+    l.exec();
+    QString text;
+    while(rapport.atEnd() == false)
     {
-        QFile rapport("Rapport_" + QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") + ".esab");
-        rapport.open(QIODevice::WriteOnly);
-        QTextStream flux(&rapport);
-        QFile f(m_Lien_Work + "/Logs/logs.txt");
-        f.open(QIODevice::ReadOnly);
-        flux << "---------------- Rapport AutoBL " << nur << " " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
-        flux << "- Logs -\r\n" << f.readAll() << "\r\n";
-        f.close();
-        f.setFileName(m_Lien_Work + "/Logs/errors.txt");
-        f.open(QIODevice::ReadOnly);
-        flux << "- Erreurs -\r\n" << f.readAll() << "\r\n";
-        f.close();
-        f.setFileName(m_Lien_Work + "/Logs/debug.log");
-        f.open(QIODevice::ReadOnly);
-        flux << "- Debug -\r\n";
-        while(f.atEnd() == false)
-        {
-            QString v = f.readLine();
-            if(v.contains("Cannot create accessible interface for object:") == false)
-            {
-                flux << v << "\r\n";
-            }
-        }
-        f.close();
-
-        rapport.close();
-        rapport.open(QIODevice::ReadOnly);
-
-        QWebEngineView w;
-        w.load(QString(MAJLINK) + "mail.php");
-        QTimer t;
-        QEventLoop l;
-        connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
-        connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
-        t.start(30000);
-        l.exec();
-        w.page()->runJavaScript("document.getElementById('sj').value=" + rapport.fileName().split(".").at(0) + ";",[&l](const QVariant r){l.quit();});
-        l.exec();
-        QString text;
-        while(rapport.atEnd() == false)
-        {
-            text += rapport.readLine();
-        }
-        text.replace("\r\n","<br/>");
-        w.page()->runJavaScript("document.getElementById('msg').value='<html><head></head><body>" + text + "</body></html>';",[&l](const QVariant r){l.quit();});
-        l.exec();
-        w.page()->runJavaScript("document.getElementById('frm').submit();",[&l](const QVariant r){l.quit();});
-        l.exec();
-
-        rapport.close();
-        rapport.remove();
+        text += rapport.readLine();
     }
+    text.replace("\r\n","<br/>");
+    text.replace("'","");
+    text.replace("\"","");
+    //text.replace("à","&agrave;");
+    //text.replace("é","&eacute;");
+    //text.replace("è","&egrave;");
+    //text.replace("ê","&ecirc;");
+    //text.replace("ù","&ugrave;");
+    //text.replace("<","&lt;");
+    //text.replace(">","&gt;");
+    w.page()->runJavaScript("document.getElementById('msg').value='<html><head></head><body>" + text + "</body></html>';",[&l](const QVariant r){l.quit();});
+    l.exec();
+    w.page()->runJavaScript("document.getElementById('frm').submit();",[&l](const QVariant r){l.quit();});
+    l.exec();
+    rapport.remove();
+
+
+    if(this->findChildren<QDialog *>().at(0)->windowTitle() == "Rapport de bug")
+    {
+        this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Rapport envoyé !");
+    }
+
+    bool finish(false);
+    while(finish == false)
+    {
+        QString text;
+        bool end(false);
+        w.page()->toPlainText([&text,&end](const QString result){text = result;end = true;});
+        while(end == false)
+        {
+            t.start(500);
+            l.exec();
+        }
+        if(text.contains("Envoie mail"))
+        {
+            finish = true;
+        }
+    }
+    l.exec();
     m_Logs.resize(0);
     m_Errors.resize(0);
-    QFile f(m_Lien_Work + "/Logs/debug.log");
+    f.setFileName(m_Lien_Work + "/Logs/debug.log");
     f.resize(0);
     ui->e_Erreur2->setText("0");
     return true;

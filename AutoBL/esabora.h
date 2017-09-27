@@ -53,6 +53,7 @@ private slots:
     bool Get_List_Matos(QString invoice);
     QString Find_Fabricant(QString Fab);
     bool Copy();
+    bool Paste();
 
 signals:
     void DemandeListeMatos(QString NumeroCommande);
