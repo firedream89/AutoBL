@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.43 DEV2"); //Version De L'application
+QString version("1.43 DEV3"); //Version De L'application
 QString ver("1430");
 /////////////////////////////////
 
@@ -46,11 +46,9 @@ Principal::Principal(QWidget *parent) :
     dir.mkdir(m_Lien_Work + "/Config");
     dir.mkdir(m_Lien_Work + "/Logs");
 
-    //Ouverture des fichiers logs et errors
+    //Ouverture du fichier logs
     m_Logs.setFileName(m_Lien_Work + "/Logs/logs.txt");
-    //m_Errors.setFileName(m_Lien_Work + "/Logs/errors.txt");
     qDebug() << "Ouverture Logs " << m_Logs.open(QIODevice::WriteOnly | QIODevice::Append);
-    //m_Errors.open(QIODevice::WriteOnly | QIODevice::Append);
 
     //Chargement des classes de l'application et fonctions nécéssaires
     Affichage_Info("-----------------------------AutoBL " + version + "------------------------------------");
@@ -198,6 +196,8 @@ Principal::Principal(QWidget *parent) :
         m_DB->Requete("UPDATE Options SET Valeur='' WHERE ID='11'");
         QMessageBox::information(this,"","Le mot de passe de l'application à été réinitialisé !");
     }
+
+    DEBUG << "AutoBL Initialized";
 }
 
 Principal::~Principal()
@@ -1459,6 +1459,7 @@ bool Principal::Post_Report()
     //Send Report
     rapport.open(QIODevice::ReadOnly);
     rapport.seek(0);
+    QTextStream fi(&rapport);
     QWebEngineView w;
     w.load(QString(MAJLINK) + "mail.php");
     QTimer t;
@@ -1467,27 +1468,45 @@ bool Principal::Post_Report()
     connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
     t.start(30000);
     l.exec();
-    w.page()->runJavaScript("document.getElementById('sj').value='" + rapport.fileName().split(".").at(0) + "';",[&l](const QVariant r){l.quit();});
-    l.exec();
-    QString text;
-    while(rapport.atEnd() == false)
-    {
-        text += rapport.readLine();
-    }
+    QString text,rest;
+    text = fi.readAll();
     text.replace("\r\n","<br/>");
+    text.replace("\r","<br/>");
+    text.replace("\n","<br/>");
     text.replace("'","");
     text.replace("\"","");
-    //text.replace("à","&agrave;");
-    //text.replace("é","&eacute;");
-    //text.replace("è","&egrave;");
-    //text.replace("ê","&ecirc;");
-    //text.replace("ù","&ugrave;");
-    //text.replace("<","&lt;");
-    //text.replace(">","&gt;");
-    w.page()->runJavaScript("document.getElementById('msg').value='<html><head></head><body>" + text + "</body></html>';",[&l](const QVariant r){l.quit();});
-    l.exec();
-    w.page()->runJavaScript("document.getElementById('frm').submit();",[&l](const QVariant r){l.quit();});
-    l.exec();
+    text.replace("à","&agrave;");
+    text.replace("é","&eacute;");
+    text.replace("è","&egrave;");
+    text.replace("ê","&ecirc;");
+    text.replace("ù","&ugrave;");
+
+    bool end(false);
+    int cnt(0);
+    while(end == false)
+    {
+        cnt++;
+        if(text.count() > 524288)
+        {
+            rest = text.mid(524287);
+            text.remove(524287,text.count()-1);
+        }
+        w.page()->runJavaScript("document.getElementById('sj').value='" + rapport.fileName().split(".").at(0) + " - " + QString::number(cnt) + "';",[&l](const QVariant r){l.quit();});
+        l.exec();
+        w.page()->runJavaScript("document.getElementById('msg').value='<html><head></head><body>" + text + "</body></html>';",[&l](const QVariant r){l.quit();});
+        l.exec();
+        w.page()->runJavaScript("document.getElementById('frm').submit();",[&l](const QVariant r){l.quit();});
+        l.exec();
+        if(rest.isEmpty() == false)
+        {
+            text = rest;
+            rest.clear();
+        }
+        else
+        {
+            end = true;
+        }
+    }
     rapport.remove();
 
 
