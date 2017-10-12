@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.43 DEV3"); //Version De L'application
+QString version("1.43 DEV4"); //Version De L'application
 QString ver("1430");
 /////////////////////////////////
 
@@ -167,6 +167,7 @@ Principal::Principal(QWidget *parent) :
     connect(ui->bFrnTest,SIGNAL(clicked(bool)),this,SLOT(Test_Fournisseur()));
     connect(ui->listFrnAjouter,SIGNAL(clicked(QModelIndex)),this,SLOT(Load_Param_Fournisseur()));
     connect(ui->restaurerDB,SIGNAL(clicked(bool)),this,SLOT(Restaurer_DB()));
+    connect(ui->Add_BC_Fictif,SIGNAL(clicked(bool)),this,SLOT(DBG_Select_Frn_Fictif()));
 
     qApp->setQuitOnLastWindowClosed(false);
 
@@ -1089,20 +1090,20 @@ void Principal::Restaurer_DB()
     QListWidgetItem *item = ui->listSavDB->selectedItems().at(0);
     if(item->text() == i.lastModified().toString("dd/MM/yyyy"))
     {
-        var = "/bddSav.db";
+        var = "bddSav.db";
     }
     else if(item->text() == i2.lastModified().toString("dd/MM/yyyy"))
     {
-        var = "/bddSav2.db";
+        var = "bddSav2.db";
     }
     else if(item->text() == i3.lastModified().toString("dd/MM/yyyy"))
     {
-        var = "/bddSav3.db";
+        var = "bddSav3.db";
     }
 
     if(var.isEmpty() == false)
     {
-        QDesktopServices::openUrl(QUrl(qApp->applicationDirPath() + "/MAJ_BDD.exe -restore=" + var));
+        QDesktopServices::openUrl(QUrl(qApp->applicationDirPath() + "/bin/MAJ_BDD.exe -restore=" + var));
         qApp->exit(0);
     }
 
@@ -1697,6 +1698,7 @@ void Principal::Test_Fournisseur()
     QTimer *t = new QTimer;
     connect(t,SIGNAL(timeout()),this,SLOT(Update_Fen_Info()));
     connect(t,SIGNAL(timeout()),t,SLOT(deleteLater()));
+    ui->bFrnTest->setEnabled(false);
     if(m_Frn->Test_Connexion(ui->lFrn->text()))
     {
         t->start(5000);
@@ -1705,6 +1707,7 @@ void Principal::Test_Fournisseur()
     {
         t->start(10000);
     }
+    ui->bFrnTest->setEnabled(true);
 }
 
 void Principal::Load_Param_Fournisseur()
@@ -1868,4 +1871,48 @@ void Principal::LoadWeb(int valeur)
         text.remove(text.count()-text.split(" ").last().count()-1,text.count()-1);
     }
     f->Update_Label("Info",text + " " + QString::number(valeur) + "%");
+}
+
+void Principal::DBG_Select_Frn_Fictif()
+{
+    QDialog *f = new QDialog(this);
+    f->setObjectName("Frn_Fictif");
+    f->setWindowTitle("");
+    QFormLayout *l = new QFormLayout(f);
+    QListWidget *list = new QListWidget;
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs'");
+    req.next();
+    QStringList sl = req.value(0).toString().split("|");
+    QLineEdit *lineE = new QLineEdit;
+    for(int i=0;i<sl.count();i++)
+    {
+        list->addItem(sl.at(i));
+    }
+    QPushButton *b = new QPushButton;
+    b->setText("Ajouter");
+    connect(b,SIGNAL(clicked(bool)),this,SLOT(DBG_Add_Frn_Fictif()));
+    l->addWidget(list);
+    l->addRow("Numéro de commande",lineE);
+    l->addWidget(b);
+    f->exec();
+}
+
+void Principal::DBG_Add_Frn_Fictif()
+{
+    QDialog *f = this->findChild<QDialog*>("Frn_Fictif");
+    if(f != NULL)
+    {
+        if(f->findChild<QLineEdit*>()->text().isEmpty())
+        {
+            return;
+        }
+        QString var = f->findChild<QListWidget*>()->currentItem()->text();
+        QSqlQuery req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
+        req.next();
+        int id = req.value(0).toInt()+1;
+        m_DB->Requete("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + QDate::currentDate().toString("yyyy-MM-dd") + "','NULL','" + f->findChild<QLineEdit*>()->text() + "','','NULL','" + QString::number(Close) + "','" + QString::number(endAdd) + "','NULL','0','','" + var + "')");
+
+        f->close();
+        f->deleteLater();
+    }
 }

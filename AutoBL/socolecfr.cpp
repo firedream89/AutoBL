@@ -87,6 +87,7 @@ bool SocolecFr::Connexion()
 bool SocolecFr::Create_List_Invoice(bool firstInit)
 {
     //Chargement de la page
+    //https://socolec.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-SOCOLEC-Site/fr_FR/-/EUR/ViewPurchaseOrderList-Start?SortAttribute=CreationDate&AttributeType=DATE&SortOrder=false&ListAllOrders=1&PageNumber=1
     if(m_Fct->WebLoad("https://socolec.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-SOCOLEC-Site/fr_FR/-/EUR/"
                        "ViewPurchaseOrderList-Start?SortAttribute=CreationDate&AttributeType=DATE&SortDirection=DESC&ListAllOrders=1")  == false)
     {
@@ -99,6 +100,7 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
 
     //Traitement des informations    
     bool endScan(false);
+    int next(0);
     while(endScan == false)
     {
         QString text,link,name,ref,date,etat,invoice_Number,nextPage;
@@ -237,22 +239,14 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
         f.close();
         if(endScan == false)
         {
-            if(nextPage.isEmpty())
+            next++;
+            if(m_Fct->WebLoad("https://socolec.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-SOCOLEC-Site/fr_FR/-/EUR/"
+                               "ViewPurchaseOrderList-Start?SortAttribute=CreationDate&AttributeType=DATE&SortDirection=DESC&ListAllOrders=1&PageNumber=" + QString::number(next))  == false)
             {
-                m_Fct->FrnError(variable,FRN,"nextPage is empty");
-                endScan = true;
+                m_Fct->FrnError(load,FRN,"Liste des commandes");
+                return false;
             }
-            else
-            {
-                if(m_Fct->WebLoad(nextPage) == false)
-                {
-                    m_Fct->FrnError(load,FRN,"Liste des commandes, page suivante");
-                    return false;
-                }
-
-                //Enregistrement de la page
-                m_Fct->SaveHtml();
-            }
+            m_Fct->SaveHtml();
         }
     }
     return false;

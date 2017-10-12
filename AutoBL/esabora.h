@@ -75,6 +75,7 @@ private:
     bool m_Arret;
     Error *err;
     QProcess p;
+
 };
 
 #endif // ESABORA_H

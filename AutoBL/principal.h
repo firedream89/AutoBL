@@ -100,6 +100,8 @@ public slots:
     void Restaurer_DB();
     void Demarrer_Frn();
     bool test();
+    void DBG_Select_Frn_Fictif();
+    void DBG_Add_Frn_Fictif();
 
 signals:
     void FinAjout();

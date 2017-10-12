@@ -182,6 +182,7 @@ bool Fournisseur::Test_Connexion(const QString &nom)
         else
         {
             emit Info(tr("Connexion à %0 réussie").arg(nom));
+            return true;
         }
     }
     else

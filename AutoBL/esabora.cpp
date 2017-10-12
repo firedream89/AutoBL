@@ -5,6 +5,7 @@ Esabora::Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora,
     m_fen(fen),m_Login(Login),m_MDP(MDP),m_Lien_Esabora(Lien_Esabora),m_Lien_Work(Lien_Travail),m_DB(db),err(e),etat(0)
 {
     qDebug() << "Init Class Esabora";
+    m_Arret = false;
 }
 
 Esabora::~Esabora()

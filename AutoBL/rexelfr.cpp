@@ -290,6 +290,12 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
 {
     DEBUG << "Rexel::Recuperation_BL()";
     bool dCharger(false);
+    DEBUG << "Récupération BL commande " << InvoiceNumber;
+    if(InvoiceNumber.split("-").count() != 2)
+    {
+        m_Fct->FrnError(variable,REXEL,"Check_Delivery | InvoiceNumber=" + InvoiceNumber);
+        return false;
+    }
     m_Fct->Info(tr("Récupération BL commande %1").arg(InvoiceNumber.split("-").at(1)));
     if(m_Fct->FindTexte("Bons De Livraison (BL)") == false)
     {
