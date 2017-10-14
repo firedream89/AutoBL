@@ -23,7 +23,7 @@ Fournisseur::~Fournisseur()
     delete m_fct;
 }
 
-bool Fournisseur::Add(const QString nom,const QString login,const QString mdp,const QString complement)
+bool Fournisseur::Add(const QString nom,const QString complement,const QString login,const QString mdp)
 {
     ///Ajout d'un fournisseur
     DEBUG << "Add " << nom;

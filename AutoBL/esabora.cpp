@@ -44,6 +44,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
             }
             QTextStream flux(&file);
 
+            bool list_Open(true);
             for(int i=0;i<liste_Matos.count();i++)
             {
                 list.append(liste_Matos.at(i));
@@ -64,14 +65,15 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                     }
                     if(file.atEnd())//Sinon rechercher Fab sur esabora
                     {
+                        list_Open = false;
                         QString var = Find_Fabricant(liste_Matos.at(i+2));
                         if(var.isEmpty() == false)
                         {
-                            list.append(var);
                             file.seek(SEEK_END);
                             flux << liste_Matos.at(i+2) + ";" + var + "\r\n";
                             file.seek(0);
                         }
+                        list.append(var);
                     }
                 }
                 else
@@ -82,6 +84,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                 i += 6;
             }
             liste_Matos = list;
+            if(list_Open == false) { Ouverture_Liste_BC(); }
 
 
             if(req.value("Nom_Chantier").toString() == "0")//Ajout BC au Stock
@@ -232,6 +235,7 @@ QString Esabora::Find_Fabricant(QString Fab)
     DEBUG << "Contrôle/Ouverture Catalogue";
     if(Verification_Fenetre("Recherche Produits") == false)
     {
+        Abort();
         if(Traitement_Fichier_Config("Open_Cat") == false)
         {
             err->Err(Traitement,ESAB,"Find_Fabricant");
@@ -245,11 +249,17 @@ QString Esabora::Find_Fabricant(QString Fab)
         return QString();
     }
     DEBUG << "Test si Fabricant trouvé";
-    if(pp->text().isEmpty())
+    QString var;
+    if(pp->text().isEmpty() || pp->text().contains("(") == false)
     {
         DEBUG << "Constructeur " + Fab + " non trouvé sur Esabora";
     }
-    return pp->text();
+    else
+    {
+        var = pp->text().split("(").at(1);
+        var = var.split(")").at(0);
+    }
+    return var;
 
 }
 
@@ -412,7 +422,7 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                 Clavier("Ctrl+C");
                 t.start(1000);
                 lp.exec();
-                if(pp->text() == "" || pp->text() == liste_Matos.at(cpt+1) || liste_Matos.at(cpt+1).isEmpty())//Si La désignation n'a pas été trouvé
+                if(pp->text() == "" || pp->text() == liste_Matos.at(cpt+1) || liste_Matos.at(cpt+1).isEmpty() || pp->text() == " ")//Si La désignation n'a pas été trouvé
                 {
                     err->Err(designation,"Ref=" + liste_Matos.at(cpt+1) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB);
                     pp->clear();
@@ -426,7 +436,10 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                 Clavier("Tab");
                 Clavier("-" + liste_Matos.at(cpt+5));//Quantité
                 Clavier("Tab");
-                Clavier("-" + liste_Matos.at(cpt+4));//Prix
+                if(liste_Matos.at(cpt+4).toInt() > 0)
+                {
+                    Clavier("-" + liste_Matos.at(cpt+4));//Prix
+                }
                 Clavier("Tab");
                 Clavier("Tab");
                 Clavier("Tab");

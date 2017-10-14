@@ -416,6 +416,7 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
                             QString var = flux.readLine();
                             if(var.contains("obj[CodeEnseigne].LibCourt") && etat == 0)//Désignation
                             {
+                                var.replace("&amp;","ET");
                                 list.append(var.split("\"").at(1));
                                 etat = 1;
                             }
@@ -426,6 +427,8 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
                                 {
                                     if(var.split("\"").count() >= 2 && var2.split("\"").count() >= 2)
                                     {
+                                        var.replace("&amp;","ET");
+                                        var2.replace("&amp;","ET");
                                         list.append(var2.split("\"").at(1));//Référence
                                         list.append(var.split("\"").at(1));//Fabricant
                                         list.append("");//Fab
@@ -442,29 +445,35 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
                                 QString var2 = var;
                                 flux.readLine();
                                 flux.readLine();
-                                flux.readLine();
-                                flux.readLine();
-                                flux.readLine();
-                                flux.readLine();
-                                flux.readLine();
-                                flux.readLine();
                                 while(flux.readLine().contains("<td style=\"text-align:right;\">") == false) {}
                                 var = flux.readLine();
                                 var.replace(" ","");
                                 var.replace(",",".");
+                                var.replace("&nbsp;","");
                                 var2.replace(",",".");
                                 var = QString::number(var.toDouble() / var2.split("\"").at(5).toDouble());
                                 var.replace(".",",");
-                                list.append(var);//prix
-                                if(var2.split("\"").count() >= 6)
+
+                                if(var == "nan")//Si annulé
                                 {
-                                    list.append(var2.split("\"").at(5));//Quantité
+                                    list.removeLast();
+                                    list.removeLast();
+                                    list.removeLast();
+                                    list.removeLast();
                                 }
                                 else
                                 {
-                                    m_Fct->FrnError(variable,FRN,"Quantité");
+                                    list.append(var);//prix
+                                    if(var2.split("\"").count() >= 6)
+                                    {
+                                        list.append(var2.split("\"").at(5));//Quantité
+                                    }
+                                    else
+                                    {
+                                        m_Fct->FrnError(variable,FRN,"Quantité");
+                                    }
+                                    list.append("NC");//Restant
                                 }
-                                list.append("NC");//Restant
                                 etat = 0;
                             }
                         }

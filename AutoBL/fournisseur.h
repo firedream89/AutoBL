@@ -28,7 +28,7 @@ class Fournisseur : public QObject
 public:
     Fournisseur(QString lien_Travail, DB *db, Error *err);
     ~Fournisseur();
-    bool Add(const QString nom,const QString login,const QString mdp,const QString complement);
+    bool Add(const QString nom, const QString complement, const QString login, const QString mdp);
     bool Add(const QString nom);
     bool Del(const QString nom);
     bool Start();
