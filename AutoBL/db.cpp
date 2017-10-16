@@ -47,6 +47,23 @@ QSqlQuery DB::Requete(QString r)
         {
             m_Error->Err(requete,r,"DB");
         }
+        else if(req.lastQuery().contains("INSERT INTO En_Cours VALUES"))
+        {
+            QString frn = req.lastQuery().split(",").last().split("'").at(1);
+            QString invoice = req.lastQuery().split(",").at(3).split("'").at(1);
+            req = Requete("SELECT * FROM Options WHERE Nom='" + frn + "_Last'");
+            if(req.next() == false)
+            {
+                req = Requete("SELECT MAX(ID) FROM Options");
+                req.next();
+                int id = req.value(0).toInt();
+                Requete("INSERT INTO Options VALUES('" + QString::number(id+1) + "','" + frn + "_Last','" + invoice + "')");
+            }
+            else
+            {
+                Requete("UPDATE Options SET Valeur='" + invoice + "' WHERE Nom='" + frn + "_Last'");
+            }
+        }
     }
     else
         m_Error->Err(requete,r,"DB");
@@ -153,7 +170,7 @@ void DB::Init()
     DEBUG << "DB initialisée";
 }
 
-void DB::Close()
+void DB::Close_DB()
 {
     QSqlDatabase::removeDatabase("qt_sql_default_connection");
 }
@@ -221,7 +238,7 @@ void DB::Purge()
     QDate t;
     t = t.currentDate();
     t = t.addMonths(-2);
-    
+    /*
     //Liste BC < 2 mois
     QStringList var;
     QSqlQuery req = Requete("SELECT * FROM En_Cours WHERE Date > '" + t.toString("yyyy-MM-dd") + "'");
@@ -284,7 +301,7 @@ void DB::Purge()
 
         }
     }
-
+*/
     Requete("DELETE FROM En_Cours WHERE Date < '" + t.toString("yyyy-MM-dd") + "' AND Ajout='"+QString::number(endAdd)+"'");
 }
 
@@ -381,4 +398,94 @@ QString DB::enum_State(int state)
         return QString();
     }
     return var;
+}
+
+QString DB::Get_Last_Invoice(QString frn)
+{
+    QSqlQuery req = Requete("SELECT Valeur FROM Options WHERE Nom='" + frn + "_Last'");
+    if(req.next() == false)
+    {
+        m_Error->Err(requete,"Get_Last_Invoice:"+frn,"DB");
+    }
+    else
+    {
+        return req.value(0).toString();
+    }
+    return QString();
+}
+
+bool DB::Insert_Into_En_Cours(int id,QString date,QString Nom_Chantier,QString Numero_Commande,QString Numero_Livraison,QString Lien_Commande,int Etat,
+                              int Ajout,QString Info_Chantier,int Ajout_BL,QString Numero_BC_Esab,QString Fournisseur)
+{
+    if(id <= 0)//ID
+    {
+        m_Error->Err(variable,"id <= 0",DB);
+    }
+    if(date.split("-").count() == 3)//Date
+    {
+        QStringList var = date.split("-");
+        if(var.at(0).count() != 4 && var.at(1).count() != 2 && var.at(2).count() != 2)
+        {
+            m_Error->Err(variable,"Format date invalide: " + date,DB);
+            return false;
+        }
+        if(var.at(1).toInt() > 0 && var.at(1).toInt() < 13 && var.at(2).toInt() > 0 && var.at(2).toInt() < 32)
+        {
+            m_Error->Err(variable,"Date invalide: " + date,DB);
+            return false;
+        }
+    }
+    else
+    {
+        m_Error->Err(variable,"Format date invalide: " + date,DB);
+        return false;
+    }
+    if(Nom_Chantier.count() != 6 || Nom_Chantier.at(0).isNumber() || Nom_Chantier.at(Nom_Chantier.count()-1).isNumber())//Nom_Chantier
+    {
+        DEBUG << "DB | Nom_Chantier invalide : " << Nom_Chantier;
+        Ajout = error;
+    }
+    if(Etat < open || Etat > Close)//Etat
+    {
+        m_Error->Err(variable,"Valeur Etat incorrect",DB);
+        return false;
+    }
+    QSqlQuery req = Requete("SELECT Valeur FROM Options WHERE ID='13'");
+    req.next();
+    if(req.value(0).toInt() == 1)//Ajout_BL
+    {
+        Ajout_BL = 1;
+    }
+    //Fournisseur
+    req = Requete("SELECT Valeur FROM Options WHERE ID='24'");
+    req.next();
+    if(req.value(0).toString().contains(Fournisseur) == false)
+    {
+        m_Error->Err(variable,"Founisseur inconnu",DB);
+        return false;
+    }
+    Requete("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + Nom_Chantier + "','" + Numero_Commande + "','" +
+            Numero_Livraison + "','" + Lien_Commande + "','" + QString::number(Etat) + "','" + QString::number(Ajout) + "','" +
+            Info_Chantier + "','" + QString::number(Ajout_BL) + "','" + Numero_BC_Esab + "','" + Fournisseur + "')");
+    return true;
+}
+
+QSqlQuery DB::Get_Download_Invoice()
+{
+    return Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
+}
+
+QSqlQuery DB::Get_Added_Invoice()
+{
+    return Requete("SELECT * FROM En_Cours WHERE Ajout_BL='1' AND Ajout='" + QString(add) + "'");
+}
+
+QSqlQuery DB::Get_No_Closed_Invoice(QString frn)
+{
+    return Requete("SELECT * FROM En_Cours WHERE Etat!='" + QString::number(Close) + "' AND Fournisseur='" + frn + "'");
+}
+
+QSqlQuery DB::Get_Delivery_Invoice(QString frn)
+{
+    return Requete("SELECT * FROM En_Cours WHERE Etat='" + QString::number(Close) + "' AND Fournisseur='" + QString(REXEL) + "' AND (Numero_Livraison='' OR Numero_Livraison=' ')");
 }

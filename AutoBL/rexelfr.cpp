@@ -251,6 +251,7 @@ bool RexelFr::Create_List_Invoice()
 
                 req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "' AND Fournisseur='" + REXEL + "'");
                 req.next();
+
                 if(req.value("Numero_Commande").isNull() && error == false && skip == false)
                 {
                     if(date.split("/").count() != 3)///Si la date n'a pas été trouvé
