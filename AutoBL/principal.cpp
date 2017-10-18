@@ -1078,7 +1078,7 @@ void Principal::Remove_Row_DB()
 
 void Principal::Restaurer_DB()
 {
-    m_DB->Close();
+    m_DB->Close_DB();
 
     QString var;
     QFile s(qApp->applicationDirPath() + "/bddSav.db");

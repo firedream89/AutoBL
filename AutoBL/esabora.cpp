@@ -21,7 +21,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
     if(Lancement_API() == false) { return false; }
 
     ///Ajout des BC sur esabora
-    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
+    QSqlQuery req = m_DB->Get_Download_Invoice();
     Ouverture_Liste_BC();
     qDebug() << "Liste BC ouverte";
     while(req.next() && m_Arret == false)
@@ -84,7 +84,11 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                 i += 6;
             }
             liste_Matos = list;
-            if(list_Open == false) { Ouverture_Liste_BC(); }
+            if(list_Open == false)
+            {
+                Abort();
+                Ouverture_Liste_BC();
+            }
 
 
             if(req.value("Nom_Chantier").toString() == "0")//Ajout BC au Stock
@@ -134,7 +138,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
 
 
     ///Ajout des BL sur esabora
-    req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout_BL='1' AND Ajout='Bon Ajouté'");
+    req = m_DB->Get_Added_Invoice();
     while(req.next())
     {
         m_List_Cmd.append(req.value("Numero_Commande").toString());
@@ -986,8 +990,14 @@ bool Esabora::Verification_Fenetre(QString fenetre)
             connect(&t,SIGNAL(timeout()),&loop,SLOT(quit()));
             t.start(2000);
             loop.exec();
-            if(Verification_Fenetre(fenetre)) { return true; }
-            else { return false; }
+            if(Verification_Fenetre(fenetre)) {
+                DEBUG << "La fenêtre '" << fenetre << "' a pas été trouvé(Ok)";
+                return true;
+            }
+            else {
+                DEBUG << "La fenêtre '" << fenetre << "' n'a pas été trouvé(Erreur)";
+                return false;
+            }
         }
     }
     else return true;
@@ -1001,11 +1011,15 @@ bool Esabora::Verification_Focus(QString fen, bool focus)
     connect(&t,SIGNAL(timeout()),&loop,SLOT(quit()));
     HWND hWnds = FindWindow(NULL,fen.toStdWString().c_str());
     HWND h = GetForegroundWindow();
-    if(hWnds == h && focus) { return true; }
+    if(hWnds == h && focus) {
+        DEBUG << "La fenêtre '" << fen << "' est toujours au premier plan(Ok)";
+        return true;
+    }
     else if(hWnds != h && focus == false)
     {
         QString message;
         DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
+        DEBUG << "La fenêtre '" << fen << "' n'est plus au premier plan(Ok)";
         return true;
     }
     else if(hWnds != h && focus)
@@ -1022,15 +1036,15 @@ bool Esabora::Verification_Focus(QString fen, bool focus)
         if(Verification_Fenetre("RX - Agent de Mise à Jour"))
         {
             DEBUG << "'UPDATE Widget' Detected !";
-            SetForegroundWindow(hWnds);
-            t.start(2000);
-            loop.exec();
-            h = GetForegroundWindow();
-            if(hWnds == h) { return true; }
-            else { return false; }
+            err->Err(Focus,"RX - Agent de mise à jour",ESAB);
         }
+        DEBUG << "La fenêtre '" << fen << "' n'est plus au premier plan(Erreur)";
+        return false;
     }
-    else { return false; }
+    else {
+        DEBUG << "La fenêtre '" << fen << "' est toujours au premier plan(Erreur)";
+        return false;
+    }
 }
 ///Erreur 6xx
 bool Esabora::Ajout_Stock(QString numero_Commande)

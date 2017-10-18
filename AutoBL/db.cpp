@@ -419,25 +419,25 @@ bool DB::Insert_Into_En_Cours(int id,QString date,QString Nom_Chantier,QString N
 {
     if(id <= 0)//ID
     {
-        m_Error->Err(variable,"id <= 0",DB);
+        m_Error->Err(variable,"id <= 0","DB");
     }
     if(date.split("-").count() == 3)//Date
     {
         QStringList var = date.split("-");
         if(var.at(0).count() != 4 && var.at(1).count() != 2 && var.at(2).count() != 2)
         {
-            m_Error->Err(variable,"Format date invalide: " + date,DB);
+            m_Error->Err(variable,"Format date invalide: " + date,"DB");
             return false;
         }
         if(var.at(1).toInt() > 0 && var.at(1).toInt() < 13 && var.at(2).toInt() > 0 && var.at(2).toInt() < 32)
         {
-            m_Error->Err(variable,"Date invalide: " + date,DB);
+            m_Error->Err(variable,"Date invalide: " + date,"DB");
             return false;
         }
     }
     else
     {
-        m_Error->Err(variable,"Format date invalide: " + date,DB);
+        m_Error->Err(variable,"Format date invalide: " + date,"DB");
         return false;
     }
     if(Nom_Chantier.count() != 6 || Nom_Chantier.at(0).isNumber() || Nom_Chantier.at(Nom_Chantier.count()-1).isNumber())//Nom_Chantier
@@ -447,7 +447,7 @@ bool DB::Insert_Into_En_Cours(int id,QString date,QString Nom_Chantier,QString N
     }
     if(Etat < open || Etat > Close)//Etat
     {
-        m_Error->Err(variable,"Valeur Etat incorrect",DB);
+        m_Error->Err(variable,"Valeur Etat incorrect","DB");
         return false;
     }
     QSqlQuery req = Requete("SELECT Valeur FROM Options WHERE ID='13'");
@@ -461,7 +461,7 @@ bool DB::Insert_Into_En_Cours(int id,QString date,QString Nom_Chantier,QString N
     req.next();
     if(req.value(0).toString().contains(Fournisseur) == false)
     {
-        m_Error->Err(variable,"Founisseur inconnu",DB);
+        m_Error->Err(variable,"Founisseur inconnu","DB");
         return false;
     }
     Requete("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + Nom_Chantier + "','" + Numero_Commande + "','" +
@@ -487,5 +487,5 @@ QSqlQuery DB::Get_No_Closed_Invoice(QString frn)
 
 QSqlQuery DB::Get_Delivery_Invoice(QString frn)
 {
-    return Requete("SELECT * FROM En_Cours WHERE Etat='" + QString::number(Close) + "' AND Fournisseur='" + QString(REXEL) + "' AND (Numero_Livraison='' OR Numero_Livraison=' ')");
+    return Requete("SELECT * FROM En_Cours WHERE Etat='" + QString::number(Close) + "' AND Fournisseur='" + frn + "' AND (Numero_Livraison='' OR Numero_Livraison=' ')");
 }
