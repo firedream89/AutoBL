@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.43 DEV5"); //Version De L'application
+QString version("1.43 DEV8"); //Version De L'application
 QString ver("1430");
 /////////////////////////////////
 
@@ -113,6 +113,7 @@ Principal::Principal(QWidget *parent) :
     m_Esabora->moveToThread(thread);
 
     Chargement_Parametres();
+    Load_Unknown_Fab();
 
     //Création des connect
     connect(m_DB,SIGNAL(CreateTable()),this,SLOT(PurgeError()));
@@ -168,6 +169,7 @@ Principal::Principal(QWidget *parent) :
     connect(ui->listFrnAjouter,SIGNAL(clicked(QModelIndex)),this,SLOT(Load_Param_Fournisseur()));
     connect(ui->restaurerDB,SIGNAL(clicked(bool)),this,SLOT(Restaurer_DB()));
     connect(ui->Add_BC_Fictif,SIGNAL(clicked(bool)),this,SLOT(DBG_Select_Frn_Fictif()));
+    connect(ui->sav_Unknown_Fab,SIGNAL(clicked(bool)),this,SLOT(Sav_Unknown_Fab()));
 
     qApp->setQuitOnLastWindowClosed(false);
 
@@ -998,64 +1000,15 @@ bool Principal::test()
 
 void Principal::Test_BC()
 {
-    if(m_Esabora->Lancement_API())
-    {
-        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
-        if(req.next())
-        {
-            m_Tache->Affichage_En_Cours();
-            QString fxlsx = req.value("Numero_Commande").toString() + ".xlsx";
-            if(m_Esabora->Ajout_BC(req.value("Numero_Commande").toString())== false)
-            {
-                if(m_Esabora->GetEtat() == 0)
-                {
-                    Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué, BC non créé !").arg(req.value("Numero_Commande").toString()));
-                }
-                if(m_Esabora->GetEtat() == 1)
-                {
-                    Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué, BC Vide à supprimer !").arg(req.value("Numero_Commande").toString()));
-                    m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                }
-            }
-            else
-            {
-                m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-            }
-        }
-        m_Esabora->Fermeture_API();
-    }
+    QString Numero_Commande = ui->tNomFichier->item(ui->tNomFichier->currentRow(),5)->text();
+    m_Esabora->Test_Add_BC(Numero_Commande);
 }
 
 void Principal::Test_BL()
 {
-    if(m_Esabora->Lancement_API())
-    {
-        for(int cpt=0;cpt<ui->tNomFichier->rowCount();cpt++)
-        {
-            if(ui->tNomFichier->item(cpt,7)->checkState() == Qt::Checked)
-            {
-                QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,5)->text() + "'");
-                if(req.next())
-                {
-                    if(m_Esabora->Ajout_BL(req.value("Numero_BC_Esabora").toString(),ui->tNomFichier->item(cpt,4)->text()) == false)
-                    {
-                        Affichage_Erreurs(tr("Principal | Ajout BL N°%0 échoué").arg(ui->tNomFichier->item(cpt,4)->text()));
-                    }
-                    else
-                    {
-                        Affichage_Info("Principal | Ajout BL N°" + ui->tNomFichier->item(cpt,3)->text() + " Réussi");
-                        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,4)->text() + "'");
-                    }
-                }
-                else
-                {
-                    Affichage_Erreurs("Principal | BL non trouvé dans la DB !");
-                }
-                cpt = ui->tNomFichier->rowCount();
-            }
-        }
-    }
-    m_Esabora->Fermeture_API();
+    QString Numero_Commande = ui->tNomFichier->item(ui->tNomFichier->currentRow(),5)->text();
+    QString bl = ui->tNomFichier->item(ui->tNomFichier->currentRow(),4)->text();
+    m_Esabora->Test_Add_BL(Numero_Commande,bl);
 }
 
 //DB//////////////////////////////
@@ -1264,6 +1217,15 @@ void Principal::menu_TNomFichier(QPoint point)
     if(ui->tabWidget->tabText(2) != "Configuration")
     {
         mb->setEnabled(false);
+    }
+    if(ui->tabWidget->tabText(3) == "Débuggage")
+    {
+        QAction *addBC = new QAction("DEBUG : Add BC",this);
+        QAction *addBL = new QAction("DEBUG : Add BL",this);
+        connect(addBC,SIGNAL(triggered(bool)),this,SLOT(Test_BC()));
+        connect(addBL,SIGNAL(triggered(bool)),this,SLOT(Test_BL()));
+        mMenu.addAction(addBC);
+        mMenu.addAction(addBL);
     }
 
     mMenu.exec(ui->tNomFichier->mapToGlobal(point));
@@ -1915,4 +1877,76 @@ void Principal::DBG_Add_Frn_Fictif()
         f->close();
         f->deleteLater();
     }
+}
+
+void Principal::Load_Unknown_Fab()
+{
+    while(ui->unknown_Fab->rowCount() > 0)
+        ui->unknown_Fab->removeRow(0);
+
+    QFile f(m_Lien_Work + "/Config/Fab.esab");
+    if(f.open(QIODevice::ReadOnly) == false)
+    {
+        m_Error->Err(open,"Fab.esab","PRINCIPAL");
+    }
+    QFlag edit = ~Qt::ItemIsEditable;
+    QTextStream flux(&f);
+    while(flux.atEnd() == false)
+    {
+        QString var = flux.readLine();
+        if(var.split(";").count() == 2 && var.split(";").at(1) == "")
+        {
+            ui->unknown_Fab->insertRow(0);
+            ui->unknown_Fab->setItem(0,0,new QTableWidgetItem(var.split(";").at(0)));
+            ui->unknown_Fab->setItem(0,1,new QTableWidgetItem);
+            ui->unknown_Fab->item(0,0)->setFlags(edit);
+        }
+    }
+}
+
+void Principal::Sav_Unknown_Fab()
+{
+    QFile f(m_Lien_Work + "/Config/Fab.esab");
+    if(f.open(QIODevice::ReadWrite) == false)
+    {
+        m_Error->Err(open_File,"Fab.esab","PRINCIPAL");
+        return;
+    }
+    QStringList final;
+
+    QTextStream flux(&f);
+    DEBUG << 1;
+    while(flux.atEnd() == false)
+    {
+        DEBUG << 2;
+        QString var = flux.readLine();
+
+        if(var.split(";").count() == 2)
+        {
+            if(var.split(";").at(1) != "")
+            {
+                final.append(var);
+            }
+            else
+            {
+                QTableWidgetItem *item = ui->unknown_Fab->findItems(var.split(";").at(0),Qt::MatchExactly).at(0);
+                if(item != NULL && ui->unknown_Fab->item(item->row(),1)->text().count() == 3)
+                {
+                    final.append(item->text() + ";" + ui->unknown_Fab->item(item->row(),1)->text().toUpper());
+                }
+                else
+                {
+                    if(item == NULL)
+                        m_Error->Err(variable,var,"PRINCIPAL");
+                    final.append(var);
+                }
+            }
+        }
+    }
+    DEBUG << 3;
+    f.resize(0);
+    for(int i = 0;i<final.count();i++) { flux << final.at(i) + "\r\n"; }
+    f.close();
+
+    Load_Unknown_Fab();
 }

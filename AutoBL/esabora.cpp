@@ -30,6 +30,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
         emit Info(tr("Ajout du bon de commande %0").arg(req.value("Numero_Commande").toString()));
         if(Get_List_Matos(req.value("Numero_Commande").toString()))
         {
+
             if(liste_Matos.isEmpty() || liste_Matos.count() < 7)
             {
                 DEBUG << "Liste matériels Vide !";
@@ -258,6 +259,11 @@ QString Esabora::Find_Fabricant(QString Fab)
     {
         DEBUG << "Constructeur " + Fab + " non trouvé sur Esabora";
     }
+    else if(pp->text().contains("Vous n'avez pas les droits pour accéder à cette option !"))
+    {
+        DEBUG << "Le catalogue produits n'est pas accessible !";
+    }
+
     else
     {
         var = pp->text().split("(").at(1);
@@ -1276,4 +1282,102 @@ bool Esabora::Paste()
     t.start(1000);
     l.exec();
     return test;
+}
+
+QStringList Esabora::Verif_List(QStringList list)
+{
+    if(list.isEmpty() || list.count() < 7)
+    {
+        DEBUG << "Liste matériels Vide !";
+        return QStringList(0);
+    }
+
+    QFile file(m_Lien_Work + "/Config/Fab.esab");
+    if(file.open(QIODevice::ReadWrite) == false)
+    {
+        err->Err(open_File,ESAB,"Fab.esab");
+    }
+    QTextStream flux(&file);
+
+    QStringList final;
+    for(int i=0;i<list.count();i++)
+    {
+        final.append(liste_Matos.at(i));
+        final.append(liste_Matos.at(i+1));
+        final.append(liste_Matos.at(i+2));
+        if(list.at(i+3).isEmpty() && list.at(i+2).isEmpty() == false)//si Fabricant connu mais pas Fab
+        {
+            file.seek(0);
+            while(flux.atEnd() == false)//vérif si Fab déjà connu
+            {
+                QString var = flux.readLine();
+                if(var.split(";").at(0) == list.at(i+2))
+                {
+                    final.append(var.split(";").at(1));
+                    file.seek(0);
+                    break;
+                }
+            }
+            if(file.atEnd())//Sinon rechercher Fab sur esabora
+            {
+                QString var = Find_Fabricant(list.at(i+2));
+                if(var.isEmpty() == false)
+                {
+                    file.seek(SEEK_END);
+                    flux << list.at(i+2) + ";" + var + "\r\n";
+                    file.seek(0);
+                }
+                final.append(var);
+            }
+        }
+        else
+            final.append(liste_Matos.at(i+3));
+        final.append(liste_Matos.at(i+4));
+        final.append(liste_Matos.at(i+5));
+        final.append(liste_Matos.at(i+6));
+        i += 6;
+    }
+    return final;
+}
+
+void Esabora::Test_Add_BC(QString invoice)
+{
+    if(Lancement_API())
+    {
+        if(Ajout_BC(invoice))
+        {
+            DEBUG << "Test réussis !";
+        }
+        else
+        {
+            DEBUG << "Echec Ajout BC";
+        }
+    }
+    else
+    {
+        DEBUG << "Echec démarrage Esabora";
+    }
+    Abort();
+    Fermeture_API();
+}
+
+void Esabora::Test_Add_BL(QString invoice,QString bl)
+{
+    if(Lancement_API())
+    {
+        if(Ajout_BL(invoice,bl))
+        {
+            DEBUG << "Test réussis !";
+        }
+        else
+        {
+            DEBUG << "Echec Ajout BC";
+        }
+    }
+    else
+    {
+        DEBUG << "Echec démarrage Esabora";
+    }
+    Abort();
+    Fermeture_API();
 }

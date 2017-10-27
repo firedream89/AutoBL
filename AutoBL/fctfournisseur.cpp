@@ -153,3 +153,76 @@ bool FctFournisseur::Get_Load_Finished()
 {
     return m_load;
 }
+
+void FctFournisseur::Control_Fab(QStringList list)
+{
+    if(list.isEmpty() || list.count() < 7)
+    {
+        DEBUG << "Liste matériels Vide !";
+        return;
+    }
+    connect(this,SIGNAL(Set_Fab(QString)),loop,SLOT(quit()));
+
+    QFile file(m_WorkLink + "/Config/Fab.esab");
+    if(file.open(QIODevice::ReadWrite) == false)
+    {
+        m_Error->Err(open_File,FCT,"Fab.esab");
+    }
+    QTextStream flux(&file);
+
+    for(int i=0;i<list.count();i++)
+    {
+        if(list.at(i+3).isEmpty() && list.at(i+2).isEmpty() == false)//si Fabricant connu mais pas Fab
+        {
+            file.seek(0);
+            while(flux.atEnd() == false)//vérif si Fab déjà connu
+            {
+                QString var = flux.readLine();
+                if(var.contains(list.at(i+2)))
+                {
+                    file.seek(0);
+                    break;
+                }
+            }
+            if(file.atEnd())//Sinon rechercher Fab sur esabora
+            {
+                emit Find_Fab(list.at(i+2));
+                Loop(120000);
+                if(m_Fab.isEmpty() == false)
+                {
+                    file.seek(SEEK_END);
+                    flux << list.at(i+2) + ";" + m_Fab + "\r\n";
+                    file.seek(0);
+                }
+                else
+                {
+
+                }
+            }
+        }
+        else
+        {
+            bool find(false);
+            while(flux.atEnd() == false)
+            {
+                if(flux.readLine().contains(list.at(2)))
+                {
+                    find = true;
+                }
+            }
+            if(find == false)
+            {
+                flux << list.at(i+2) + ";" + list.at(i+3) + "\r\n";
+            }
+        }
+        i += 6;
+    }
+    disconnect(this,SIGNAL(Set_Fab(QString)),loop,SLOT(quit()));
+    m_Fab.clear();
+}
+
+void FctFournisseur::Return_Fab(QString fab)
+{
+    m_Fab = fab;
+    emit Set_Fab();
+}

@@ -102,6 +102,8 @@ public slots:
     bool test();
     void DBG_Select_Frn_Fictif();
     void DBG_Add_Frn_Fictif();
+    void Load_Unknown_Fab();
+    void Sav_Unknown_Fab();
 
 signals:
     void FinAjout();

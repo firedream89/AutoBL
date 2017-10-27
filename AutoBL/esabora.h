@@ -42,6 +42,8 @@ public slots:
     bool Ajout_Stock(QString numero_Commande);
     void Stop();
     QString Test_Find_Fabricant(QString fab);
+    void Test_Add_BC(QString invoice);
+    void Test_Add_BL(QString invoice, QString bl);
 
 private slots:
     bool Clavier(QString commande);
@@ -54,6 +56,7 @@ private slots:
     QString Find_Fabricant(QString Fab);
     bool Copy();
     bool Paste();
+    QStringList Verif_List(QStringList list);
 
 signals:
     void DemandeListeMatos(QString NumeroCommande);

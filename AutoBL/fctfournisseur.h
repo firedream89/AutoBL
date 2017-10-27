@@ -35,9 +35,11 @@ public:
     void Info(QString info);
     void Change_Load_Window(QString text);
     bool Get_Load_Finished();
+    void Control_Fab(QStringList list);
 
 public slots:
     void Stop_Load();
+    void Return_Fab(QString fab);
 
 signals:
     void error(QString e);
@@ -45,6 +47,8 @@ signals:
     void info(QString i);
     void err(QString info);
     void change_Load_Window(QString text);
+    void Find_Fab(QString fab);
+    void Set_Fab();
 
 private slots:
     void Set_Load(bool state);
@@ -56,6 +60,7 @@ private:
     QString m_WorkLink;
     Error *m_Error;
     bool m_load;
+    QString m_Fab;
 };
 
 #endif // FCTFOURNISSEUR_H
