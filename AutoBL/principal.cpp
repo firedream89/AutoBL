@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.43 DEV8"); //Version De L'application
+QString version("1.43 DEV9"); //Version De L'application
 QString ver("1430");
 /////////////////////////////////
 
@@ -131,6 +131,7 @@ Principal::Principal(QWidget *parent) :
     connect(m_Frn,SIGNAL(En_Cours_Info(QString)),this,SLOT(Update_Fen_Info(QString)));
     connect(m_Frn,SIGNAL(En_Cours_Fournisseur(QString)),this,SLOT(Fournisseur_Actuel(QString)));
     connect(m_Frn,SIGNAL(Change_Load_Window(QString)),this,SLOT(Update_Fen_Info(QString)));
+    connect(m_Frn,SIGNAL(Find_Fab(QString)),m_Esabora,SLOT(Find_Fabricant(QString)));
 
     connect(m_Esabora,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
     connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(AddError(QString)));
@@ -1091,6 +1092,7 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
         QStringList list = m_Frn->Get_Invoice_List(ui->tNomFichier->item(l,9)->text(),ui->tNomFichier->item(l,5)->text());
         DEBUG << list;
 
+
         load->Close();
         QTableWidget *tbl = new QTableWidget;
         tbl->insertColumn(0);
@@ -1912,13 +1914,11 @@ void Principal::Sav_Unknown_Fab()
         m_Error->Err(open_File,"Fab.esab","PRINCIPAL");
         return;
     }
-    QStringList final;
 
+    QStringList final;
     QTextStream flux(&f);
-    DEBUG << 1;
     while(flux.atEnd() == false)
     {
-        DEBUG << 2;
         QString var = flux.readLine();
 
         if(var.split(";").count() == 2)
@@ -1943,10 +1943,10 @@ void Principal::Sav_Unknown_Fab()
             }
         }
     }
-    DEBUG << 3;
     f.resize(0);
     for(int i = 0;i<final.count();i++) { flux << final.at(i) + "\r\n"; }
     f.close();
 
     Load_Unknown_Fab();
 }
+

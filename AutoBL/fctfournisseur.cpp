@@ -188,7 +188,7 @@ void FctFournisseur::Control_Fab(QStringList list)
             {
                 emit Find_Fab(list.at(i+2));
                 Loop(120000);
-                if(m_Fab.isEmpty() == false)
+                if(m_Fab.isEmpty() == false && m_Fab.count() == 3)
                 {
                     file.seek(SEEK_END);
                     flux << list.at(i+2) + ";" + m_Fab + "\r\n";
@@ -196,7 +196,8 @@ void FctFournisseur::Control_Fab(QStringList list)
                 }
                 else
                 {
-
+                    DEBUG << "Constructeur non trouvé : " << m_Fab;
+                    flux << list.at(i+2) << ";\r\n";
                 }
             }
         }

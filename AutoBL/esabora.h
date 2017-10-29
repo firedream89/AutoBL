@@ -44,6 +44,7 @@ public slots:
     QString Test_Find_Fabricant(QString fab);
     void Test_Add_BC(QString invoice);
     void Test_Add_BL(QString invoice, QString bl);
+    QString Find_Fabricant(QString Fab);
 
 private slots:
     bool Clavier(QString commande);
@@ -53,7 +54,6 @@ private slots:
     bool Verification_Focus(QString fen,bool focus);
     bool Verification_Message_Box(QString &message);
     bool Get_List_Matos(QString invoice);
-    QString Find_Fabricant(QString Fab);
     bool Copy();
     bool Paste();
     QStringList Verif_List(QStringList list);

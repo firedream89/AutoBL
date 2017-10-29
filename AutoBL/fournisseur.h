@@ -37,9 +37,11 @@ public:
     void Show_Web();
     QString List_Frn() const;
     QString Get_Frn_Inf(QString frn) const;
+    QStringList Control_Invoice_List(QStringList list);
 
 public slots:
     QStringList Get_Invoice_List(const QString &frn,const QString &invoiceNumber);
+    void Set_Fab(QString fab);
 
 signals:
     void En_Cours_Fournisseur(QString nom);
@@ -48,6 +50,7 @@ signals:
     void Info(QString info);
     void LoadProgress(int l);
     void Change_Load_Window(QString text);
+    void Find_Fab(QString fab);
 
 private:
     QStringList Find_Fournisseur(QString nom);

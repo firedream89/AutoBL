@@ -198,11 +198,12 @@ bool Esabora::Lancement_API()
         {
             DEBUG << "Esabora Ouvert et au premier plan";
             Abort();
-            Fermeture_API();
+            return true;
         }
         else
         {
             DEBUG << "Esabora déjà ouvert";
+            return false;
         }
     }
     else if(QDesktopServices::openUrl(m_Lien_Esabora) == false)
@@ -238,6 +239,7 @@ QString Esabora::Find_Fabricant(QString Fab)
     QClipboard *pp = QApplication::clipboard();
     pp->clear();
     DEBUG << "Contrôle/Ouverture Catalogue";
+    if(Lancement_API() == false) { return QString(0); }
     if(Verification_Fenetre("Recherche Produits") == false)
     {
         Abort();
@@ -247,7 +249,7 @@ QString Esabora::Find_Fabricant(QString Fab)
             return QString();
         }
     }
-    DEBUG << "Recherche du Fabricant";
+    DEBUG << "Recherche du Fabricant " << Fab;
     if(Traitement_Fichier_Config("Cat",Fab) == false)
     {
         err->Err(Traitement,ESAB,"Find_Fabricant");
