@@ -154,9 +154,96 @@ bool FctFournisseur::Get_Load_Finished()
     return m_load;
 }
 
-void FctFournisseur::Control_Fab(QStringList list)
+QStringList FctFournisseur::Control_Fab(QStringList list)
 {
-    if(list.isEmpty() || list.count() < 7)
+    DEBUG << "Esabora | Verif_List";
+    connect(this,SIGNAL(Set_Fab(QString)),loop,SLOT(quit()));
+
+    if(list.isEmpty() || list.count() % 7 != 0)
+    {
+        DEBUG << "Liste matériels Vide !";
+        return QStringList(0);
+    }
+
+    QFile file(m_WorkLink + "/Config/Fab.esab");
+    if(file.open(QIODevice::ReadOnly) == false)
+    {
+        m_Error->Err(open_File,"Fab.esab",FCT);
+    }
+    QTextStream flux(&file);
+
+    QStringList final;
+    for(int i=0;i<list.count()-1;i+=7)
+    {
+        final.append(list.at(i));
+        final.append(list.at(i+1));
+        final.append(list.at(i+2));
+        if(list.at(i+3).isEmpty() && list.at(i+2).isEmpty() == false)//si Fabricant connu mais pas Fab
+        {
+            flux.seek(0);
+            DEBUG << "If";
+            while(flux.atEnd() == false)//vérif si Fab déjà connu
+            {
+                QString var = flux.readLine();
+                if(var.split(";").count() == 2 && var.split(";").at(0) == list.at(i+2))
+                {
+                    final.append(var.split(";").at(1));
+                    file.seek(0);
+                    break;
+                }
+            }
+            if(flux.atEnd())//Sinon rechercher Fab sur esabora
+            {
+                emit Find_Fab(list.at(i+2));
+                Loop(120000);
+                if(m_Fab.isEmpty() == false && m_Fab.count() == 3)
+                {
+                    file.seek(SEEK_END);
+                    flux << list.at(i+2) + ";" + m_Fab + "\r\n";
+                    file.seek(0);
+                    final.append(m_Fab);
+                }
+                else
+                    final.append("");
+            }
+        }
+        else
+        {
+            file.seek(0);
+            DEBUG << "Else";
+            QString var = flux.readAll();
+            DEBUG << "Control existing row";
+            if(list.at(i+2).isEmpty() == false)
+            {
+                if(var.contains(list.at(i+2) + ";" + list.at(i+3)) == false)
+                {
+                    DEBUG << "Add New entry";
+                    file.close();
+                    if(file.open(QIODevice::WriteOnly | QIODevice::Append) == false)
+                        m_Error->Err(open_File,"Fab.esab",FCT);
+                    flux << list.at(i+2) + ";" + list.at(i+3) + "\r\n";
+                    file.waitForBytesWritten(10000);
+                    file.close();
+                    if(file.open(QIODevice::ReadOnly) == false)
+                        m_Error->Err(open_File,"Fab.esab",FCT);
+                }
+            }
+            else
+            {
+                DEBUG << "Erreur, fabricant non trouvé dans la commande";
+            }
+            final.append(list.at(i+3));
+        }
+        final.append(list.at(i+4));
+        final.append(list.at(i+5));
+        final.append(list.at(i+6));
+    }
+    DEBUG << "Esabora | Fin Verif_List";
+    disconnect(this,SIGNAL(Set_Fab(QString)),loop,SLOT(quit()));
+    m_Fab.clear();
+
+    return final;
+    /*if(list.isEmpty() || list.count() < 7)
     {
         DEBUG << "Liste matériels Vide !";
         return;
@@ -219,7 +306,7 @@ void FctFournisseur::Control_Fab(QStringList list)
         i += 6;
     }
     disconnect(this,SIGNAL(Set_Fab(QString)),loop,SLOT(quit()));
-    m_Fab.clear();
+    m_Fab.clear();*/
 }
 
 void FctFournisseur::Return_Fab(QString fab)

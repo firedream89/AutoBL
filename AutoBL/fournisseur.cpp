@@ -74,8 +74,9 @@ bool Fournisseur::Start()
             m_Error->Err(failData,"",FRN);
     }
 
+
     //Controle nouveau BC
-    QSqlQuery req = m_DB->Get_Download_Invoice();
+    /*QSqlQuery req = m_DB->Get_Download_Invoice();
     while(req.next())
     {
         QStringList list;
@@ -107,7 +108,7 @@ bool Fournisseur::Start()
             SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
             list = frn->Get_Invoice(req.value("Numero_Commande").toString());
         }
-        if(list == NULL)
+        if(list.isEmpty())
         {
             m_Error->Err(variable,"Liste matériels vide",FRN);
         }
@@ -115,7 +116,7 @@ bool Fournisseur::Start()
         {
             m_fct->Control_Fab(list);
         }
-    }
+    }*/
     return true;
 }
 
@@ -133,17 +134,20 @@ QStringList Fournisseur::Get_Invoice_List(const QString& frn,const QString& invo
     QString mdp = f.at(1);
     QString comp = f.at(2);
 
+    QStringList final;
     if(frn == FRN1)
     {
         RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
-        return frn->Get_Invoice(invoiceNumber);
+        //final = m_fct->Control_Fab(frn->Get_Invoice(invoiceNumber));
+        final = frn->Get_Invoice(invoiceNumber);
     }
     else if(frn == FRN2)
     {
         SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
-        return frn->Get_Invoice(invoiceNumber);
+        //final = m_fct->Control_Fab(frn->Get_Invoice(invoiceNumber));
+        final = frn->Get_Invoice(invoiceNumber);
     }
-    return QStringList();
+    return final;
 }
 
 bool Fournisseur::Update_Var(const QString& frn,const QString& login,const QString& mdp,const QString& complement)
@@ -297,6 +301,7 @@ QString Fournisseur::Get_Frn_Inf(QString frn) const
     {
         m_Error->Err(variable,"Get_Frn_Inf",FRN);
     }
+    return QString();
 
 }
 
@@ -305,7 +310,3 @@ void Fournisseur::Set_Fab(QString fab)
     m_fct->Return_Fab(fab);
 }
 
-QStringList Fournisseur::Control_Invoice_List(QStringList list)
-{
-    return m_fct->
-}

@@ -35,7 +35,7 @@ public:
     void Info(QString info);
     void Change_Load_Window(QString text);
     bool Get_Load_Finished();
-    void Control_Fab(QStringList list);
+    QStringList Control_Fab(QStringList list);
 
 public slots:
     void Stop_Load();

@@ -18,7 +18,9 @@ typedef enum {
     error,
     updateRef,
     add,
-    endAdd
+    endAdd,
+    unknownFab,
+    badRef
 }State;
 
 typedef enum{

@@ -63,7 +63,6 @@ void InfoWindow::Update_Label(QString label, QString text)
 
     if(w->findChild<QFormLayout*>()->rowCount() == 1)
     {
-        qDebug() << l->width() << w->width() << lw << w->findChild<QFormLayout*>()->rowCount();
         if(lw < l->width())
         {
             qDebug() << "Update size";

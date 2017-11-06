@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.43 DEV9"); //Version De L'application
+QString version("1.43 DEV10"); //Version De L'application
 QString ver("1430");
 /////////////////////////////////
 
@@ -1090,6 +1090,7 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
         load->Show();
 
         QStringList list = m_Frn->Get_Invoice_List(ui->tNomFichier->item(l,9)->text(),ui->tNomFichier->item(l,5)->text());
+        list = m_Esabora->Verif_List(list);
         DEBUG << list;
 
 
@@ -1212,6 +1213,9 @@ void Principal::menu_TNomFichier(QPoint point)
 
     QMenu mMenu(this);
     mMenu.addMenu(menuTri);
+    QAction *reload = new QAction("Rafraichir",this);
+    connect(reload,SIGNAL(triggered(bool)),this,SLOT(Reload_Error()));
+    mMenu.addAction(reload);
     QAction *mb = new QAction("Supprimer",this);
     connect(mb,SIGNAL(triggered(bool)),this,SLOT(Remove_Row_DB()));
     mMenu.addAction(mb);
@@ -1950,3 +1954,34 @@ void Principal::Sav_Unknown_Fab()
     Load_Unknown_Fab();
 }
 
+void Principal::Reload_Error()
+{
+    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='" + QString::number(error) + "' OR Ajout='" + QString::number(badRef) + "' OR Ajout='" + QString::number(unknownFab) + "'");
+    while(req.next())
+    {
+        int state = req.value("Ajout").toInt();
+        if(state == error)
+        {
+
+        }
+        else if(state == unknownFab)
+        {
+            m_Frn->Get_Invoice_List(req.value("Fournisseur").toString(),req.value("Numero_Commande").toString());
+        }
+        else if(state == badRef)
+        {
+            bool test = true;
+            QStringList number;
+            number << "0"<<"1"<<"2"<<"3"<<"4"<<"5"<<"6"<<"7"<<"8"<<"9"<<"-";
+            for(int i=0;i<req.value("Numero_Commande").toString().count();i++)
+            {
+                if(!number.contains(req.value("Numero_Commande").toString().at(i)))
+                    test = false;
+            }
+            if(test == true)
+            {
+                m_DB->Requete("UPDATE En_Cours SET Ajout='" + QString::number(download) + "' WHERE ID='" + req.value("ID").toString() + "'");
+            }
+        }
+    }
+}

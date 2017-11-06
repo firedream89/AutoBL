@@ -104,6 +104,7 @@ public slots:
     void DBG_Add_Frn_Fictif();
     void Load_Unknown_Fab();
     void Sav_Unknown_Fab();
+    void Reload_Error();
 
 signals:
     void FinAjout();

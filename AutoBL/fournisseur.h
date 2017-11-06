@@ -37,7 +37,6 @@ public:
     void Show_Web();
     QString List_Frn() const;
     QString Get_Frn_Inf(QString frn) const;
-    QStringList Control_Invoice_List(QStringList list);
 
 public slots:
     QStringList Get_Invoice_List(const QString &frn,const QString &invoiceNumber);
