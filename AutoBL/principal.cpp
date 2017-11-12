@@ -2,7 +2,7 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.43 DEV10"); //Version De L'application
+QString version("1.43 DEV11"); //Version De L'application
 QString ver("1430");
 /////////////////////////////////
 
@@ -200,6 +200,8 @@ Principal::Principal(QWidget *parent) :
         m_DB->Requete("UPDATE Options SET Valeur='' WHERE ID='11'");
         QMessageBox::information(this,"","Le mot de passe de l'application à été réinitialisé !");
     }
+
+    test();
 
     DEBUG << "AutoBL Initialized";
 }
@@ -988,14 +990,6 @@ void Principal::Test_Esabora()
 
 bool Principal::test()
 {
-    QTimer t;
-    QEventLoop l;
-    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
-    t.start(2000);
-    l.exec();
-    QString v2("Legrand");
-    QString v = m_Esabora->Test_Find_Fabricant(v2);
-    QMessageBox::information(this,"","Find_Fabricant : " + v2 + " = " + v);
     return true;
 }
 
@@ -1090,7 +1084,6 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
         load->Show();
 
         QStringList list = m_Frn->Get_Invoice_List(ui->tNomFichier->item(l,9)->text(),ui->tNomFichier->item(l,5)->text());
-        list = m_Esabora->Verif_List(list);
         DEBUG << list;
 
 

@@ -51,7 +51,7 @@ QString Error::Err(int code, QString e, QString fromClass)
         err = tr("Lecture de la variable %1 échouée").arg(e);
         break;
     case requete:
-        err = tr("Requête vers la base de données échouée").arg(e);
+        err = tr("Requête vers la base de données échouée(%1)").arg(e);
         break;
     case too_many:
         err = tr("Trop de bons de livraison trouvés(%1 trouvés contre 5 maximum autorisé)").arg(e);

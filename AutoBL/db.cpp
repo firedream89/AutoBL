@@ -234,75 +234,23 @@ void DB::Sav()
 
 void DB::Purge()
 {
-    qDebug() << "Purge";
+    DEBUG << "Purge BC > 2 mois";
     QDate t;
     t = t.currentDate();
     t = t.addMonths(-2);
-    /*
-    //Liste BC < 2 mois
-    QStringList var;
-    QSqlQuery req = Requete("SELECT * FROM En_Cours WHERE Date > '" + t.toString("yyyy-MM-dd") + "'");
-    while(req.next())
-    {
-        bool test(false);
-        for(int i=0;i<var.count();i++)
-        {
-            if(var.at(i) == req.value("Fournisseur").toString())
-            {
-                test = true;
-            }
-        }
-        if(test == false)
-        {
-            var.append(req.value("Fournisseur").toString());
-        }
-    }
 
-    //Liste BC > 2 mois
-    req = Requete("SELECT * FROM En_Cours WHERE Date > '" + t.toString("yyyy-MM-dd") + "'");
-    QStringList var2,var3;
-    while(req.next())
-    {
-        bool test(false);
-        for(int i=0;i<var2.count();i++)
-        {
-            if(var2.at(i) == req.value("Fournisseur").toString())
-            {
-                test = true;
-            }
-        }
-        if(test == false)
-        {
-            var2.append(req.value("Fournisseur").toString());
-        }
-    }
+    QSqlQuery req = Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs'");
+    QStringList listFrn;
+    req.next();
+    listFrn = req.value(0).toString().split("|");
 
-    bool test(true);
-    for(int i=0;i<var2.count();i++)
+    for(int i = 0;i<listFrn.count();i++)
     {
-        if(var.contains(var2.at(i)) == false)
-        {
-            test = false;
-            var3.append(var2.at(i));
-        }
+        req = Requete("SELECT COUNT(*) FROM En_Cours WHERE Fournisseur='" + listFrn.at(i) + "'");
+        req.next();
+        Requete("DELETE FROM En_Cours WHERE ID IN (SELECT ID FROM En_Cours WHERE Date < '" + t.toString("yyyy-MM-dd") + "' AND Ajout='"+
+                QString::number(endAdd)+"' AND Fournisseur='" + listFrn.at(i) + "' LIMIT " + QString::number(req.value(0).toInt()-1) + ")");
     }
-    if(test == false)
-    {
-        //mise à jour date dernier BC
-        for(int i = 0;i<var3.count();i++)
-        {
-            req = Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + var3.at(i) + "' ORDER BY Date DESC");
-            if(!req.next())
-            {
-                DEBUG << "Purge | Aucune ligne disponible";
-                return;
-            }
-            Requete("UPDATE En_Cours SET Date='" + QDate::currentDate().toString("yyyy-MM-dd") + "' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "' AND Fournisseur='" + var3.at(i) + "'");
-
-        }
-    }
-*/
-    Requete("DELETE FROM En_Cours WHERE Date < '" + t.toString("yyyy-MM-dd") + "' AND Ajout='"+QString::number(endAdd)+"'");
 }
 
 QStringList DB::Find_Fournisseur_From_Invoice(QString invoice)
