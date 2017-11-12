@@ -62,7 +62,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
                 }
                 else
                 {
-                    m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
+                    m_DB->Requete("UPDATE En_Cours SET Ajout='" + QString::number(add) + "' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
                     nbBC++;
                     if(automatic)
                     {
@@ -386,7 +386,9 @@ bool Esabora::Traitement_Fichier_Config(const QString file, const QString bL)
                 Clavier("Tab");
                 Clavier("-" + liste_Matos.at(cpt+5));//Quantité
                 Clavier("Tab");
-                if(liste_Matos.at(cpt+4).toInt() > 0)
+                QString var = liste_Matos.at(cpt+4);
+                var.replace(",",".");
+                if(var.toDouble() > 0)
                 {
                     Clavier("-" + liste_Matos.at(cpt+4));//Prix
                 }
@@ -579,7 +581,6 @@ bool Esabora::Clavier(QString commande)
     while(ligne.count() > nbLigne)
     {
         QString var = ligne.at(nbLigne);
-        qDebug() << "Before : " << GetKeyState(VK_SHIFT) << GetKeyState(VK_LMENU) << GetKeyState(VK_LCONTROL);
         //Verif majuscule
         if((var.at(0).isUpper() || var.at(0) == '/' || var.at(0) == '.') && GetKeyState(VK_SHIFT) >= 0 && GetKeyState(VK_LMENU) >= 0 &&
                 addition == false)
@@ -871,7 +872,6 @@ bool Esabora::Clavier(QString commande)
         nbLigne++;
         t.start(100);
         l.exec();
-        qDebug() << "After : " << GetKeyState(VK_SHIFT) << GetKeyState(VK_LMENU) << GetKeyState(VK_LCONTROL);
     }
     nbLigne = 0;
 
@@ -1310,15 +1310,25 @@ QStringList Esabora::Verif_List(QStringList list)
 
 void Esabora::Test_Add_BC(QString invoice)
 {
+    if(Get_List_Matos(invoice) == false)
+    {
+        DEBUG << "Echec, liste matériels vide !";
+        return;
+    }
     if(Lancement_API())
     {
-        if(Ajout_BC(invoice))
+        if(Ouverture_Liste_BC())
         {
-            DEBUG << "Test réussis !";
-        }
-        else
-        {
-            DEBUG << "Echec Ajout BC";
+            if(Ajout_BC(invoice))
+            {
+                DEBUG << "Test réussis !";
+                m_DB->Requete("UPDATE En_Cours SET Ajout='" + QString::number(add) + "' WHERE Numero_Commande='" + invoice + "'");
+            }
+            else
+            {
+                DEBUG << "Echec Ajout BC";
+                m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + invoice + "'");
+            }
         }
     }
     else
@@ -1335,11 +1345,12 @@ void Esabora::Test_Add_BL(QString invoice,QString bl)
     {
         if(Ajout_BL(invoice,bl))
         {
-            DEBUG << "Test réussis !";
+            DEBUG << "Test réussis !";  
         }
         else
         {
             DEBUG << "Echec Ajout BC";
+
         }
     }
     else

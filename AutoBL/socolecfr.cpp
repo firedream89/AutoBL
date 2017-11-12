@@ -206,7 +206,8 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
                     return false;
                 }
                 QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + invoice_Number + "' AND Fournisseur='" + FRN + "'");
-                if(skip == false && req.next() == false)
+                bool exist = req.next();
+                if(skip == false && exist == false)
                 {
                     int ID(0);
                     req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
@@ -220,7 +221,7 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
                         return true;
                     }
                 }
-                else
+                else if(exist == true)
                 {
                     endScan = true;
                     break;
