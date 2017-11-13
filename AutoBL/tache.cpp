@@ -60,12 +60,12 @@ void Tache::Arret_Ajout()
 void Tache::Login(bool etat)
 {
     QMenu *m = m_Tray->contextMenu();
-    if(!etat)
+    if(etat)
     {
-        m->actions().at(1)->setEnabled(false);
+        m->actions().at(1)->setEnabled(true);
     }
     else
     {
-        m->actions().at(1)->setEnabled(true);
+        m->actions().at(1)->setEnabled(false);
     }
 }

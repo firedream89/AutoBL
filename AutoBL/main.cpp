@@ -36,8 +36,10 @@ int main(int argc, char *argv[])
     translate.load("AutoBL_fr");
     a.installTranslator(&translate);
 
-    if(!QApplication::arguments().contains("dvp"))
+    if(QApplication::arguments().contains("dvp") == false)
+    {
         qInstallMessageHandler(myMessageOutput);
+    }
 
     Principal w;
 

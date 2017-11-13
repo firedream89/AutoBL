@@ -10,15 +10,19 @@
 
 #define DEBUG qDebug()
 
+static int lw;
+
 class InfoWindow: public QObject
 {
     Q_OBJECT
 public:
     InfoWindow(QWidget *parent, QString windowTitle, int type = 0);
     ~InfoWindow();
-    void Add_Label(QString name,QString text = 0);
+    void Add_Label(QString name, bool row = true);
     void Update_Label(QString label, QString text);
-    void Close();
+    QString Get_Label_Text(QString label) const;
+    void Show() const;
+    void Close() const;
 
 private:
     QDialog *w;

@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.41"); //Version De L'application
-QString ver("1413");
+QString version("1.43 BETA1"); //Version De L'application
+QString ver("1430");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -15,9 +15,15 @@ Principal::Principal(QWidget *parent) :
 
     //ARG
     for(int i = 0;i<qApp->arguments().count();i++)
+    {
         if(qApp->arguments().at(i).contains("-UpdateBDD="))
+        {
             if(qApp->arguments().at(i).split("=").at(1) == "1")
+            {
                 QMessageBox::warning(0,"AutoBL",tr("Une erreur s'est produite durant la Restauration/mise à jour de la base de données."));
+            }
+        }
+    }
 
     //Traitement des variables de l'application
     m_Lien_Work = QStandardPaths::standardLocations(QStandardPaths::DataLocation).at(0);
@@ -40,11 +46,9 @@ Principal::Principal(QWidget *parent) :
     dir.mkdir(m_Lien_Work + "/Config");
     dir.mkdir(m_Lien_Work + "/Logs");
 
-    //Ouverture des fichiers logs et errors
+    //Ouverture du fichier logs
     m_Logs.setFileName(m_Lien_Work + "/Logs/logs.txt");
-    //m_Errors.setFileName(m_Lien_Work + "/Logs/errors.txt");
     qDebug() << "Ouverture Logs " << m_Logs.open(QIODevice::WriteOnly | QIODevice::Append);
-    //m_Errors.open(QIODevice::WriteOnly | QIODevice::Append);
 
     //Chargement des classes de l'application et fonctions nécéssaires
     Affichage_Info("-----------------------------AutoBL " + version + "------------------------------------");
@@ -72,7 +76,7 @@ Principal::Principal(QWidget *parent) :
     //Premier démarrage
     QFileInfo f(qApp->applicationDirPath() + "/Config.esab");
     QFileInfo f2(m_Lien_Work + "/Config/Config.esab");
-    if(!QFile::exists(m_Lien_Work + "/Config/Config.esab"))
+    if(QFile::exists(m_Lien_Work + "/Config/Config.esab") == false)
     {
         QFile::copy("Config.esab",m_Lien_Work + "/Config/Config.esab");
         qDebug() << "Premier démarrage initialisé";
@@ -81,14 +85,11 @@ Principal::Principal(QWidget *parent) :
     else if(f.lastModified() != f2.lastModified() && f.exists())//Vérification nouvelle version Config.esab
     {
         DEBUG << "Copie du Config.esab en cours...";
-        bool err(false);
         QFile file(m_Lien_Work + "/Config/Config.esab");
-        err = file.remove();
-        err = QFile::copy(qApp->applicationDirPath() + "/Config.esab",m_Lien_Work + "/Config/Config.esab");
-        if(err)
-            DEBUG << "Copie de Config.esab échoué";
-        else
-            DEBUG << "Copie de Config.esab réussis";
+        file.remove();
+        bool err = QFile::copy(qApp->applicationDirPath() + "/Config.esab",m_Lien_Work + "/Config/Config.esab");
+        if(err) { DEBUG << "Copie de Config.esab échoué"; }
+        else { DEBUG << "Copie de Config.esab réussis"; }
     }
 
     //Chargement des paramètres
@@ -99,8 +100,12 @@ Principal::Principal(QWidget *parent) :
     m_Frn = new Fournisseur(m_Lien_Work,m_DB,m_Error);
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
     while(req.next())
-        if(!m_Frn->Add(req.value(0).toString()))
+    {
+        if(m_Frn->Add(req.value(0).toString()) == false)
+        {
             Affichage_Erreurs(tr("Ajout du fournisseur %1 échoué").arg(req.value(0).toString()));
+        }
+    }
 
     m_Esabora = new Esabora(this,ui->eLogin->text(),ui->eMDP->text(),ui->lienEsabora->text(),m_Lien_Work,m_DB,m_Error);
     QThread *thread = new QThread;
@@ -108,6 +113,7 @@ Principal::Principal(QWidget *parent) :
     m_Esabora->moveToThread(thread);
 
     Chargement_Parametres();
+    Load_Unknown_Fab();
 
     //Création des connect
     connect(m_DB,SIGNAL(CreateTable()),this,SLOT(PurgeError()));
@@ -124,7 +130,8 @@ Principal::Principal(QWidget *parent) :
     connect(m_Frn,SIGNAL(LoadProgress(int)),this,SLOT(LoadWeb(int)));
     connect(m_Frn,SIGNAL(En_Cours_Info(QString)),this,SLOT(Update_Fen_Info(QString)));
     connect(m_Frn,SIGNAL(En_Cours_Fournisseur(QString)),this,SLOT(Fournisseur_Actuel(QString)));
-    connect(m_Frn,SIGNAL(Change_Load_Window(QString)),this,SLOT(Update_Load_Window(QString)));
+    connect(m_Frn,SIGNAL(Change_Load_Window(QString)),this,SLOT(Update_Fen_Info(QString)));
+    connect(m_Frn,SIGNAL(Find_Fab(QString)),m_Esabora,SLOT(Find_Fabricant(QString)));
 
     connect(m_Esabora,SIGNAL(Info(QString)),this,SLOT(Affichage_Info(QString)));
     connect(m_Esabora,SIGNAL(Erreur(QString)),this,SLOT(AddError(QString)));
@@ -133,7 +140,7 @@ Principal::Principal(QWidget *parent) :
     connect(this,SIGNAL(End_Get_Tableau_Matos()),m_Esabora,SIGNAL(ReceptionListeMatos()));
 
     connect(ui->bLienEsabora,SIGNAL(clicked(bool)),this,SLOT(Emplacement_Esabora()));
-    connect(ui->bTestEsabora,SIGNAL(clicked(bool)),this,SLOT(Test_Esabora()));
+    connect(ui->bTestEsabora,SIGNAL(clicked(bool)),this,SLOT(test()));
     connect(ui->actionAbout_Qt,SIGNAL(triggered(bool)),qApp,SLOT(aboutQt()));
     connect(ui->actionAbout,SIGNAL(triggered(bool)),this,SLOT(About()));
     connect(ui->bLogInfo,SIGNAL(clicked(bool)),this,SLOT(Affichage_Dossier_Logs()));
@@ -162,6 +169,8 @@ Principal::Principal(QWidget *parent) :
     connect(ui->bFrnTest,SIGNAL(clicked(bool)),this,SLOT(Test_Fournisseur()));
     connect(ui->listFrnAjouter,SIGNAL(clicked(QModelIndex)),this,SLOT(Load_Param_Fournisseur()));
     connect(ui->restaurerDB,SIGNAL(clicked(bool)),this,SLOT(Restaurer_DB()));
+    connect(ui->Add_BC_Fictif,SIGNAL(clicked(bool)),this,SLOT(DBG_Select_Frn_Fictif()));
+    connect(ui->sav_Unknown_Fab,SIGNAL(clicked(bool)),this,SLOT(Sav_Unknown_Fab()));
 
     qApp->setQuitOnLastWindowClosed(false);
 
@@ -192,7 +201,9 @@ Principal::Principal(QWidget *parent) :
         QMessageBox::information(this,"","Le mot de passe de l'application à été réinitialisé !");
     }
 
-    qDebug() << test();
+    test();
+
+    DEBUG << "AutoBL Initialized";
 }
 
 Principal::~Principal()
@@ -250,19 +261,15 @@ void Principal::Init_Config()
     ///Variable Purge auto BDD
     req = m_DB->Requete("SELECT * FROM Options WHERE ID='17'");
     req.next();
-    if(req.value("Valeur").toInt() == 1)
-        ui->autoPurgeDB->setChecked(true);
-    else
-        ui->autoPurgeDB->setChecked(false);
+    if(req.value("Valeur").toInt() == 1) { ui->autoPurgeDB->setChecked(true); }
+    else { ui->autoPurgeDB->setChecked(false); }
     ///Variable Ajout Auto des BL
     req = m_DB->Requete("SELECT * FROM Options WHERE ID='13'");
     req.next();
-    if(req.value("Valeur").toInt() == 1)
-        ui->ajoutAutoBL->setChecked(true);
+    if(req.value("Valeur").toInt() == 1) { ui->ajoutAutoBL->setChecked(true); }
     ///Variable démarrage avec windows
     QSettings settings2("Microsoft","Windows\\CurrentVersion\\Run");
-    if(settings2.value("AutoBL").toString() != "")
-        ui->cDWin->setChecked(true);
+    if(settings2.value("AutoBL").toString() != "") { ui->cDWin->setChecked(true); }
     ///Page Information
     /// Version
     ui->versionAPI->setText(version);
@@ -273,10 +280,7 @@ void Principal::Init_Config()
     ///Semi Automatique
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='22'");
     req.next();
-    if(req.value("Valeur").toInt() == 1 && 0)
-        ui->semiAuto->setChecked(true);
-    else
-        ui->semiAuto->setChecked(false);
+    ui->semiAuto->setChecked(false);
     ///Nom Entreprise Esabora
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
     req.next();
@@ -293,25 +297,20 @@ void Principal::Init_Config()
 //Config//////////////////////////////
 void Principal::Sauvegarde_Parametres()
 {
-    if(ui->gAjoutAuto->isChecked())
-        m_DB->Requete("UPDATE Options SET Valeur='1' WHERE Nom='Auto'");
-    else
-        m_DB->Requete("UPDATE Options SET Valeur='0' WHERE Nom='Auto'");
+    if(ui->gAjoutAuto->isChecked()) { m_DB->Requete("UPDATE Options SET Valeur='1' WHERE Nom='Auto'"); }
+    else { m_DB->Requete("UPDATE Options SET Valeur='0' WHERE Nom='Auto'"); }
 
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->Heure->time().toString("HH") + "' WHERE Nom='Heure'");
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->Heure->time().toString("mm") + "' WHERE Nom='Minutes'");
     m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(ui->eLogin->text()) + "' WHERE Nom='Login'");
     m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(ui->eMDP->text()) + "' WHERE Nom='MDP'");
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->lienEsabora->text() + "' WHERE Nom='LienEsabora'");
-    if(!ui->mDPA->text().isEmpty())
-        m_DB->Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'");
+    if(ui->mDPA->text().isEmpty() == false) { m_DB->Requete("UPDATE Options SET Valeur='" + HashMDP(ui->mDPA->text()) + "' WHERE Nom='MDPA'"); }
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->nBDDEsab->text() + "' WHERE ID='12'");
     m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpCmd->value()) + "' WHERE ID='14'");
     m_DB->Requete("UPDATE Options SET Valeur='" + QString::number(ui->tmpBoucleRexel->value()) + "' WHERE ID='19'");
-    if(ui->autoPurgeDB->isChecked())
-        m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='17'");
-    else
-        m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='17'");
+    if(ui->autoPurgeDB->isChecked()) { m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='17'"); }
+    else { m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='17'"); }
     if(ui->ajoutAutoBL->isChecked())
     {
         m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='13'");
@@ -323,19 +322,21 @@ void Principal::Sauvegarde_Parametres()
         m_DB->Requete("UPDATE En_Cours SET Ajout_BL='0'");
     }
     if(ui->semiAuto->isChecked())
+    {
         m_DB->Requete("UPDATE Options SET Valeur='1' WHERE ID='22'");
+    }
     else
+    {
         m_DB->Requete("UPDATE Options SET Valeur='0' WHERE ID='22'");
+    }
     m_DB->Requete("UPDATE Options SET Valeur='" + ui->nEntrepriseEsab->text() + "' WHERE ID='23'");
 
     QSettings settings2("Microsoft","Windows\\CurrentVersion\\Run");
     if(ui->cDWin->isChecked())
     {
-        if(settings2.value("AutoBL").toString() == "")
-            settings2.setValue("AutoBL",qApp->applicationFilePath().replace("/","\\"));
+        if(settings2.value("AutoBL").toString() == "") { settings2.setValue("AutoBL",qApp->applicationFilePath().replace("/","\\")); }
     }
-    else
-        settings2.remove("AutoBL");
+    else { settings2.remove("AutoBL"); }
 
     QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='7'");
     QSqlQuery r2 = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='8'");
@@ -344,15 +345,27 @@ void Principal::Sauvegarde_Parametres()
 
     if(premierDemarrage)
     {
-        if(!ui->ajoutAutoBL->isChecked())
+        if(ui->ajoutAutoBL->isChecked() == false)
+        {
             if(QMessageBox::question(this,"","Souhaitez-vous que les bons de livraisons soit ajoutés automatiquement ?") == QMessageBox::Yes)
+            {
                 ui->ajoutAutoBL->setChecked(true);
-        if(!ui->autoPurgeDB->isChecked())
+            }
+        }
+        if(ui->autoPurgeDB->isChecked() == false)
+        {
             if(QMessageBox::question(this,"","Souhaitez-vous que la base de données d'AutoBL supprime les bons validés de plus de 2 mois ?") == QMessageBox::Yes)
+            {
                 ui->autoPurgeDB->setChecked(true);
-        if(!ui->rapport_Erreur->isChecked())
+            }
+        }
+        if(ui->rapport_Erreur->isChecked() == false)
+        {
             if(QMessageBox::question(this,"","Souhaitez-vous qu'AutoBL envoie les rapports d'erreurs pour faciliter le débuggage(aucune information personnel n'est transmise) ?") == QMessageBox::Yes)
+            {
                 ui->rapport_Erreur->setChecked(true);
+            }
+        }
         premierDemarrage = false;
         Sauvegarde_Parametres();
         Afficher_tNomFichier();
@@ -364,18 +377,14 @@ void Principal::Sauvegarde_Parametres()
 
 void Principal::Chargement_Parametres()
 {
-    if(ui->gAjoutAuto->isChecked())
-        Demarrage_Auto_BC(true);
-    else
-        m_Temps.stop();
+    if(ui->gAjoutAuto->isChecked()) { Demarrage_Auto_BC(true); }
+    else { m_Temps.stop(); }
 
     //Affichage colonne BL
     QSqlQuery val = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='13'");
     val.next();
-    if(val.value("Valeur").toInt() == 1)
-        ui->tNomFichier->hideColumn(7);
-    else
-        ui->tNomFichier->showColumn(7);
+    if(val.value("Valeur").toInt() == 1) { ui->tNomFichier->hideColumn(7); }
+    else { ui->tNomFichier->showColumn(7); }
 
     //Mise à jour des variables membres
     m_Esabora->Set_Var_Esabora(ui->lienEsabora->text(),ui->eLogin->text(),ui->eMDP->text());
@@ -396,15 +405,12 @@ void Principal::Demarrage_Auto_BC(bool Demarrage_Timer)
         QStringList var = temps2.currentTime().toString("H-m").split("-");
         QStringList var2 = ui->Heure->text().split(":");
         int heure(0),minutes(0);
-        if(var.at(0).toInt() > var2.at(0).toInt())
-            heure = 24 - (var.at(0).toInt() - var2.at(0).toInt());
-        else
-            heure = var2.at(0).toInt() - var.at(0).toInt();
+        if(var.at(0).toInt() > var2.at(0).toInt()) { heure = 24 - (var.at(0).toInt() - var2.at(0).toInt()); }
+        else { heure = var2.at(0).toInt() - var.at(0).toInt(); }
         if(var.at(1).toInt() > var2.at(1).toInt())
         {
             minutes = 60 - (var.at(1).toInt() - var2.at(1).toInt());
-            if(heure == 0)
-                heure = 24;
+            if(heure == 0) { heure = 24; }
             heure--;
         }
         else
@@ -416,15 +422,16 @@ void Principal::Demarrage_Auto_BC(bool Demarrage_Timer)
 
          //Envoie rapport de bugs
          if(ui->e_Erreur2->text().toInt() > 0)
+         {
              if(Post_Report())
              {
                  m_Errors.resize(0);
                  m_Logs.resize(0);
              }
-         if(ui->autoPurgeDB->isChecked())
-             m_DB->Purge();
+         }
+         if(ui->autoPurgeDB->isChecked()) { m_DB->Purge(); }
     }
-    else if(!Demarrage_Timer)
+    else if(Demarrage_Timer == false)
     {
         DEBUG << "DEBUG | Demarrage Auto | Boucle";
         //boucle de 1mn pour attente avant redemarrage
@@ -440,10 +447,8 @@ void Principal::Demarrage_Auto_BC(bool Demarrage_Timer)
 
 void Principal::Etat_Ajout_Auto()
 {
-    if(ui->gAjoutAuto->isChecked())
-        ui->Heure->setEnabled(true);
-    else
-        ui->Heure->setEnabled(false);
+    if(ui->gAjoutAuto->isChecked()) { ui->Heure->setEnabled(true); }
+    else { ui->Heure->setEnabled(false); }
 }
 
 void Principal::PurgeError()
@@ -465,11 +470,17 @@ void Principal::Show_List_Sav()
     QFileInfo i2(s2);
     QFileInfo i3(s3);
     if(i.lastModified().toString("dd/MM/yyyy") != "")
+    {
         ui->listSavDB->addItem(i.lastModified().toString("dd/MM/yyyy"));
+    }
     if(i2.lastModified().toString("dd/MM/yyyy") != "")
+    {
         ui->listSavDB->addItem(i2.lastModified().toString("dd/MM/yyyy"));
+    }
     if(i3.lastModified().toString("dd/MM/yyyy") != "")
+    {
         ui->listSavDB->addItem(i3.lastModified().toString("dd/MM/yyyy"));
+    }
 }
 
 void Principal::Verif_MDP_API()
@@ -477,10 +488,8 @@ void Principal::Verif_MDP_API()
     QPalette v,r;
     v.setColor(QPalette::Text,Qt::black);
     r.setColor(QPalette::Text,Qt::red);
-    if(ui->mDPA->text().contains(" "))
-        ui->mDPA->setPalette(r);
-    else
-        ui->mDPA->setPalette(v);
+    if(ui->mDPA->text().contains(" ")) { ui->mDPA->setPalette(r); }
+    else { ui->mDPA->setPalette(v); }
 }
 
 //Affichage///////////////////////////
@@ -494,10 +503,11 @@ void Principal::Affichage_Erreurs(QString texte, bool visible)
     ui->e_Erreurs->setText(tr("%n Erreur(s)","",ui->e_Erreurs->text().split(" ").at(0).toInt()+1));
     ui->e_Erreur2->setText(tr("%n","",m_Erreurs));
     if(ui->e_Erreur2->text().toInt() > 0)
+    {
         ui->tabWidget->setTabText(1,tr("Information(%n)","",m_Erreurs));
+    }
 
-    if(visible)
-        m_Tache->Affichage_Info(texte);
+    if(visible) { m_Tache->Affichage_Info(texte); }
 }
 
 void Principal::Affichage_Info(QString texte, bool visible)
@@ -505,8 +515,7 @@ void Principal::Affichage_Info(QString texte, bool visible)
     QTextStream flux(&m_Logs);
     flux << QDateTime::currentDateTime().toString("dd/MM/yyyy hh:mm - ") << texte << "\r\n";
 
-    if(visible)
-        m_Tache->Affichage_Info(texte);
+    if(visible) { m_Tache->Affichage_Info(texte); }
 }
 
 void Principal::Affichage_Dossier_Logs()
@@ -534,22 +543,34 @@ void Principal::Affichage_Temps_Restant()
         timer.start(1000);
         loop.exec();
         if(this->isVisible())
+        {
             ui->eTimer->setText(tr("%n Heures ","",heures) + tr("%n Minutes","",minutes));
+        }
         else
+        {
             Affichage_Info("Prochaine recherche dans :\n" + QString::number(heures) + " Heure(s) " + QString::number(minutes) + " Minute(s)",true);
+        }
     }
     else
     {
         qDebug() << "Desactiver";
         if(this->isVisible())
+        {
             ui->eTimer->setText(tr("Inactif"));
+        }
         else
+        {
             Affichage_Info("Recherche automatique désactivé !",true);
+        }
     }
     if(ui->e_Erreur2->text().toInt() > 0)
+    {
         ui->tabWidget->setTabText(1,tr("Information(") + ui->e_Erreur2->text() + ")");
+    }
     else
+    {
         ui->tabWidget->setTabText(1,tr("Information"));
+    }
 }
 
 void Principal::Afficher_tNomFichier(int l,int c,int tri)
@@ -560,30 +581,38 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
     ui->tNomFichier->clearContents();
     QFlag flag = ~Qt::ItemIsEditable;
     QSqlQuery req;
-    if(tri == 10)
-        tri = m_Tri;
+    if(tri == 10) { tri = m_Tri; }
     if(tri == 0)///Tri par Date
+    {
         req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Date");
+    }
     else if(tri == 1)///Tri par Etat Esabora
+    {
         req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Ajout");
+    }
     else if(tri == 2)///Tri par Référence
+    {
         req = m_DB->Requete("SELECT * FROM En_Cours ORDER BY Nom_Chantier");
+    }
 
-    if(!req.exec())
+    if(req.exec() == false)
+    {
         Affichage_Erreurs("Requete affichage des fichiers échoué !",true);
+    }
 
-    while(ui->tNomFichier->rowCount() > 0)
-        ui->tNomFichier->removeRow(0);
+    while(ui->tNomFichier->rowCount() > 0) { ui->tNomFichier->removeRow(0); }
 
     //Affichage de la colonne numéro BC esabora si logué
-    if(login) ui->tNomFichier->showColumn(8);
-    else ui->tNomFichier->hideColumn(8);
+    if(login) { ui->tNomFichier->showColumn(8); }
+    else { ui->tNomFichier->hideColumn(8); }
 
     while(req.next())
     {
         //Contrôle des nouveau bons
-        if(req.value("Ajout").toInt() == download && !req.value("Nom_Chantier").toString().at(0).isDigit() && !req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit())
+        if(req.value("Ajout").toInt() == download && req.value("Nom_Chantier").toString().at(0).isDigit() == false && req.value("Nom_Chantier").toString().at(req.value("Nom_Chantier").toString().count()-1).isDigit() == false)
+        {
             m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'AND Fournisseur='" + req.value("Fournisseur").toString() + "'");
+        }
 
         //Création de la ligne
         if(req.value("Ajout").toInt() != endAdd || login)
@@ -604,9 +633,13 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
             if(ui->tNomFichier->item(0,4)->text() != "" && ui->tNomFichier->item(0,1)->text() == "Bon Ajouté")
             {
                 if(req.value("Ajout_BL").toInt() == 0)
+                {
                     ui->tNomFichier->item(0,7)->setCheckState(Qt::Unchecked);
+                }
                 else
+                {
                     ui->tNomFichier->item(0,7)->setCheckState(Qt::Checked);
+                }
 
                 //Force Check BL
                 QSqlQuery bl = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='13'");
@@ -641,15 +674,23 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
 
             //Couleur et verrouillage des items(Ajout)
             if(ui->tNomFichier->item(0,1)->text().toInt() == error)
+            {
                 ui->tNomFichier->item(0,1)->setTextColor(QColor(255,0,0));
+            }
             else if(ui->tNomFichier->item(0,1)->text().toInt() == download || ui->tNomFichier->item(0,1)->text().toInt() == updateRef)
+            {
                 ui->tNomFichier->item(0,1)->setTextColor(QColor(200,200,0));
+            }
             else
+            {
                 ui->tNomFichier->item(0,1)->setTextColor(QColor(0,255,0));
+            }
             ui->tNomFichier->item(0,1)->setFlags(flag);
-            if(ui->tNomFichier->item(0,1)->text().toInt() != error && ui->tNomFichier->item(0,1)->text().toInt() != updateRef && !login
+            if(ui->tNomFichier->item(0,1)->text().toInt() != error && ui->tNomFichier->item(0,1)->text().toInt() != updateRef && login == false
                     && ui->tNomFichier->item(0,1)->text().toInt() != download)
+            {
                 ui->tNomFichier->item(0,2)->setFlags(flag);
+            }
             ui->tNomFichier->item(0,4)->setFlags(flag);
             ui->tNomFichier->item(0,5)->setFlags(flag);
             ui->tNomFichier->item(0,6)->setFlags(flag);
@@ -660,7 +701,9 @@ void Principal::Afficher_tNomFichier(int l,int c,int tri)
     }
 
     if(l > 0)//retour à la dernière ligne selectionnée
+    {
         ui->tNomFichier->setCurrentCell(l,c);
+    }
 
     //Paramètres tableau
     ui->tNomFichier->setAlternatingRowColors(true);
@@ -690,9 +733,13 @@ void Principal::Emplacement_Esabora()
     {
         m_Esabora->Set_Var_Esabora(ui->lienEsabora->text(),ui->eLogin->text(),ui->eMDP->text());
         if((ui->nBDDEsab->text() == "" || ui->nEntrepriseEsab->text() == "") && ui->eLogin->text() != "" && ui->eMDP->text() != "")
+        {
             if(QMessageBox::question(this,"","Souhaitez vous qu'AutoBL tente de remplir les champs Répertoire et nom d'entreprise automatiquement ?") ==
                     QMessageBox::Yes)
+            {
                 MAJ_Repertoire_Esabora();
+            }
+        }
     }
 }
 
@@ -728,16 +775,24 @@ void Principal::Demarrage()
     ///Récuperation des BC
     Create_Fen_Info("Fournisseur","Info");
     if(ui->activ_Rexel->isChecked())
-        if(!m_Frn->Start())
+    {
+        if(m_Frn->Start() == false)
+        {
             Affichage_Erreurs("Des erreurs se sont produites durant la recherche de bons");
+        }
+    }
     Update_Fen_Info();
 
     int nbBC(0),nbBL(0);
     ///Démarrage d'esabora
     bool automatic = ui->ajoutAutoBL->isChecked();
-    if(!m_Arret && ui->activ_Esab->isChecked())
-        if(!m_Esabora->Start(automatic,nbBC,nbBL))
+    if(m_Arret == false && ui->activ_Esab->isChecked())
+    {
+        if(m_Esabora->Start(automatic,nbBC,nbBL) == false)
+        {
             Affichage_Erreurs(tr("Des erreurs se sont produite durant la procédure d'ajout de bon"));
+        }
+    }
 
 
     Afficher_tNomFichier();
@@ -753,18 +808,18 @@ void Principal::Demarrage()
     m_Arret = true;///Fin d'ajout BC
     emit FinAjout();///envoie signal en cas d'arret de l'API
 
-    if(ui->autoPurgeDB->isChecked())
-        m_DB->Purge();
-    if(ui->e_Erreur2->text().toInt() > 0)
-        Post_Report();
+    if(ui->autoPurgeDB->isChecked()) { m_DB->Purge(); }
+    if(ui->e_Erreur2->text().toInt() > 0) { Post_Report(); }
     Demarrage_Auto_BC();
 }
 
 void Principal::Demarrer_Frn()
 {
     Create_Fen_Info("Fournisseur","Info");
-    if(!m_Frn->Start())
+    if(m_Frn->Start() == false)
+    {
         Affichage_Erreurs("Des erreurs se sont produites durant la recherche de bons");
+    }
     Update_Fen_Info();
     Afficher_tNomFichier();
 }
@@ -823,15 +878,23 @@ void Principal::ModifInfoTraitementBL(QString label,QString etat)
         this->findChild<QDialog *>("traitement")->findChild<QLabel *>(label)->setText(etat);
 
         if(label == "connexion")
+        {
             this->findChild<QDialog *>("traitement")->findChild<QLabel *>("navigation")->setText("En cours");
+        }
         else if(label == "navigation")
+        {
             this->findChild<QDialog *>("traitement")->findChild<QLabel *>("BC")->setText("En cours");
+        }
         else if(label == "BC")
+        {
             this->findChild<QDialog *>("traitement")->findChild<QLabel *>("BL")->setText("En cours");
+        }
         else if(label == "BL")
         {
             while(this->findChild<QDialog *>("traitement")->findChildren<QLabel *>().count() > 0)
+            {
                 delete this->findChild<QDialog *>("traitement")->findChildren<QLabel *>().at(0);
+            }
             delete this->findChild<QDialog *>("traitement");
         }
     }
@@ -861,10 +924,14 @@ void Principal::About()
 void Principal::Afficher_Message_Box(QString header,QString texte, bool warning)
 {
 
-    if(!warning)
+    if(warning == false)
+    {
         QMessageBox::information(this,header,texte);
+    }
     else
+    {
         QMessageBox::warning(this,header,texte);
+    }
 
 }
 
@@ -874,8 +941,10 @@ void Principal::Help(bool p)
     if(p)
     {
         QFile f("Help/accueil.txt");
-        if(!f.open(QIODevice::ReadOnly))
+        if(f.open(QIODevice::ReadOnly) == false)
+        {
             Affichage_Erreurs("Principal | E080 | Erreur dans l'ouverture du fichier general.txt");
+        }
         else
         {
             user = QTextStream(&f).readAll();
@@ -884,8 +953,10 @@ void Principal::Help(bool p)
     else
     {
         QFile f("Help/accueil.txt");
-        if(!f.open(QIODevice::ReadOnly))
+        if(f.open(QIODevice::ReadOnly) == false)
+        {
             Affichage_Erreurs("Principal | E080 | Erreur dans l'ouverture du fichier general.txt");
+        }
         else
         {
             user = QTextStream(&f).readAll();
@@ -895,9 +966,13 @@ void Principal::Help(bool p)
     text->setWindowTitle("Aide");
 
     if(ui->tabWidget->currentIndex() == 0)
+    {
         text->setHtml(user);
+    }
     else if(ui->tabWidget->currentIndex() == 1)
+    {
         text->setHtml(user);
+    }
     text->resize(this->size());
     text->show();
 }
@@ -910,34 +985,7 @@ void Principal::Test_Rexel()
 
 void Principal::Test_Esabora()
 {
-    return;
-    if(m_Esabora->Lancement_API())
-    {
-        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
-        while(req.next())
-        {
-            if(!m_Esabora->Ajout_BC(req.value("Numero_Commande").toString()))
-            {
-                Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué").arg(req.value("Numero_Commande").toString()));
-                m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
 
-                if(req.value("Ajout").toInt() != updateRef)
-                {
-                    QFile file(m_Lien_Work + "/Pj/" + req.value("Numero_Commande").toString() + ".xlsx");
-                    if(QFile::copy(m_Lien_Work + "/Pj/" + file.fileName(),m_Lien_Work + "/Pj/" + file.fileName()))
-                        file.remove();
-                }
-            }
-            else
-            {
-                m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-            }
-        }
-        if(!m_Esabora->Fermeture_API())
-            Affichage_Erreurs("Fermeture d'Esabora échoué");
-    }
-    else
-        Affichage_Erreurs("Démarrage d'Esabora échoué");
 }
 
 bool Principal::test()
@@ -947,62 +995,15 @@ bool Principal::test()
 
 void Principal::Test_BC()
 {
-    if(m_Esabora->Lancement_API())
-    {
-        QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='"+QString::number(download)+"' OR Ajout='"+QString::number(updateRef)+"'");
-        if(req.next())
-        {
-            m_Tache->Affichage_En_Cours();
-            QString fxlsx = req.value("Numero_Commande").toString() + ".xlsx";
-            if(!m_Esabora->Ajout_BC(req.value("Numero_Commande").toString()))
-            {
-                if(m_Esabora->GetEtat() == 0)
-                {
-                    Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué, BC non créé !").arg(req.value("Numero_Commande").toString()));
-                }
-                if(m_Esabora->GetEtat() == 1)
-                {
-                    Affichage_Erreurs(tr("Ajout du bon de commande %0 échoué, BC Vide à supprimer !").arg(req.value("Numero_Commande").toString()));
-                    m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(error)+"' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-                }
-            }
-            else
-            {
-                m_DB->Requete("UPDATE En_Cours SET Ajout='Bon Ajouté' WHERE Numero_Commande='" + req.value("Numero_Commande").toString() + "'");
-            }
-        }
-        m_Esabora->Fermeture_API();
-    }
+    QString Numero_Commande = ui->tNomFichier->item(ui->tNomFichier->currentRow(),5)->text();
+    m_Esabora->Test_Add_BC(Numero_Commande);
 }
 
 void Principal::Test_BL()
 {
-    if(m_Esabora->Lancement_API())
-        for(int cpt=0;cpt<ui->tNomFichier->rowCount();cpt++)
-        {
-            if(ui->tNomFichier->item(cpt,7)->checkState() == Qt::Checked)
-            {
-                QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,5)->text() + "'");
-                if(req.next())
-                {
-                    if(!m_Esabora->Ajout_BL(req.value("Numero_BC_Esabora").toString(),ui->tNomFichier->item(cpt,4)->text()))
-                    {
-                        Affichage_Erreurs(tr("Principal | Ajout BL N°%0 échoué").arg(ui->tNomFichier->item(cpt,4)->text()));
-                    }
-                    else
-                    {
-                        Affichage_Info("Principal | Ajout BL N°" + ui->tNomFichier->item(cpt,3)->text() + " Réussi");
-                        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + ui->tNomFichier->item(cpt,4)->text() + "'");
-                    }
-                }
-                else
-                {
-                    Affichage_Erreurs("Principal | BL non trouvé dans la DB !");
-                }
-                cpt = ui->tNomFichier->rowCount();
-            }
-        }
-    m_Esabora->Fermeture_API();
+    QString Numero_Commande = ui->tNomFichier->item(ui->tNomFichier->currentRow(),5)->text();
+    QString bl = ui->tNomFichier->item(ui->tNomFichier->currentRow(),4)->text();
+    m_Esabora->Test_Add_BL(Numero_Commande,bl);
 }
 
 //DB//////////////////////////////
@@ -1018,12 +1019,14 @@ void Principal::Remove_Row_DB()
 {
     int l = ui->tNomFichier->currentRow();
     if(QMessageBox::question(this,"","Voulez-vous vraiment placer ce bon en terminé ?") == QMessageBox::Yes)
+    {
         m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
+    }
 }
 
 void Principal::Restaurer_DB()
 {
-    m_DB->Close();
+    m_DB->Close_DB();
 
     QString var;
     QFile s(qApp->applicationDirPath() + "/bddSav.db");
@@ -1035,20 +1038,20 @@ void Principal::Restaurer_DB()
     QListWidgetItem *item = ui->listSavDB->selectedItems().at(0);
     if(item->text() == i.lastModified().toString("dd/MM/yyyy"))
     {
-        var = "/bddSav.db";
+        var = "bddSav.db";
     }
     else if(item->text() == i2.lastModified().toString("dd/MM/yyyy"))
     {
-        var = "/bddSav2.db";
+        var = "bddSav2.db";
     }
     else if(item->text() == i3.lastModified().toString("dd/MM/yyyy"))
     {
-        var = "/bddSav3.db";
+        var = "bddSav3.db";
     }
 
-    if(!var.isEmpty())
+    if(var.isEmpty() == false)
     {
-        QDesktopServices::openUrl(QUrl(qApp->applicationDirPath() + "/MAJ_BDD.exe -restore=" + var));
+        QDesktopServices::openUrl(QUrl(qApp->applicationDirPath() + "/bin/MAJ_BDD.exe -restore=" + var));
         qApp->exit(0);
     }
 
@@ -1065,7 +1068,7 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
                                                             ", si vous continuez la procédure l'ajout du bon de commande commencera.\n"
                                                             "A la fin de la procédure vous devrez vérifier et enregistrer manuellement le bon.\n"
                                                             "Merci de ne pas toucher au PC durant la procédure !\n"
-                                                            "Voulez-vous continuer ?") == QMessageBox::No) return;
+                                                            "Voulez-vous continuer ?") == QMessageBox::No) { return; }
         Affichage_Info("Récupération de la liste de matériel...",true);
         m_Esabora->Reset_Liste_Matos();
         Get_Tableau_Matos(l);
@@ -1074,20 +1077,17 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
     }   
     else if(c == 5)//Affichage Tableau matos
     {
-        QDialog *d = new QDialog(this);
-        QLabel *label = new QLabel(tr("Préparation du tableau\nVeuillez patienter..."));
-        label->setObjectName("Update");
-        QGridLayout *gl = new QGridLayout;
-        gl->addWidget(label);
-        d->setLayout(gl);
-        d->setObjectName("Chargement");
-        d->setWindowFlags(Qt::Tool | Qt::CustomizeWindowHint);
-        d->show();
+        //Affichage chargement
+        InfoWindow *load = new InfoWindow(this,"",1);
+        load->Add_Label("Info",false);
+        load->Update_Label("Info",tr("Préparation du tableau\nVeuillez patienter..."));
+        load->Show();
 
         QStringList list = m_Frn->Get_Invoice_List(ui->tNomFichier->item(l,9)->text(),ui->tNomFichier->item(l,5)->text());
         DEBUG << list;
 
-        d->close();
+
+        load->Close();
         QTableWidget *tbl = new QTableWidget;
         tbl->insertColumn(0);
         tbl->insertColumn(0);
@@ -1131,15 +1131,14 @@ void Principal::Dble_Clique_tNomFichier(int l,int c)
         tbl->resizeRowsToContents();
         tbl->resize(tbl->columnWidth(0)+tbl->columnWidth(1)+tbl->columnWidth(2)+tbl->columnWidth(3)+
                     tbl->columnWidth(4)+tbl->columnWidth(5)+tbl->columnWidth(6)+100,tbl->height());
-        delete label;
-        delete gl;
-        delete d;
+
+        //Create table window
         QDialog *f = new QDialog(this);
         QGridLayout *l = new QGridLayout(f);
         l->addWidget(tbl);
         f->resize(tbl->width(),tbl->height());
         f->exec();
-        while(!f->isHidden())
+        while(f->isHidden() == false)
         {
             QTimer t;
             QEventLoop l;
@@ -1171,9 +1170,13 @@ void Principal::Modif_Cell_TNomFichier(int l,int c)
         if(QMessageBox::question(this,"",tr("Voulez vous vraiment modifier la référence de chantier ?")) == 16384)
         {
             if(ui->tNomFichier->item(l,2)->text().at(0).isDigit() && ui->tNomFichier->item(l,2)->text().at(ui->tNomFichier->item(l,2)->text().count()-1).isDigit())
+            {
                 m_DB->Requete("UPDATE En_Cours SET Nom_Chantier='" + ui->tNomFichier->item(l,2)->text() + "', Ajout='"+QString::number(updateRef)+"' WHERE Numero_Commande='" + ui->tNomFichier->item(l,5)->text() + "'");
+            }
             else
+            {
                 QMessageBox::information(this,"",tr("La référence de chantier doit être un nombre !"));
+            }
         }
         Afficher_tNomFichier(l,c);
     }
@@ -1203,12 +1206,26 @@ void Principal::menu_TNomFichier(QPoint point)
 
     QMenu mMenu(this);
     mMenu.addMenu(menuTri);
+    QAction *reload = new QAction("Rafraichir",this);
+    connect(reload,SIGNAL(triggered(bool)),this,SLOT(Reload_Error()));
+    mMenu.addAction(reload);
     QAction *mb = new QAction("Supprimer",this);
     connect(mb,SIGNAL(triggered(bool)),this,SLOT(Remove_Row_DB()));
     mMenu.addAction(mb);
 
     if(ui->tabWidget->tabText(2) != "Configuration")
+    {
         mb->setEnabled(false);
+    }
+    if(ui->tabWidget->tabText(3) == "Débuggage")
+    {
+        QAction *addBC = new QAction("DEBUG : Add BC",this);
+        QAction *addBL = new QAction("DEBUG : Add BL",this);
+        connect(addBC,SIGNAL(triggered(bool)),this,SLOT(Test_BC()));
+        connect(addBL,SIGNAL(triggered(bool)),this,SLOT(Test_BL()));
+        mMenu.addAction(addBC);
+        mMenu.addAction(addBL);
+    }
 
     mMenu.exec(ui->tNomFichier->mapToGlobal(point));
 }
@@ -1258,7 +1275,9 @@ void Principal::Login_False()
             m_Tache->Login(false);
         }
         else if(ui->tabWidget->isTabEnabled(3))
+        {
             ui->tabWidget->removeTab(3);
+        }
     }
     ui->tabWidget->setCurrentIndex(0);
 }
@@ -1267,18 +1286,22 @@ void Principal::Login_True()
 {
     QString mdph = mdp->text().split(" ").at(0);
     QByteArray mdpb = QCryptographicHash::hash(mdph.toLatin1(),QCryptographicHash::Sha256);
-    DEBUG << mdpb.toHex();
     QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='11'");
     req.next();
-    DEBUG << req.value(0);
     if(req.value("Valeur").toString() != mdpb.toHex())
+    {
         QMessageBox::information(this,"Erreur","Mot de passe faux !");
+    }
     else
     {
         ui->tabWidget->addTab(ui->Configuration,"Configuration");
         if(mdp->text().split(" ").count() == 2)
+        {
             if(mdp->text().split(" ").at(1) == "dbg")
+            {
                 ui->tabWidget->addTab(ui->Debug,"Débuggage");
+            }
+        }
         login = true;
         Afficher_tNomFichier();
         m_Tache->Login(true);
@@ -1305,8 +1328,12 @@ void Principal::MAJ()
     qDebug() << "MAJ - Dernière version = " << retour;
     QStringList MAJDispo;
     for(int cpt=0;cpt<retour.count();cpt++)
+    {
         if(retour.at(cpt).toDouble() > ver.toDouble())
+        {
             MAJDispo.append("ver=" + retour.at(cpt));
+        }
+    }
     QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='21'");
     req.next();
     if(MAJDispo.count() == 1 && MAJDispo.at(0) != req.value("Valeur").toString())
@@ -1351,109 +1378,125 @@ bool Principal::Post_Report()
     QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Nom_BDD'");
     r.next();
     QString nur = r.value(0).toString();
+
+    //Create Report
+    QFile rapport("Rapport_" + QDateTime::currentDateTime().toString("dd-MM-yyyy hh-mm") + ".esab");
+    rapport.open(QIODevice::WriteOnly);
+    QTextStream flux(&rapport);
+    flux << "---------------- Rapport AutoBL " << nur << " " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
+
     if(this->findChildren<QDialog *>("rapport de bug").count() > 0)
     {
         if(this->findChildren<QDialog *>().at(0)->windowTitle() == "Rapport de bug")
         {
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setEnabled(false);
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Création du rapport...");
-            QFile rapport("Rapport_" + QDateTime::currentDateTime().toString("dd-MM-yyyy hh-mm") + ".esab");
-            rapport.open(QIODevice::WriteOnly);
-            QTextStream flux(&rapport);
-            QFile f(m_Lien_Work + "/Logs/logs.txt");
-            f.open(QIODevice::ReadOnly);
-            flux << "---------------- Rapport AutoBL " << nur << " " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
+
             flux << "Commentaire : " << this->findChildren<QDialog *>().at(0)->findChildren<QTextEdit *>().at(0)->toPlainText();
-            flux << "- Logs -\r\n" << f.readAll() << "\r\n";
-            f.close();
-            f.setFileName(m_Lien_Work + "/Logs/errors.txt");
-            f.open(QIODevice::ReadOnly);
-            flux << "- Erreurs -\r\n" << f.readAll() << "\r\n";
-            f.close();
 
             this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Envoi du rapport...");
-            rapport.close();
-            rapport.open(QIODevice::ReadOnly);
-
-            QWebEngineView w;
-            w.load(QString(MAJLINK) + "mail.php");
-            QTimer t;
-            QEventLoop l;
-            connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
-            connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
-            t.start(30000);
-            l.exec();
-            w.page()->runJavaScript("document.getElementById('sj').value='" + rapport.fileName().split(".").at(0) + "';",[&l](const QVariant r){l.quit();});
-            l.exec();
-            QString text;
-            while(!rapport.atEnd())
-                text += rapport.readLine();
-            text.replace("\r\n","<br/>");
-            w.page()->runJavaScript("document.getElementById('msg').value='<html><head></head><body>" + text + "</body></html>';",[&l](const QVariant r){l.quit();});
-            l.exec();
-            w.page()->runJavaScript("document.getElementById('frm').submit();",[&l](const QVariant r){l.quit();});
-            l.exec();
-
-            this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Rapport envoyé !");
-            l.exec();
-
-            rapport.close();
-            rapport.remove();
         }
     }
-    else
+
+    //Create Report
+    QFile f(m_Lien_Work + "/Logs/logs.txt");
+    f.open(QIODevice::ReadOnly);
+    QTextStream f2(&f);
+    flux << "- Logs -\r\n" << f2.readAll() << "\r\n";
+    f.close();
+    f.setFileName(m_Lien_Work + "/Logs/errors.txt");
+    f.open(QIODevice::ReadOnly);
+    QTextStream f3(&f);
+    flux << "- Erreurs -\r\n" << f3.readAll() << "\r\n";
+    f.close();
+    f.setFileName(m_Lien_Work + "/Logs/debug.log");
+    f.open(QIODevice::ReadOnly);
+    f.errorString();
+    QTextStream f4(&f);
+    flux << "- Debug -\r\n";
+    flux << f4.readAll() << "\r\n";
+    f.close();
+    rapport.close();
+
+    //Send Report
+    rapport.open(QIODevice::ReadOnly);
+    rapport.seek(0);
+    QTextStream fi(&rapport);
+    QWebEngineView w;
+    w.load(QString(MAJLINK) + "mail.php");
+    QTimer t;
+    QEventLoop l;
+    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
+    connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
+    t.start(30000);
+    l.exec();
+    QString text,rest;
+    text = fi.readAll();
+    text.replace("\r\n","<br/>");
+    text.replace("\r","<br/>");
+    text.replace("\n","<br/>");
+    text.replace("'","");
+    text.replace("\"","");
+    text.replace("à","&agrave;");
+    text.replace("é","&eacute;");
+    text.replace("è","&egrave;");
+    text.replace("ê","&ecirc;");
+    text.replace("ù","&ugrave;");
+
+    bool end(false);
+    int cnt(0);
+    while(end == false)
     {
-        QFile rapport("Rapport_" + QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") + ".esab");
-        rapport.open(QIODevice::WriteOnly);
-        QTextStream flux(&rapport);
-        QFile f(m_Lien_Work + "/Logs/logs.txt");
-        f.open(QIODevice::ReadOnly);
-        flux << "---------------- Rapport AutoBL " << nur << " " << QDateTime::currentDateTime().toString("dd-MM-yyyy hh:mm") << " ----------------\r\n";
-        flux << "- Logs -\r\n" << f.readAll() << "\r\n";
-        f.close();
-        f.setFileName(m_Lien_Work + "/Logs/errors.txt");
-        f.open(QIODevice::ReadOnly);
-        flux << "- Erreurs -\r\n" << f.readAll() << "\r\n";
-        f.close();
-        f.setFileName(m_Lien_Work + "/Logs/debug.log");
-        f.open(QIODevice::ReadOnly);
-        flux << "- Debug -\r\n";
-        while(!f.atEnd())
+        cnt++;
+        if(text.count() > 524288)
         {
-            QString v = f.readLine();
-            if(!v.contains("Cannot create accessible interface for object:"))
-                flux << v << "\r\n";
+            rest = text.mid(524287);
+            text.remove(524287,text.count()-1);
         }
-        f.close();
-
-        rapport.close();
-        rapport.open(QIODevice::ReadOnly);
-
-        QWebEngineView w;
-        w.load(QString(MAJLINK) + "mail.php");
-        QTimer t;
-        QEventLoop l;
-        connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
-        connect(&w,SIGNAL(loadFinished(bool)),&l,SLOT(quit()));
-        t.start(30000);
+        w.page()->runJavaScript("document.getElementById('sj').value='" + rapport.fileName().split(".").at(0) + " - " + QString::number(cnt) + "';",[&l](const QVariant r){l.quit();});
         l.exec();
-        w.page()->runJavaScript("document.getElementById('sj').value=" + rapport.fileName().split(".").at(0) + ";",[&l](const QVariant r){l.quit();});
-        l.exec();
-        QString text;
-        while(!rapport.atEnd())
-            text += rapport.readLine();
-        text.replace("\r\n","<br/>");
         w.page()->runJavaScript("document.getElementById('msg').value='<html><head></head><body>" + text + "</body></html>';",[&l](const QVariant r){l.quit();});
         l.exec();
         w.page()->runJavaScript("document.getElementById('frm').submit();",[&l](const QVariant r){l.quit();});
         l.exec();
-
-        rapport.close();
-        rapport.remove();
+        if(rest.isEmpty() == false)
+        {
+            text = rest;
+            rest.clear();
+        }
+        else
+        {
+            end = true;
+        }
     }
+    rapport.remove();
+
+
+    if(this->findChildren<QDialog *>().at(0)->windowTitle() == "Rapport de bug")
+    {
+        this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Rapport envoyé !");
+    }
+
+    bool finish(false);
+    while(finish == false)
+    {
+        QString text;
+        bool end(false);
+        w.page()->toPlainText([&text,&end](const QString result){text = result;end = true;});
+        while(end == false)
+        {
+            t.start(500);
+            l.exec();
+        }
+        if(text.contains("Envoie mail"))
+        {
+            finish = true;
+        }
+    }
+    l.exec();
     m_Logs.resize(0);
     m_Errors.resize(0);
-    QFile f(m_Lien_Work + "/Logs/debug.log");
+    f.setFileName(m_Lien_Work + "/Logs/debug.log");
     f.resize(0);
     ui->e_Erreur2->setText("0");
     return true;
@@ -1471,9 +1514,13 @@ void Principal::Get_Tableau_Matos(QString Numero_Commande)
     if(list.count() != 1)
     {
         if(list.count() == 0)
+        {
             Affichage_Erreurs(tr("Aucun fournisseur trouvé"));
+        }
         else
+        {
             Affichage_Erreurs(tr("Plusieurs fournisseurs ont été trouvés"));
+        }
         return;
     }
     m_Esabora->Set_Liste_Matos(m_Frn->Get_Invoice_List(list.at(0),Numero_Commande));
@@ -1485,7 +1532,9 @@ void Principal::Init_Fournisseur()
     QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='24'");
     req.next();
     if(req.value(0).toString() != m_Frn->List_Frn())
+    {
         m_DB->Requete("UPDATE Options SET Valeur='" + m_Frn->List_Frn() + "', Nom='Fournisseurs' WHERE ID='24'");
+    }
 
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom='FrnADD'");
 
@@ -1499,8 +1548,7 @@ void Principal::Init_Fournisseur()
             list.removeOne(req.value("Valeur").toString());
             ui->listFrnAjouter->addItem(req.value("Valeur").toString());
         }
-        if(list.last().isEmpty() && list.count() > 0)
-            list.removeLast();
+        if(list.last().isEmpty() && list.count() > 0) { list.removeLast(); }
         ui->listFrnDispo->addItems(list);
     }
     else
@@ -1511,8 +1559,7 @@ void Principal::Init_Fournisseur()
 void Principal::Add_Fournisseur()
 {
     ui->listFrnAjouter->blockSignals(true);
-    if(ui->listFrnDispo->selectedItems().isEmpty())
-        return;
+    if(ui->listFrnDispo->selectedItems().isEmpty()) { return; }
     ui->listFrnAjouter->addItem(ui->listFrnDispo->selectedItems().at(0)->text());
     ui->listFrnAjouter->setCurrentRow(ui->listFrnAjouter->count()-1);
     QSqlQuery req = m_DB->Requete("SELECT MAX(ID) FROM Options");
@@ -1538,7 +1585,9 @@ void Principal::Add_Fournisseur()
     {
         QStringList list = req.value("Valeur").toString().split("|");
         while(req.next())
+        {
             list.removeOne(req.value("Valeur").toString());
+        }
         ui->listFrnDispo->addItems(list);
     }
     ui->listFrnAjouter->blockSignals(false);
@@ -1547,8 +1596,7 @@ void Principal::Add_Fournisseur()
 void Principal::Del_Fournisseur()
 {
     ui->listFrnAjouter->blockSignals(true);
-    if(ui->listFrnAjouter->selectedItems().isEmpty())
-        return;
+    if(ui->listFrnAjouter->selectedItems().isEmpty()) { return; }
     ui->listFrnDispo->addItem(ui->listFrnAjouter->selectedItems().at(0)->text());
     m_DB->Requete("DELETE FROM Options WHERE Valeur='" + ui->listFrnAjouter->selectedItems().at(0)->text() + "'");
     QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom ='FrnADD'");
@@ -1557,7 +1605,9 @@ void Principal::Del_Fournisseur()
 
     QStringList list;
     while(req.next())
+    {
         list.append(req.value("Valeur").toString());
+    }
     ui->listFrnAjouter->addItems(list);
     ui->listFrnAjouter->blockSignals(false);
 }
@@ -1572,7 +1622,9 @@ void Principal::Save_Param_Fournisseur()
     QString r = ui->eFrnUserName->text() + "|" + ui->eFrnMail->text() + "|" + ui->eFrnMDP->text();
     QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
     if(req.next())
+    {
         m_DB->Requete("UPDATE Options SET Valeur='" + m_DB->Encrypt(r) + "' WHERE Nom ='" + ui->lFrn->text() + "'");
+    }
     else
     {
         req = m_DB->Requete("SELECT MAX(ID) FROM Options");
@@ -1581,7 +1633,9 @@ void Principal::Save_Param_Fournisseur()
     }
     req = m_DB->Requete("SELECT * FROM Options WHERE Nom='" + ui->lFrn->text() + "Rcc'");
     if(req.next())
+    {
         m_DB->Requete("UPDATE Options SET Valeur='" + ui->eFrnRcc->text() + "' WHERE Nom='" + ui->lFrn->text() + "Rcc'");
+    }
     else
     {
         req = m_DB->Requete("SELECT MAX(ID) FROM Options");
@@ -1589,7 +1643,9 @@ void Principal::Save_Param_Fournisseur()
         m_DB->Requete("INSERT INTO Options VALUES('" + QString::number(req.value(0).toInt()+1) + "','" + ui->lFrn->text() + "Rcc','" + ui->eFrnRcc->text() + "')");
     }
     if(m_Frn->Update_Var(ui->lFrn->text(),ui->eFrnMail->text(),ui->eFrnMDP->text(),ui->eFrnUserName->text()))
+    {
         Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour",true);
+    }
     else
     {
         m_Frn->Add(ui->lFrn->text(),ui->eFrnMail->text(),ui->eFrnMDP->text(),ui->eFrnUserName->text());
@@ -1603,10 +1659,16 @@ void Principal::Test_Fournisseur()
     QTimer *t = new QTimer;
     connect(t,SIGNAL(timeout()),this,SLOT(Update_Fen_Info()));
     connect(t,SIGNAL(timeout()),t,SLOT(deleteLater()));
+    ui->bFrnTest->setEnabled(false);
     if(m_Frn->Test_Connexion(ui->lFrn->text()))
+    {
         t->start(5000);
+    }
     else
+    {
         t->start(10000);
+    }
+    ui->bFrnTest->setEnabled(true);
 }
 
 void Principal::Load_Param_Fournisseur()
@@ -1619,8 +1681,7 @@ void Principal::Load_Param_Fournisseur()
     ui->eFrnMail->clear();
     ui->eFrnMDP->clear();
     ui->eFrnRcc->clear();
-    if(ui->listFrnAjouter->selectedItems().isEmpty())
-        return;
+    if(ui->listFrnAjouter->selectedItems().isEmpty()) { return; }
     QStringList l = m_Frn->Get_Frn_Inf(ui->listFrnAjouter->currentItem()->text()).split("|");
 
     if(l.count() == 3)
@@ -1631,11 +1692,17 @@ void Principal::Load_Param_Fournisseur()
     }
 
     if(ui->lFrnUserName->text() == "")
+    {
         ui->lFrnUserName->setText("Nom d'utilisateur");
+    }
     if(ui->lFrnMail->text() == "")
+    {
         ui->lFrnMail->setText("Mail");
+    }
     if(ui->lFrnMDP->text() == "")
+    {
         ui->lFrnMDP->setText("Mot de passe");
+    }
 
 
     QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->listFrnAjouter->currentItem()->text() + "'");
@@ -1651,7 +1718,9 @@ void Principal::Load_Param_Fournisseur()
 
             req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='" + ui->lFrn->text() + "Rcc'");
             if(req.next())
+            {
                 ui->eFrnRcc->setText(req.value("Valeur").toString());
+            }
         }
     }
 }
@@ -1659,88 +1728,70 @@ void Principal::Load_Param_Fournisseur()
 //Fenêtre Info/////////////////
 void Principal::Create_Fen_Info(QString label1, QString label2, QString label3, QString label4)
 {
-    QDialog *f = new QDialog(this,Qt::Tool | Qt::CustomizeWindowHint);
-    f->setObjectName("FenInfo");
-    QFormLayout *l = new QFormLayout(f);
-    QLabel *i1 = new QLabel;
-    i1->setObjectName(label1);
-    if(label1 == "Info")
-        l->addRow(i1);
+    InfoWindow *f = new InfoWindow(this,"",1);
+
+    if(label1.isEmpty())
+    {
+        DEBUG << "Principal | Error label1 is empty";
+        f->Close();
+    }
     else
-        l->addRow(label1,i1);
-    if(!label2.isEmpty())
     {
-        QLabel *i2 = new QLabel;
-        i2->setObjectName(label2);
-        l->addRow(label2,i2);
+        if(label1 == "Info")
+        {
+            f->Add_Label(label1,false);
+        }
+        else
+        {
+            f->Add_Label(label1);
+        }
     }
-    if(!label3.isEmpty())
+    if(label2.isEmpty() == false)
     {
-        QLabel *i3 = new QLabel;
-        i3->setObjectName(label3);
-        l->addRow(label3,i3);
+        f->Add_Label(label2);
     }
-    if(!label4.isEmpty())
+    if(label3.isEmpty() == false)
     {
-        QLabel *i4 = new QLabel;
-        i4->setObjectName(label4);
-        l->addRow(label4,i4);
+        f->Add_Label(label3);
     }
-    connect(f,SIGNAL(rejected()),f,SLOT(deleteLater()));
-    connect(f,SIGNAL(accepted()),f,SLOT(deleteLater()));
-    f->show();
+    if(label4.isEmpty() == false)
+    {
+        f->Add_Label(label4);
+    }
+
+    f->Show();
 }
 
 void Principal::Update_Fen_Info(QString label, QString info)
 {
-    if(this->findChild<QDialog*>("FenInfo") != NULL)
-        this->findChild<QDialog*>("FenInfo")->findChild<QLabel*>(label)->setText(info);
+    InfoWindow *f = new InfoWindow(this,"",1);
+    f->Update_Label(label,info);
 }
 
 void Principal::Update_Fen_Info(QString info)
 {
-    if(this->findChild<QDialog*>("FenInfo") != NULL)
+    InfoWindow *f = new InfoWindow(this,"",1);
+
+    //Chargement tableau commande
+    if(f->Get_Label_Text("Info").split("\n").count() == 2)
     {
-        if(info.isEmpty())
-        {
-            this->findChild<QDialog*>("FenInfo")->close();
-            this->findChild<QDialog*>("FenInfo")->deleteLater();
-        }
-        this->findChild<QDialog*>("FenInfo")->findChild<QLabel*>("Info")->setText(info);
+        f->Update_Label("Info",info + "\n" + f->Get_Label_Text("Info").split("\n").at(1));
+    }
+
+    //Fermeture fenêtre ou mise à jour texte
+    if(info.isEmpty())
+    {
+        f->Close();
+    }
+    else
+    {
+        f->Update_Label("Info",info);
     }
 }
 
 void Principal::Fournisseur_Actuel(QString nom)
 {
     Update_Fen_Info("Fournisseur",nom);
-}
-
-//Fenêtre chargement///////////
-void Principal::Update_Load_Window(QString text)
-{
-    if(this->findChild<QDialog*>("Chargement") != NULL)
-    {
-        if(this->findChild<QDialog*>("Chargement")->findChild<QLabel*>("Update")->text().split("\n").count() != 2)
-            return;
-        QString l = this->findChild<QDialog*>("Chargement")->findChild<QLabel*>("Update")->text().split("\n").at(1);
-        this->findChild<QDialog*>("Chargement")->findChild<QLabel*>("Update")->setText(text + "\n" + l);
-    }
-}
-
-void Principal::Destroy_Chargement()
-{
-    if(this->findChild<QDialog*>("Chargement") != NULL)
-    {
-        if(this->findChild<QDialog*>("Chargement")->findChild<QLayout*>() != NULL)
-            this->findChild<QDialog*>("Chargement")->findChild<QLayout*>()->deleteLater();
-        else if(this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>() != NULL)
-        {
-            this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>()->clearContents();
-            //this->findChild<QDialog*>("Chargement")->findChild<QTableWidget*>()->deleteLater();
-        }
-        //this->findChild<QDialog*>("Chargement")->findChild<QGridLayout*>()->deleteLater();
-        this->findChild<QDialog*>("Chargement")->deleteLater();
-    }
 }
 
 //Fonctions////////////////////
@@ -1758,7 +1809,7 @@ void Principal::AddError(QString error)
 
 void Principal::Quitter()
 {
-    if(!m_Arret)
+    if(m_Arret == false)
     {
         m_Arret = true;
         QEventLoop l;
@@ -1773,28 +1824,157 @@ void Principal::Quitter()
 
 void Principal::LoadWeb(int valeur)
 {
-    if(this->findChild<QDialog *>("Chargement") != NULL)
+    InfoWindow *f = new InfoWindow(this,"",0);
+    QString text = f->Get_Label_Text("Info");
+    if(text.isEmpty()) { return; }
+    if(text.contains("%"))
     {
-            QLabel *l = this->findChild<QDialog *>("Chargement")->findChildren<QLabel *>().at(0);
-            QString s = l->text();
-            if(l->text().contains("%"))
-                s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
-            l->setText(s + " " + QString::number(valeur) + "%");
+        text.remove(text.count()-text.split(" ").last().count()-1,text.count()-1);
     }
-    else if(this->findChild<QDialog *>("traitement") != NULL)
+    f->Update_Label("Info",text + " " + QString::number(valeur) + "%");
+}
+
+void Principal::DBG_Select_Frn_Fictif()
+{
+    QDialog *f = new QDialog(this);
+    f->setObjectName("Frn_Fictif");
+    f->setWindowTitle("");
+    QFormLayout *l = new QFormLayout(f);
+    QListWidget *list = new QListWidget;
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs'");
+    req.next();
+    QStringList sl = req.value(0).toString().split("|");
+    QLineEdit *lineE = new QLineEdit;
+    for(int i=0;i<sl.count();i++)
     {
-        QLabel *l = this->findChild<QDialog *>("traitement")->findChild<QLabel *>("Info");
-        QString s = l->text();
-        if(l->text().contains("%"))
-            s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
-        l->setText(s + " " + QString::number(valeur) + "%");
+        list->addItem(sl.at(i));
     }
-    else if(this->findChild<QDialog *>("FenInfo") != NULL)
+    QPushButton *b = new QPushButton;
+    b->setText("Ajouter");
+    connect(b,SIGNAL(clicked(bool)),this,SLOT(DBG_Add_Frn_Fictif()));
+    l->addWidget(list);
+    l->addRow("Numéro de commande",lineE);
+    l->addWidget(b);
+    f->exec();
+}
+
+void Principal::DBG_Add_Frn_Fictif()
+{
+    QDialog *f = this->findChild<QDialog*>("Frn_Fictif");
+    if(f != NULL)
     {
-        QLabel *l = this->findChild<QDialog *>("FenInfo")->findChild<QLabel *>("Info");
-        QString s = l->text();
-        if(l->text().contains("%"))
-            s.remove(l->text().count()-l->text().split(" ").last().count()-1,l->text().count()-1);
-        l->setText(s + " " + QString::number(valeur) + "%");
+        if(f->findChild<QLineEdit*>()->text().isEmpty())
+        {
+            return;
+        }
+        QString var = f->findChild<QListWidget*>()->currentItem()->text();
+        QSqlQuery req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
+        req.next();
+        int id = req.value(0).toInt()+1;
+        m_DB->Requete("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + QDate::currentDate().toString("yyyy-MM-dd") + "','NULL','" + f->findChild<QLineEdit*>()->text() + "','','NULL','" + QString::number(Close) + "','" + QString::number(endAdd) + "','NULL','0','','" + var + "')");
+
+        f->close();
+        f->deleteLater();
+    }
+}
+
+void Principal::Load_Unknown_Fab()
+{
+    while(ui->unknown_Fab->rowCount() > 0)
+        ui->unknown_Fab->removeRow(0);
+
+    QFile f(m_Lien_Work + "/Config/Fab.esab");
+    if(f.open(QIODevice::ReadOnly) == false)
+    {
+        m_Error->Err(open,"Fab.esab","PRINCIPAL");
+    }
+    QFlag edit = ~Qt::ItemIsEditable;
+    QTextStream flux(&f);
+    while(flux.atEnd() == false)
+    {
+        QString var = flux.readLine();
+        if(var.split(";").count() == 2 && var.split(";").at(1) == "")
+        {
+            ui->unknown_Fab->insertRow(0);
+            ui->unknown_Fab->setItem(0,0,new QTableWidgetItem(var.split(";").at(0)));
+            ui->unknown_Fab->setItem(0,1,new QTableWidgetItem);
+            ui->unknown_Fab->item(0,0)->setFlags(edit);
+        }
+    }
+}
+
+void Principal::Sav_Unknown_Fab()
+{
+    QFile f(m_Lien_Work + "/Config/Fab.esab");
+    if(f.open(QIODevice::ReadWrite) == false)
+    {
+        m_Error->Err(open_File,"Fab.esab","PRINCIPAL");
+        return;
+    }
+
+    QStringList final;
+    QTextStream flux(&f);
+    while(flux.atEnd() == false)
+    {
+        QString var = flux.readLine();
+
+        if(var.split(";").count() == 2)
+        {
+            if(var.split(";").at(1) != "")
+            {
+                final.append(var);
+            }
+            else
+            {
+                QTableWidgetItem *item = ui->unknown_Fab->findItems(var.split(";").at(0),Qt::MatchExactly).at(0);
+                if(item != NULL && ui->unknown_Fab->item(item->row(),1)->text().count() == 3)
+                {
+                    final.append(item->text() + ";" + ui->unknown_Fab->item(item->row(),1)->text().toUpper());
+                }
+                else
+                {
+                    if(item == NULL)
+                        m_Error->Err(variable,var,"PRINCIPAL");
+                    final.append(var);
+                }
+            }
+        }
+    }
+    f.resize(0);
+    for(int i = 0;i<final.count();i++) { flux << final.at(i) + "\r\n"; }
+    f.close();
+
+    Load_Unknown_Fab();
+}
+
+void Principal::Reload_Error()
+{
+    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Ajout='" + QString::number(error) + "' OR Ajout='" + QString::number(badRef) + "' OR Ajout='" + QString::number(unknownFab) + "'");
+    while(req.next())
+    {
+        int state = req.value("Ajout").toInt();
+        if(state == error)
+        {
+
+        }
+        else if(state == unknownFab)
+        {
+            m_Frn->Get_Invoice_List(req.value("Fournisseur").toString(),req.value("Numero_Commande").toString());
+        }
+        else if(state == badRef)
+        {
+            bool test = true;
+            QStringList number;
+            number << "0"<<"1"<<"2"<<"3"<<"4"<<"5"<<"6"<<"7"<<"8"<<"9"<<"-";
+            for(int i=0;i<req.value("Numero_Commande").toString().count();i++)
+            {
+                if(!number.contains(req.value("Numero_Commande").toString().at(i)))
+                    test = false;
+            }
+            if(test == true)
+            {
+                m_DB->Requete("UPDATE En_Cours SET Ajout='" + QString::number(download) + "' WHERE ID='" + req.value("ID").toString() + "'");
+            }
+        }
     }
 }

@@ -16,6 +16,7 @@ Fournisseur::Fournisseur(QString lien_Travail, DB *db, Error *err):
     connect(m_fct,SIGNAL(info(QString)),this,SIGNAL(Info(QString)));
     connect(m_fct,SIGNAL(LoadProgress(int)),this,SIGNAL(LoadProgress(int)));
     connect(m_fct,SIGNAL(change_Load_Window(QString)),this,SIGNAL(Change_Load_Window(QString)));
+    connect(m_fct,SIGNAL(Find_Fab(QString)),this,SIGNAL(Find_Fab(QString)));
 }
 
 Fournisseur::~Fournisseur()
@@ -23,7 +24,7 @@ Fournisseur::~Fournisseur()
     delete m_fct;
 }
 
-bool Fournisseur::Add(const QString nom,const QString login,const QString mdp,const QString complement)
+bool Fournisseur::Add(const QString nom,const QString complement,const QString login,const QString mdp)
 {
     ///Ajout d'un fournisseur
     DEBUG << "Add " << nom;
@@ -36,8 +37,7 @@ bool Fournisseur::Add(const QString nom)
     ///Ajout d'un fournisseur
     DEBUG << "Add " << nom;
     QStringList l = Find_Fournisseur_From_DB(nom);
-    if(l.isEmpty())
-        return false;
+    if(l.isEmpty()) { return false; }
     fournisseurs.append("nom=" + nom + "&login=" + l.at(1) + "&mdp=" + l.at(2) + "&comp=" + l.at(0));
     return true;
 }
@@ -60,7 +60,6 @@ bool Fournisseur::Start()
             if(nom == FRN1)
             {
                 RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
-
                 frn->Start();
             }
             else if(nom == FRN2)
@@ -74,6 +73,50 @@ bool Fournisseur::Start()
         else
             m_Error->Err(failData,"",FRN);
     }
+
+
+    //Controle nouveau BC
+    /*QSqlQuery req = m_DB->Get_Download_Invoice();
+    while(req.next())
+    {
+        QStringList list;
+        if(req.value("Fournisseur").toString() == FRN1)
+        {
+            QStringList var = Find_Fournisseur(FRN1);
+            QString login, mdp, comp;
+            if(var.count() != 3)
+            {
+                login = var.at(0);
+                mdp = var.at(1);
+                comp = var.at(2);
+            }
+
+            RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);;
+            list = frn->Get_Invoice(req.value("Numero_Commande").toString());
+        }
+        else if(req.value("Fournisseur").toString() == FRN2)
+        {
+            QStringList var = Find_Fournisseur(FRN2);
+            QString login, mdp, comp;
+            if(var.count() != 3)
+            {
+                login = var.at(0);
+                mdp = var.at(1);
+                comp = var.at(2);
+            }
+
+            SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
+            list = frn->Get_Invoice(req.value("Numero_Commande").toString());
+        }
+        if(list.isEmpty())
+        {
+            m_Error->Err(variable,"Liste matériels vide",FRN);
+        }
+        else
+        {
+            m_fct->Control_Fab(list);
+        }
+    }*/
     return true;
 }
 
@@ -91,28 +134,33 @@ QStringList Fournisseur::Get_Invoice_List(const QString& frn,const QString& invo
     QString mdp = f.at(1);
     QString comp = f.at(2);
 
+    QStringList final;
     if(frn == FRN1)
     {
         RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
-        return frn->Get_Invoice(invoiceNumber);
+        //final = m_fct->Control_Fab(frn->Get_Invoice(invoiceNumber));
+        final = frn->Get_Invoice(invoiceNumber);
     }
     else if(frn == FRN2)
     {
         SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
-        return frn->Get_Invoice(invoiceNumber);
+        //final = m_fct->Control_Fab(frn->Get_Invoice(invoiceNumber));
+        final = frn->Get_Invoice(invoiceNumber);
     }
-    return QStringList();
+    return final;
 }
 
 bool Fournisseur::Update_Var(const QString& frn,const QString& login,const QString& mdp,const QString& complement)
 {
     DEBUG << "UPDATE " << frn;
     for(int cpt = 0;cpt<fournisseurs.count();cpt++)
+    {
         if(fournisseurs.at(cpt).contains(frn))
         {
             fournisseurs.replaceInStrings(fournisseurs.at(cpt),"nom=" + frn + "&login=" + login + "&mdp=" + mdp + "&comp=" + complement);
             return true;
         }
+    }
     return false;
 }
 
@@ -120,11 +168,13 @@ bool Fournisseur::Del(const QString nom)
 {
     DEBUG << "DEL " << nom;
     for(int cpt = 0;cpt<fournisseurs.count();cpt++)
+    {
         if(fournisseurs.at(cpt).contains(nom))
         {
             fournisseurs.removeAt(cpt);
             return true;
         }
+    }
     return false;
 }
 
@@ -141,12 +191,16 @@ bool Fournisseur::Test_Connexion(const QString &nom)
     if(nom == FRN1)
     {
         RexelFr *frn = new RexelFr(m_fct,f.at(0),f.at(1),m_Lien_Travail,f.at(2),m_DB);
-        if(!frn->Test_Connexion())
+        if(frn->Test_Connexion() == false)
         {
             if(m_fct->FindTexte("Informations invalides, veuillez réessayer"))
+            {
                 emit Info(tr("Identifiants incorrect"));
+            }
             else
+            {
                 emit Info(tr("Une erreur inconnue s'est produite"));
+            }
         }
         else
         {
@@ -157,18 +211,25 @@ bool Fournisseur::Test_Connexion(const QString &nom)
     else if(nom == FRN2)
     {
         SocolecFr * frn = new SocolecFr(m_fct,f.at(0),f.at(1),m_Lien_Travail,f.at(2),m_DB);
-        if(!frn->Test_Connexion())
+        if(frn->Test_Connexion() == false)
         {
             if(m_fct->FindTexte("Le N° de compte spécifié n'existe pas"))
+            {
                 emit Info(tr("Le numéro de compte est incorrecte"));
+            }
             else if(m_fct->FindTexte("Email ou mot de passe incorrect"))
+            {
                 emit Info(tr("Email ou mot de passe incorrect"));
+            }
             else
+            {
                 emit Info(tr("Une erreur unconnue s'est produite"));
+            }
         }
         else
         {
             emit Info(tr("Connexion à %0 réussie").arg(nom));
+            return true;
         }
     }
     else
@@ -180,6 +241,7 @@ bool Fournisseur::Test_Connexion(const QString &nom)
 QStringList Fournisseur::Find_Fournisseur(QString nom)
 {
     for(int cpt = 0;cpt<fournisseurs.count();cpt++)
+    {
         if(fournisseurs.at(cpt).contains(nom))
         {
             QStringList l;
@@ -188,6 +250,7 @@ QStringList Fournisseur::Find_Fournisseur(QString nom)
             l.append(fournisseurs.at(cpt).split("&").at(3).split("=").at(1));
             return l;
         }
+    }
     DEBUG << "Fournisseur non trouvé !";
     return QStringList();
 }
@@ -227,9 +290,23 @@ QString Fournisseur::List_Frn() const
 QString Fournisseur::Get_Frn_Inf(QString frn) const
 {
     if(frn == FRN1)
+    {
         return RexelFr::Get_Info();
+    }
     else if(frn == FRN2)
+    {
         return SocolecFr::Get_Inf();
+    }
     else
+    {
         m_Error->Err(variable,"Get_Frn_Inf",FRN);
+    }
+    return QString();
+
 }
+
+void Fournisseur::Set_Fab(QString fab)
+{
+    m_fct->Return_Fab(fab);
+}
+

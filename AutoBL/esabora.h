@@ -41,6 +41,11 @@ public slots:
     void Abort();
     bool Ajout_Stock(QString numero_Commande);
     void Stop();
+    QString Test_Find_Fabricant(QString fab);
+    void Test_Add_BC(QString invoice);
+    void Test_Add_BL(QString invoice, QString bl);
+    QString Find_Fabricant(QString Fab);
+    QStringList Verif_List(QStringList list);
 
 private slots:
     bool Clavier(QString commande);
@@ -50,7 +55,8 @@ private slots:
     bool Verification_Focus(QString fen,bool focus);
     bool Verification_Message_Box(QString &message);
     bool Get_List_Matos(QString invoice);
-    QString Find_Fabricant(QString Fab);
+    bool Copy();
+    bool Paste();
 
 signals:
     void DemandeListeMatos(QString NumeroCommande);
@@ -72,6 +78,7 @@ private:
     bool m_Arret;
     Error *err;
     QProcess p;
+
 };
 
 #endif // ESABORA_H

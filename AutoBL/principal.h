@@ -17,6 +17,7 @@
 #include "tache.h"
 #include "esabora.h"
 #include "fournisseur.h"
+#include "infowindow.h"
 ////////////
 ///ADD #define PKEY ""
 ///ADD #define MAJLINK ""
@@ -36,7 +37,6 @@ class Principal : public QMainWindow
 public:
     explicit Principal(QWidget *parent = 0);
     ~Principal();
-    bool test();
     void Erreur(int code,int string,QString info);
 
 public slots:
@@ -95,12 +95,16 @@ public slots:
     void Update_Fen_Info(QString label,QString info);
     void Update_Fen_Info(QString info = 0);
     void Fournisseur_Actuel(QString nom);
-    void Update_Load_Window(QString text);
-    void Destroy_Chargement();
     QString HashMDP(QString mdp);
     void Show_List_Sav();
     void Restaurer_DB();
     void Demarrer_Frn();
+    bool test();
+    void DBG_Select_Frn_Fictif();
+    void DBG_Add_Frn_Fictif();
+    void Load_Unknown_Fab();
+    void Sav_Unknown_Fab();
+    void Reload_Error();
 
 signals:
     void FinAjout();

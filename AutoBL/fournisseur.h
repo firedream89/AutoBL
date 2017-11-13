@@ -28,7 +28,7 @@ class Fournisseur : public QObject
 public:
     Fournisseur(QString lien_Travail, DB *db, Error *err);
     ~Fournisseur();
-    bool Add(const QString nom,const QString login,const QString mdp,const QString complement);
+    bool Add(const QString nom, const QString complement, const QString login, const QString mdp);
     bool Add(const QString nom);
     bool Del(const QString nom);
     bool Start();
@@ -40,6 +40,7 @@ public:
 
 public slots:
     QStringList Get_Invoice_List(const QString &frn,const QString &invoiceNumber);
+    void Set_Fab(QString fab);
 
 signals:
     void En_Cours_Fournisseur(QString nom);
@@ -48,6 +49,7 @@ signals:
     void Info(QString info);
     void LoadProgress(int l);
     void Change_Load_Window(QString text);
+    void Find_Fab(QString fab);
 
 private:
     QStringList Find_Fournisseur(QString nom);
