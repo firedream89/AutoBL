@@ -14,7 +14,6 @@ Error::Error(QString work_Link)
         Err(open_File,"Log error","Général");
     }
 
-    //Chargement des classes de l'application et fonctions nécéssaires
     Write_Error("--------------------------Run AutoBL-----------------------------");
 }  
 
@@ -107,6 +106,8 @@ QString Error::Err(int code, QString e, QString fromClass)
     case saveDB:
         err = tr("Echec de sauvegarde de la DB");
         break;
+    case UnknownError:
+        err = tr("Une erreur s'est produite : %0").arg(e);
     default:
         err = tr("Erreur inconnue %1").arg(e);
         break;

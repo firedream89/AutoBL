@@ -44,13 +44,12 @@ bool FctFournisseur::WebLoad(QString lien)
         {
             if(FindTexte("Aucune connexion Internet") == false) { return true; }
         }
-            else
+        else
         {
-                m_Error->Err(noConnected,"",FCT);
+            m_Error->Err(noConnected,"",FCT);
         }
         web->stop();
     }
-
     return false;
 }
 

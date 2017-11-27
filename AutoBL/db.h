@@ -49,6 +49,8 @@ public:
     QSqlQuery Get_Added_Invoice();
     QSqlQuery Get_No_Closed_Invoice(QString frn);
     QSqlQuery Get_Delivery_Invoice(QString frn);
+    QColor Get_Color_State(int state);
+    bool Reference_Is_Valid(QString ref);
 
 public slots:
     void Sav();

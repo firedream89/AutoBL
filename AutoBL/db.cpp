@@ -157,6 +157,13 @@ void DB::Init()
     {
         emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());
     }
+    req = Requete("SELECT ID FROM Options");
+    if(req.next() == false)
+    {
+        db.close();
+        QDesktopServices::openUrl(QUrl("bin/MAJ_BDD.exe -ForceArg=2"));
+        qApp->exit();
+    }
 
     //Update variable Ajout
     Requete("UPDATE En_Cours SET Ajout='0' WHERE Ajout=''");
@@ -340,12 +347,23 @@ QString DB::enum_State(int state)
     else if(state == updateRef) { var = "Modifier"; }
     else if(state == add) { var = "Bon ajouté"; }
     else if(state == endAdd) { var = "Ok"; }
+    else if(state == unknownFab) { var = "Fab inconnue"; }
+    else if(state == badRef) { var = "Référence"; }
     else
     {
         m_Error->Err(variable,"enum_State","DB");
         return QString();
     }
     return var;
+}
+
+QColor DB::Get_Color_State(int state)
+{
+    QColor color;
+    if(state == download || state == updateRef) { color.setRgb(200,200,0); }
+    else if(state == add || state == endAdd) { color.setRgb(0,255,0); }
+    else if(state == error || state == unknownFab || state == badRef) { color.setRgb(255,0,0); }
+    return color;
 }
 
 QString DB::Get_Last_Invoice(QString frn)
@@ -436,4 +454,21 @@ QSqlQuery DB::Get_No_Closed_Invoice(QString frn)
 QSqlQuery DB::Get_Delivery_Invoice(QString frn)
 {
     return Requete("SELECT * FROM En_Cours WHERE Etat='" + QString::number(Close) + "' AND Fournisseur='" + frn + "' AND (Numero_Livraison='' OR Numero_Livraison=' ')");
+}
+
+bool DB::Reference_Is_Valid(QString ref)
+{
+    int count(0);
+    bool test(false);
+    for(int i = 0;i<ref.count();i++)
+    {
+        if(ref.at(i) >= '0' && ref.at(i) <= '9')
+            count++;
+    }
+    DEBUG << count << ref.count();
+    if(count == ref.count())
+        test = true;
+    else
+        test = false;
+    return test;
 }

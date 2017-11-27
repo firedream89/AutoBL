@@ -33,7 +33,8 @@ typedef enum {
     findFrn,
     openDB,
     updateDB,
-    saveDB
+    saveDB,
+    UnknownError
 }ERR;
 
 class Error: public QObject
