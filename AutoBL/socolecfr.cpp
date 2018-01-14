@@ -178,7 +178,7 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
                 {
                     text = text.split(">").at(1);
                     text.replace("Ã©","é");
-                    if(text == "En attente" || text == "En traitement" || text == "En préparation")
+                    if(text == "Enregistrée" || text == "En attente" || text == "En traitement" || text == "En préparation")
                     {
                         etat = "0";
                     }
