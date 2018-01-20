@@ -196,8 +196,8 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
                     }
                     else
                     {
-                        m_Fct->FrnError(variable,FRN,"Valeur Etat");
-                        return false;
+                        m_Fct->FrnError(variable,FRN,"Valeur Etat=" + text);
+                        etat = "0";
                     }
                 }
                 else
