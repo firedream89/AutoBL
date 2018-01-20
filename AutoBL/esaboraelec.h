@@ -50,7 +50,7 @@ public slots:
 private slots:
     bool Clavier(QString commande);
     bool Souris(QString commande);
-    bool Traitement_Fichier_Config(const QString file, const QString NumeroCommande = 0, const QString NumeroBL);
+    bool Traitement_Fichier_Config(const QString file, const QString NumeroCommande = 0, const QString NumeroBL = 0);
     bool Verification_Fenetre(QString fenetre);
     bool Verification_Focus(QString fen,bool focus);
     bool Verification_Message_Box(QString &message);

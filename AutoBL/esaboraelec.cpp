@@ -104,7 +104,6 @@ bool EsaboraElec::Start(bool automatic,int &nbBC,int &nbBL)
     return Fermeture_API();
 }
 
-///Erreur 2xx
 bool EsaboraElec::SetFocus(QString windowName)
 {
     HWND hWnds = FindWindow(NULL,windowName.toStdWString().c_str());
@@ -176,7 +175,6 @@ bool EsaboraElec::Lancement_API()
     return true;
 
 }
-///Erreur 3xx
 
 bool EsaboraElec::Ouverture_Liste_BC()
 {
@@ -250,7 +248,7 @@ bool EsaboraElec::Ajout_BC(QString Numero_Commande)
         return false;
     }
 }
-///Erreur 4xx
+
 bool EsaboraElec::Ajout_BL(QString Numero_Commande_Esab, QString Numero_BL)
 {
     qDebug() << "EsaboraElec::Ajout_BL()";
@@ -265,7 +263,7 @@ bool EsaboraElec::Ajout_BL(QString Numero_Commande_Esab, QString Numero_BL)
     qDebug() << "Fin EsaboraElec::Ajout_BL()";
     return true;
 }
-///Erreur 5xx
+
 bool EsaboraElec::Traitement_Fichier_Config(const QString file, const QString NumeroCommande, const QString NumeroBL)
 {
     qDebug() << "Esabora::Traitement_Fichier_Config()";
@@ -787,6 +785,8 @@ void EsaboraElec::Control_Window(QString name, bool &find, bool &focus, bool isF
                 {
                     find = false;
                 }
+                else
+                    find = true;
             }
         }
     }
@@ -816,148 +816,36 @@ void EsaboraElec::Control_Window(QString name, bool &find, bool &focus, bool isF
     }
     else if(hWnds != h && isFocus)
     {
+        if(lvl > 1)
+        {
+            focus = false;
+            return;
+        }
         QStringList listWin = Get_Windows_List(name);
         for(int i = 0;i<listWin.count();i++)
         {
-            if()
-        }
-        QString message;
-        DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
-        if(Verification_Fenetre("AVERTISSEMENT"))
-        {
-            DEBUG << "'AVERTISSEMENT' Detected !";
-            Clavier("Entrée");
-            t.start(2000);
-            loop.exec();
-        }
-        if(Verification_Fenetre("RX - Agent de Mise à Jour"))
-        {
-            DEBUG << "'UPDATE Widget' Detected !";
-            err->Err(Focus,"RX - Agent de mise à jour",ESAB);
-        }
-        DEBUG << "La fenêtre '" << fen << "' n'est plus au premier plan(Erreur)";
-        return false;
-    }
-    else {
-        DEBUG << "La fenêtre '" << fen << "' est toujours au premier plan(Erreur)";
-        return false;
-    }
-    lvl = 0;
-}
-
-bool EsaboraElec::Verification_Fenetre(QString fenetre)
-{
-    DEBUG << "Esabora::Verification_Fenetre()";
-    HWND hWnds = FindWindow(NULL,fenetre.toStdWString().c_str());
-    if(hWnds == NULL)
-    {
-        hWnds = FindWindow(NULL,L"AVERTISSEMENT");
-        if(hWnds == NULL) { return false; }
-        else
-        {
-            Clavier("Entrée");
-            QEventLoop loop;
-            QTimer t;
-            connect(&t,SIGNAL(timeout()),&loop,SLOT(quit()));
-            t.start(2000);
-            loop.exec();
-            if(Verification_Fenetre(fenetre)) {
-                DEBUG << "La fenêtre '" << fenetre << "' a pas été trouvé(Ok)";
-                return true;
-            }
-            else {
-                DEBUG << "La fenêtre '" << fenetre << "' n'a pas été trouvé(Erreur)";
-                return false;
+            bool bFind (false),bFocus(false);
+            Control_Window(listWin.at(i),bFind,bFocus,true);
+            if(bFind && bFocus)
+            {
+                Clavier("Entrée");
+                t.start(2000);
+                loop.exec();
+                bFind = false;
+                bFocus = false;
+                Control_Window(name,bFind,bFocus,true);
+                if(bFocus)
+                {
+                    focus = true;
+                }
+                else
+                {
+                    focus = false;
+                }
             }
         }
     }
-    else return true;
-}
-
-bool EsaboraElec::Verification_Focus(QString fen, bool focus)
-{
-    qDebug() << "Esabora::Verification_Focus()";
-    QEventLoop loop;
-    QTimer t;
-    connect(&t,SIGNAL(timeout()),&loop,SLOT(quit()));
-    HWND hWnds = FindWindow(NULL,fen.toStdWString().c_str());
-    HWND h = GetForegroundWindow();
-    if(hWnds == h && focus) {
-        DEBUG << "La fenêtre '" << fen << "' est toujours au premier plan(Ok)";
-        return true;
-    }
-    else if(hWnds != h && focus == false)
-    {
-        QString message;
-        DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
-        DEBUG << "La fenêtre '" << fen << "' n'est plus au premier plan(Ok)";
-        return true;
-    }
-    else if(hWnds != h && focus)
-    {
-        QString message;
-        DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
-        if(Verification_Fenetre("AVERTISSEMENT"))
-        {
-            DEBUG << "'AVERTISSEMENT' Detected !";
-            Clavier("Entrée");
-            t.start(2000);
-            loop.exec();
-        }
-        if(Verification_Fenetre("RX - Agent de Mise à Jour"))
-        {
-            DEBUG << "'UPDATE Widget' Detected !";
-            err->Err(Focus,"RX - Agent de mise à jour",ESAB);
-        }
-        DEBUG << "La fenêtre '" << fen << "' n'est plus au premier plan(Erreur)";
-        return false;
-    }
-    else {
-        DEBUG << "La fenêtre '" << fen << "' est toujours au premier plan(Erreur)";
-        return false;
-    }
-}
-///Erreur 6xx
-bool EsaboraElec::Ajout_Stock(QString numero_Commande)
-{
-    DEBUG << "Esabora::Ajout_Stock()";
-    if(Traitement_Fichier_Config("Ajout_Stock","///" + numero_Commande + ".tmp") == false)
-    {
-        err->Err(Traitement,"",ESAB);
-        DEBUG << "Ajout_Stock - Echec dans le traitement du Bon de commande";
-        return false;
-    }
-    DEBUG << "Fin Esabora::Ajout_Stock()";
-    return true;
-}
-
-void EsaboraElec::Semi_Auto(QString NumeroCommande)
-{
-    qDebug() << "Esabora::Semi_Auto()";
-    QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
-    QSqlQuery r2 = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='12'");
-    r.next();
-    r2.next();
-    if(Verification_Fenetre(r.value("Valeur").toString() + " - SESSION : 1 - REPERTOIRE : " + r2.value("Valeur").toString()) == false)
-    {
-        emit Message("Erreur","Esabora n'est pas ouvert !",true);
-        return;
-    }
-    else
-    {
-        QString fen(r.value("Valeur").toString() + " - SESSION : 1 - REPERTOIRE : " + r2.value("Valeur").toString());
-        HWND hWnds = FindWindow(NULL,fen.toStdWString().c_str());
-        SetForegroundWindow(hWnds);
-    }
-    Traitement_Fichier_Config("Semi_Auto","///" + NumeroCommande + ".");
-
-    if(QMessageBox::question(m_fen,"","L'ajout du bon de commande à t'il réussi ?") == QMessageBox::Yes)
-    {
-        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE Numero_Commande='" + NumeroCommande + "'");
-    }
-
-    emit Message("","Le bon de livraison doit être validé manuellement.",false);
-    qDebug() << "Fin Esabora::Semi_Auto()";
+    lvl--;
 }
 
 void EsaboraElec::Set_Liste_Matos(QStringList liste)
@@ -1102,15 +990,7 @@ bool EsaboraElec::Verification_Message_Box(QString &message)
 bool EsaboraElec::Get_List_Matos(QString invoice)
 {
     emit DemandeListeMatos(invoice);
-    QEventLoop l;
-    QTimer t;
-    connect(&t,SIGNAL(timeout()),&l,SLOT(quit()));
-    connect(this,SIGNAL(ReceptionListeMatos()),&l,SLOT(quit()));
-    t.start(60000);
-    //l.exec();
-
-    if(t.isActive()) { return true; }
-    else { return false; }
+    return true;
 }
 
 void EsaboraElec::Stop()
