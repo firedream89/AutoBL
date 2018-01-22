@@ -50,7 +50,7 @@ public slots:
 private slots:
     bool Clavier(QString commande);
     bool Souris(QString commande);
-    bool Traitement_Fichier_Config(const QString file, const QString NumeroCommande = 0, const QString NumeroBL = 0);
+    bool Traitement_Fichier_Config(const QString file, const QString NumeroCommande = 0, const QString NumeroBL = 0, const QString var = 0);
     bool Verification_Fenetre(QString fenetre);
     bool Verification_Focus(QString fen,bool focus);
     bool Verification_Message_Box(QString &message);
@@ -61,6 +61,7 @@ private slots:
     QStringList Get_Windows_List(QString name);
     bool Open_Delivery_Window();
     bool Set_Focus(QString windowName);
+    bool SetFocus(QString windowName);
 
 signals:
     void DemandeListeMatos(QString NumeroCommande);

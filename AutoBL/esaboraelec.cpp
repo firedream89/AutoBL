@@ -264,107 +264,131 @@ bool EsaboraElec::Ajout_BL(QString Numero_Commande_Esab, QString Numero_BL)
     return true;
 }
 
-bool EsaboraElec::Traitement_Fichier_Config(const QString file, const QString NumeroCommande, const QString NumeroBL)
+bool EsaboraElec::Traitement_Fichier_Config(const QString file, const QString NumeroCommande, const QString NumeroBL, const QString var)
 {
-    qDebug() << "Esabora::Traitement_Fichier_Config()";
-    etat = 0;
+    DEBUG << "EsaboraElec::Traitement_Fichier_Config()";
+    DEBUG << "-----Variables :-----";
+    DEBUG << file;
+    DEBUG << NumeroCommande;
+    DEBUG << NumeroBL;
+    DEBUG << "---------------------";
+
+    //Ouverture fichier Config.esab
     QFile fichier(m_Lien_Work + "/Config/Config.esab");
     emit Info("Ouverture fichier Config.esab");
     if(fichier.exists() == false)
     {
         err->Err(open_File,fichier.fileName(),ESAB);
-        qDebug() << "Traitement_Fichier_Config - Echec le fichier " << fichier.fileName() << "n'existe pas";
+        DEBUG << "Traitement_Fichier_Config - Echec le fichier " << fichier.fileName() << "n'existe pas";
         return false;
     }
     if(fichier.open(QIODevice::ReadOnly) == false)
     {
         err->Err(open_File,fichier.fileName(),ESAB);
-        qDebug() << "Traitement_Fichier_Config - Echec d'ouverture du fichier " << fichier.fileName();
+        DEBUG << "Traitement_Fichier_Config - Echec d'ouverture du fichier " << fichier.fileName();
         return false;
     }
 
-    QTextStream flux(&fichier);
 
+    //Définition des variables
+    etat = 0;
+    QTextStream flux(&fichier);
     QString temp;
     QEventLoop loop;
     QTimer tmp;
     connect(&tmp,SIGNAL(timeout()),&loop,SLOT(quit()));
-    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
+
+    //Récupération des informations de la commande correspondante
+    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + NumeroCommande + "'");
     req.next();
+    //Valeur temps entre chaque action
     QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='14'");
     r.next();
     int varTmp = r.value("Valeur").toDouble() * 1000;
-    qDebug() << "Esabora::Traitement_Fichier_Config - Recherche de " << file << "dans le fichier Config";
-    while(flux.atEnd() == false && flux.readLine().contains("[" + file + "]") == false) {}
 
+
+    //Boucle recherche de la fonction
+    DEBUG << "Esabora::Traitement_Fichier_Config - Recherche de " << file << "dans le fichier Config";
+    while(flux.atEnd() == false && flux.readLine().contains("[" + file + "]") == false) {}
     if(flux.atEnd()) { return false; }
-    qDebug() << "Esabora::Traitement_Fichier_Config - " << file << "trouvé dans le fichier";
-    DEBUG << "Var bL = " << bL;
+    DEBUG << "Esabora::Traitement_Fichier_Config - " << file << "trouvé dans le fichier";
+
+
     while(flux.atEnd() == false)
     {
+        //Pause
         tmp.start(varTmp);
         loop.exec();
         tmp.stop();
 
+
         temp = flux.readLine();
-        qDebug() << "Traitement_Fichier_Config - Commande " << temp;
+        DEBUG << "Traitement_Fichier_Config - Commande " << temp;
         emit Info("Préparation de la commande " + temp);
 
-        if(temp.contains("/*"))
-        {
-            while(flux.readLine().contains("*/") == false){}
-            temp = flux.readLine();
-        }
+
+        //Commentaire /* */
+        if(temp.contains("/*")) { while(flux.readLine().contains("*/") == false){} }
         else if(temp == "{LOGIN}") { Clavier("-" + m_Login); }
         else if(temp == "{MDP}") { Clavier("-" + m_MDP); }
         else if(temp == "{CHANTIER}")
-        {///Si le chantier est trouvé, sinon si la variable contient 0 ajout au stock
+        {//Si le chantier est trouvé, sinon si la variable contient 0 ajout au stock
             if(req.value("Nom_Chantier").toString() != "" && req.value("Nom_Chantier").toString() != "0") { Clavier("-" + req.value("Nom_Chantier").toString()); }
             else if(req.value("Nom_Chantier").toString() == "0") { Clavier("-Stock"); }
         }
         else if(temp == "{INTERLOCUTEUR}") { Clavier("-Autobl"); }
-        else if(temp == "{BC}") { Clavier("-" + bL); }
-        else if(temp == "{NUMERO_COMMANDE_ESABORA}") { Clavier("-" + bL.split(" ").at(0)); }
-        else if(temp == "{BL}") { Clavier("-" + bL.split(" ").at(1)); }
+        else if(temp == "{BC}") { Clavier("-" + NumeroCommande); }
+        else if(temp == "{NUMERO_COMMANDE_ESABORA}") { Clavier("-" + var); }
+        else if(temp == "{BL}") { Clavier("-" + NumeroBL); }
         else if(temp == "{COMMENTAIRE}")
         {
-            QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_BC_Esabora='" + bL.split(" ").at(0) + "'");
-            req.next();
-            Clavier("-AutoBL : " + req.value("Fournisseur").toString() + " : BC " + req.value("Numero_Commande").toString());
+            QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_BC_Esabora='" + var + "'");
+            if(req.next())
+                Clavier("-AutoBL : " + req.value("Fournisseur").toString() + " : BC " + req.value("Numero_Commande").toString());
+            else
+                Clavier("-AutoBL : Informations BC non trouvé");
         }
         else if(temp == "{FOURNISSEUR}")
         {
-            QString v;
             QSqlQuery t = m_DB->Requete("SELECT * FROM Options WHERE Nom='" + req.value("Fournisseur").toString() + "Rcc'");
-            t.next();
+            if(t.next() == false)
+            {
+                DEBUG << "Fournisseur non trouvé";
+                err->Err(variable,"Fournisseur non trouvé",ESAB);
+                return false;
+            }
             Clavier("-" + t.value("Valeur").toString());
         }
         else if(temp == "{BOUCLE}")
         {
             //boucle de 6 strings designation,reference,fabricant,prix unitaire,quantité livré,quantité restante
+
+            //Si la liste matériels est vide stopper l'ajout
             if(liste_Matos.isEmpty())
             {
-                Abort();
-                Ouverture_Liste_BC();
                 return false;
             }
+
+            //pointeur vers presse papier windows
             QClipboard *pp = QApplication::clipboard();
+
             for(int cpt=0;cpt<liste_Matos.count();cpt++)
             {
+                //Si une ligne est incomplète
                 if(liste_Matos.count()-cpt < 7)
                 {
                     err->Err(variable,"Ligne incomplète : " + liste_Matos.at(cpt),ESAB);
                 }
-                QEventLoop lp;
-                QTimer t;
-                connect(&t,SIGNAL(timeout()),&lp,SLOT(quit()));
+
                 pp->clear();
-                t.start(1000);
-                lp.exec();
+                tmp.start(1000);
+                loop.exec();
+
                 Clavier("Ctrl+C");
-                t.start(1000);
-                lp.exec();
+                tmp.start(1000);
+                loop.exec();
                 emit Info(pp->text());
+
                 if(pp->text() != "")//Si D3E, passé à la ligne suivante
                 {
                     Clavier("Tab");
@@ -374,27 +398,29 @@ bool EsaboraElec::Traitement_Fichier_Config(const QString file, const QString Nu
                     Clavier("Tab");
                     Clavier("Tab");
                 }
+
                 if(liste_Matos.at(cpt+1) == "")//Si Référence est vide
                 {
-                    err->Err(designation,"Ref=" + liste_Matos.at(cpt) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB);
+                    err->Err(designation,"Ref=" + liste_Matos.at(cpt) + " Chantier=" + req.value("Numero_Commande").toString(),ESAB);
                 }
                 Clavier("-" + liste_Matos.at(cpt+1));//Ref
+
                 Clavier("Tab");
                 pp->clear();
-                t.start(1000);
-                lp.exec();
+                tmp.start(1000);
+                loop.exec();
                 Clavier("Ctrl+C");
-                t.start(1000);
-                lp.exec();
+                tmp.start(1000);
+                loop.exec();
                 if(pp->text() == "" || pp->text() == liste_Matos.at(cpt+1) || liste_Matos.at(cpt+1).isEmpty() || pp->text() == " ")//Si La désignation n'a pas été trouvé
                 {
-                    err->Err(designation,"Ref=" + liste_Matos.at(cpt+1) + " Chantier=" + req.value("Nom_Chantier").toString(),ESAB);
+                    err->Err(designation,"Ref=" + liste_Matos.at(cpt+1) + " Chantier=" + req.value("Numero_Commande").toString(),ESAB);
                     pp->clear();
-                    t.start(1000);
-                    lp.exec();
+                    tmp.start(1000);
+                    loop.exec();
                     pp->setText(liste_Matos.at(cpt));
-                    t.start(1000);
-                    lp.exec();
+                    tmp.start(1000);
+                    loop.exec();
                     Clavier("Ctrl+V");
                 }
                 Clavier("Tab");
@@ -414,7 +440,7 @@ bool EsaboraElec::Traitement_Fichier_Config(const QString file, const QString Nu
         }
         else if(temp == "{BOUCLE_CONSTRUCTEUR}")
         {
-            Clavier("-" + bL.toUpper());
+            Clavier("-" + var);
             tmp.start(500);
             loop.exec();
             Clavier("Ctrl+C");
