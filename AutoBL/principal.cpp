@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.43 BETA1"); //Version De L'application
-QString ver("1430");
+QString version("1.43"); //Version De L'application
+QString ver("1432");
 /////////////////////////////////
 
 //Chargement de l'application

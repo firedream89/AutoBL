@@ -557,6 +557,7 @@ bool Esabora::Clavier(QString commande)
         return true;
     }
 
+    if(GetKeyState(VK_CAPITAL) < 0) { keybd_event(VK_CAPITAL,0,KEYEVENTF_KEYUP,0); }
     if(GetKeyState(VK_LMENU) < 0) { keybd_event(VK_LMENU,0,KEYEVENTF_KEYUP,0); }
     if(GetKeyState(VK_SHIFT) < 0) { keybd_event(VK_SHIFT,0,KEYEVENTF_KEYUP,0); }
     if(GetKeyState(VK_LCONTROL) < 0) { keybd_event(VK_LCONTROL,0,KEYEVENTF_KEYUP,0); }
