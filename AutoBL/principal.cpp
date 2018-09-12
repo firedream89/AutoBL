@@ -3,7 +3,7 @@
 
 /////////////////////////////////
 QString version("1.43"); //Version De L'application
-QString ver("1432");
+QString ver("1433");
 /////////////////////////////////
 
 //Chargement de l'application

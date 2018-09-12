@@ -107,6 +107,9 @@ QString Error::Err(int code, QString e, QString fromClass)
     case saveDB:
         err = tr("Echec de sauvegarde de la DB");
         break;
+    case internal:
+        err = tr("%0 est incompatible avec la version d'AutoBL, mise à jour nécéssaire").arg(fromClass);
+        break;
     default:
         err = tr("Erreur inconnue %1").arg(e);
         break;

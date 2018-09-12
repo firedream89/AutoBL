@@ -174,9 +174,9 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
                 flux.readLine();
                 flux.readLine();
                 text = flux.readLine();
-                if(text.split(">").count() > 1)
+                if(text.split(">").count() > 1 && text.split("<").count() > 1)
                 {
-                    text = text.split(">").at(1);
+                    text = text.split(">").at(1).split("<").at(0);
                     text.replace("Ã©","é");
                     if(text == "En attente" || text == "En traitement" || text == "En préparation")
                     {

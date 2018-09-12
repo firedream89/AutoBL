@@ -63,7 +63,7 @@ bool RexelFr::Connexion()
 
     m_Fct->InsertJavaScript("document.getElementById('j_username').value=\"" + m_Login + "\"");
     m_Fct->InsertJavaScript("document.getElementById('j_password').value=\"" + m_MDP + "\"");
-    m_Fct->InsertJavaScript("document.getElementById('loginForm').submit()");
+    m_Fct->InsertJavaScript("document.getElementById('loginFormHeader').submit()");
     m_Fct->Loop();
 
     if(m_Fct->FindTexte("Votre compte a été verrouillé, veuillez contacter l'administrateur"))
@@ -567,6 +567,10 @@ bool RexelFr::Test_Connexion()
         if(m_Fct->FindTexte("Informations invalides, veuillez réessayer"))
         {
             m_Fct->FrnError(bad_Login,REXEL);
+        }
+        else if(m_Fct->FindTexte("Veuillez entrer vos informations d'identification"))
+        {
+            m_Fct->FrnError(internal,REXEL);
         }
         return false;
     }
