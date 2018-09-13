@@ -1,5 +1,6 @@
 #include "fctfournisseur.h"
 
+
 FctFournisseur::FctFournisseur(QString WorkLink, Error *err):
     m_WorkLink(WorkLink)
 {
@@ -314,3 +315,4 @@ void FctFournisseur::Return_Fab(QString fab)
     m_Fab = fab;
     emit Set_Fab();
 }
+

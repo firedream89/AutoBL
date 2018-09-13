@@ -1,5 +1,6 @@
 #include "infowindow.h"
 
+
 InfoWindow::InfoWindow(QWidget *parent,QString windowTitle, int type)
 {
     if(parent->findChild<QDialog*>("InfoWindow") != NULL)

@@ -1,6 +1,7 @@
 #include "esabora.h"
 #include <Windows.h>
 
+
 Esabora::Esabora(QWidget *fen, QString Login, QString MDP, QString Lien_Esabora, QString Lien_Travail, DB *db,Error *e):
     m_fen(fen),m_Login(Login),m_MDP(MDP),m_Lien_Esabora(Lien_Esabora),m_Lien_Work(Lien_Travail),m_DB(db),err(e),etat(0)
 {
@@ -1361,3 +1362,4 @@ void Esabora::Test_Add_BL(QString invoice,QString bl)
     Abort();
     Fermeture_API();
 }
+

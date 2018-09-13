@@ -1,7 +1,8 @@
 #include "error.h"
 
+
 Error::Error()
-{
+{   
     qDebug() << "Error | Erreur Constructeur par défaut initialisé";
 }
 
@@ -129,3 +130,4 @@ void Error::Write_Error(QString e)
     QTextStream flux(&m_Errors);
     flux << e << "\r\n";
 }
+

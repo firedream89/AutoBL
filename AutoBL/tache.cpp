@@ -1,7 +1,9 @@
 #include "tache.h"
 
+
 Tache::Tache(QString version)
 {
+
     m_Tray = new QSystemTrayIcon;
     m_Tray->setIcon(QIcon(":/icone/Doc"));
     m_Tray->blockSignals(true);
@@ -69,3 +71,4 @@ void Tache::Login(bool etat)
         m->actions().at(1)->setEnabled(false);
     }
 }
+

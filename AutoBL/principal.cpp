@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.43"); //Version De L'application
-QString ver("1433");
+QString version("1.43-4"); //Version De L'application
+QString ver("1434");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -12,6 +12,17 @@ Principal::Principal(QWidget *parent) :
     ui(new Ui::Principal)
 {
     ui->setupUi(this);
+
+    //LastUpdated
+    lastUpdate.append("principal : 1.434");
+    lastUpdate.append("DB : 1.43");
+    lastUpdate.append("error : 1.433");
+    lastUpdate.append("esabora : 1.43");
+    lastUpdate.append("fctFournisseur : 1.43");
+    lastUpdate.append("InfoWindow : 1.43");
+    lastUpdate.append("Rexelfr : 1.434");
+    lastUpdate.append("Socolecfr : 1.433");
+    lastUpdate.append("tache : 1.43");
 
     //ARG
     for(int i = 0;i<qApp->arguments().count();i++)
@@ -290,6 +301,9 @@ void Principal::Init_Config()
     m_Arret = true;
     login = false,
     ui->tNomFichier->setContextMenuPolicy(Qt::CustomContextMenu);
+
+    //getLastUpdate
+    ui->listLastUpdate->addItems(lastUpdate);
 
     Show_List_Sav();
 }

@@ -127,6 +127,7 @@ private:
     bool premierDemarrage;
     Fournisseur *m_Frn;
     Error *m_Error;
+    QStringList lastUpdate;
 };
 
 #endif // PRINCIPAL_H

@@ -1,5 +1,6 @@
 #include "db.h"
 
+
 /////////////////////////////////
 /// Table En_Cours
 /// ---------------
@@ -437,3 +438,4 @@ QSqlQuery DB::Get_Delivery_Invoice(QString frn)
 {
     return Requete("SELECT * FROM En_Cours WHERE Etat='" + QString::number(Close) + "' AND Fournisseur='" + frn + "' AND (Numero_Livraison='' OR Numero_Livraison=' ')");
 }
+

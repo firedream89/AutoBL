@@ -1,4 +1,6 @@
 #include "rexelfr.h"
+
+
 ///Error Code 9xx
 RexelFr::RexelFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db):
     m_Login(login),m_MDP(mdp),m_UserName(comp),m_WorkLink(lien_Travail),m_DB(db)
@@ -203,7 +205,7 @@ bool RexelFr::Create_List_Invoice()
 
                 //Date
                 ligne = flux.readLine();
-                if(ligne.contains("Date :"))
+                if(ligne.contains("Date"))
                 {
                     date = flux.readLine().replace(".","/");
                 }
@@ -247,7 +249,7 @@ bool RexelFr::Create_List_Invoice()
                     m_Fct->FrnError(variable,REXEL,"Numéro de chantier");
                     error = true;
                 }
-                DEBUG << etat << numeroCommande << nomChantier;
+                DEBUG << etat << numeroCommande << nomChantier << date;
 
                 req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "' AND Fournisseur='" + REXEL + "'");
                 req.next();
@@ -582,3 +584,4 @@ QString RexelFr::Get_Info()
 {
     return QString(INF);
 }
+

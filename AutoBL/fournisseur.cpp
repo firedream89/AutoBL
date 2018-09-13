@@ -1,5 +1,6 @@
 #include "fournisseur.h"
 
+
 ////////////
 ///FRN CLASS UPDATE
 /// -Start
