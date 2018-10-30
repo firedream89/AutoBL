@@ -17,16 +17,16 @@ class SocolecFr: public QObject
 public:
     SocolecFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db);
     bool Start();
-    QStringList Get_Invoice(const QString InvoiceNumber);
+    QStringList Get_Invoice(const QString InvoiceNumber, QString link);
     void Set_Var(const QString login,const QString mdp,const QString comp);
     bool Test_Connexion();
     static QString Get_Inf();
 
 private slots:
     bool Connexion();
-    bool Create_List_Invoice(bool firstInit = 0);
-    bool Update_State(QString invoice);
-    bool Update_Delivery(QString invoice);
+    bool Create_List_Invoice();
+    bool Update_State(QString invoice, QString link);
+    bool Update_Delivery(QString invoice, QString link);
 
 signals:
     void Info(const QString i);

@@ -954,6 +954,8 @@ bool Esabora::Verification_Fenetre(QString fenetre)
 bool Esabora::Verification_Focus(QString fen, bool focus)
 {
     qDebug() << "Esabora::Verification_Focus()";
+    QString mess;
+    DEBUG << "Détection fenêtre : " << Verification_Message_Box(mess);
     QEventLoop loop;
     QTimer t;
     connect(&t,SIGNAL(timeout()),&loop,SLOT(quit()));
@@ -1106,70 +1108,45 @@ bool Esabora::Verification_Message_Box(QString &message)
     {
         originalPixmap = screen->grabWindow(0);
         originalPixmap = originalPixmap.copy(rect.left,rect.top,rect.right-rect.left,rect.bottom-rect.top);
+        DEBUG << "Pixmap size : " << originalPixmap.width() << "x" << originalPixmap.height();
     }
+    else
+        return false;
     //enregistrement screen
-    QFile file(m_Lien_Work + "/test.PNG");
-    file.open(QIODevice::WriteOnly);
-    originalPixmap.save(&file,"JPG");
-    file.close();
+    QDir d;
+    d.setPath(m_Lien_Work + "/Temp");
+    int nb = d.entryList(QDir::NoDotAndDotDot | QDir::Files).count() + 1;
+    QFile file(m_Lien_Work + "/Temp/" + QString::number(nb) + ".PNG");
+    DEBUG << "File Open : " << file.open(QIODevice::WriteOnly);
+    DEBUG << "Save Pixmap : " << m_Lien_Work + "/Temp/" + QString::number(nb) + ".PNG" << originalPixmap.save(&file,"PNG");
     //Accès screen comparatifs
     QDir dir;
-    dir.setPath("imgMessageBox");
+    dir.setPath(m_Lien_Work + "/Screen/");
     QImage img(0),img2(0);
-    originalPixmap.save("imgMessageBox/Temp.JPEG");
-    img.load("imgMessageBox/Temp.JPEG");
+    DEBUG << "Load Image : " << img.load(m_Lien_Work + "/Temp/" + QString::number(nb) + ".PNG");
     //Boucle suivant le nombre de fichiers dans le dossier
     for(int cpt=0;cpt<dir.entryList(QDir::NoDotAndDotDot | QDir::Files).count();cpt++)
     {
         img2.load(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt));
         if(img.operator ==(img2))//Si les screens correspondent
         {
-            if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "Aucun_acticle_a_receptionner.PNG")
+            QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='MBText_" + QString::number(nb) + "'");
+            if(req.next())
             {
-                emit Info("DEBUG : Aucun article à réceptionner !");
-            }
-            else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "c_non_repertorie.PNG")
-            {
-                emit Info("DEBUG : Chantier non répertorié !");
-            }
-            else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "f_non_repertorie.PNG")
-            {
-                emit Info("DEBUG : Fournisseur non répertorié !");
-            }
-            else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "i_non_repertorie.PNG")
-            {
-                emit Info("DEBUG : Interlocuteur non répertorié !");
-            }
-            else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "l_deja_livre.PNG")
-            {
-                emit Info("DEBUG : Modification de ligne déjà livrée !");
-            }
-            else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "livraison_total.PNG")
-            {
-                emit Info("DEBUG : Livraison total");
-            }
-            else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "quitter.PNG")
-            {
-                emit Info("DEBUG : Quitter en perdant les données ?");
-            }
-            else if(dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt) == "Sauvegarder.PNG")
-            {
-                emit Info("DEBUG : Sauvegarder ?");
+                DEBUG << "MessageBox = " << req.value(0);
             }
             else
             {
                 emit Info("DEBUG : MessageBox introuvable ! " + dir.entryList(QDir::NoDotAndDotDot | QDir::Files).at(cpt));
-                file.copy(QApplication::applicationDirPath() + "/imgMessageBox/inconnu.PNG");
             }
+            file.remove();
             cpt = dir.entryList(QDir::NoDotAndDotDot | QDir::Files).count();
-            qDebug() << "Verification_Message_Box - MessageBox Trouvé";
             qDebug() << "Fin Esabora::Verification_Message_Box()";
             return true;
         }
     }
     //Si aucune screen ne correspond
     emit Info("DEBUG : MessageBox inconnue !");
-    file.copy(QApplication::applicationDirPath() + "/imgMessageBox/inconnu.PNG");
     message = "Inconnu";
     qDebug() << "Verification_Message_Box - MessageBox inconnue";
     qDebug() << "Fin Esabora::Verification_Message_Box()";

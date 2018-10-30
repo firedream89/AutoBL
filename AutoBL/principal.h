@@ -27,6 +27,20 @@
 
 #define DEBUG qDebug()
 
+enum MBName{
+    null,
+    Connexion,
+    Sauvegarder,
+    ToutReceptionner,
+    ErrorAucunArticle,
+    TransfererCommande,
+    ErrorUnknown,
+    ExitWithoutSaving,
+    ErrorCodeNonRepertorie,
+    ErrorInterlocuteurNonRepertorie,
+    ErrorChantierNonRepertorie
+};
+
 namespace Ui {
 class Principal;
 }
@@ -105,6 +119,8 @@ public slots:
     void Load_Unknown_Fab();
     void Sav_Unknown_Fab();
     void Reload_Error();
+    void Load_Unknown_MB();
+    void Sav_Unknown_MB();
 
 signals:
     void FinAjout();

@@ -14,7 +14,7 @@
 #include "db.h"
 #include "error.h"
 
-#define ESAB QString("Esabora")
+#define ESAB "Esabora"
 
 class Esabora : public QObject
 {

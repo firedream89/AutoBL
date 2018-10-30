@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.43-4"); //Version De L'application
-QString ver("1434");
+QString version("1.435"); //Version De L'application
+QString ver("1435");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -14,14 +14,14 @@ Principal::Principal(QWidget *parent) :
     ui->setupUi(this);
 
     //LastUpdated
-    lastUpdate.append("principal : 1.434");
-    lastUpdate.append("DB : 1.43");
+    lastUpdate.append("principal : 1.435");
+    lastUpdate.append("DB : 1.435");
     lastUpdate.append("error : 1.433");
-    lastUpdate.append("esabora : 1.43");
-    lastUpdate.append("fctFournisseur : 1.43");
+    lastUpdate.append("esabora : 1.435");
+    lastUpdate.append("fctFournisseur : 1.435");
     lastUpdate.append("InfoWindow : 1.43");
-    lastUpdate.append("Rexelfr : 1.434");
-    lastUpdate.append("Socolecfr : 1.433");
+    lastUpdate.append("Rexelfr : 1.435");
+    lastUpdate.append("Socolecfr : 1.435");
     lastUpdate.append("tache : 1.43");
 
     //ARG
@@ -56,6 +56,8 @@ Principal::Principal(QWidget *parent) :
     dir.mkdir(m_Lien_Work);
     dir.mkdir(m_Lien_Work + "/Config");
     dir.mkdir(m_Lien_Work + "/Logs");
+    dir.mkdir(m_Lien_Work + "/Temp");
+    dir.mkdir(m_Lien_Work + "/Screen");
 
     //Ouverture du fichier logs
     m_Logs.setFileName(m_Lien_Work + "/Logs/logs.txt");
@@ -109,6 +111,7 @@ Principal::Principal(QWidget *parent) :
     //Préparation Esabora + Fournisseur
     QSqlQuery req;
     m_Frn = new Fournisseur(m_Lien_Work,m_DB,m_Error);
+    m_DB->Set_List_Fournisseurs(m_Frn->List_Frn());
     req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
     while(req.next())
     {
@@ -120,6 +123,7 @@ Principal::Principal(QWidget *parent) :
 
     m_Esabora = new Esabora(this,ui->eLogin->text(),ui->eMDP->text(),ui->lienEsabora->text(),m_Lien_Work,m_DB,m_Error);
     QThread *thread = new QThread;
+    thread->start();
     ///Déplacement des classes dans un thread séparé
     m_Esabora->moveToThread(thread);
 
@@ -182,6 +186,7 @@ Principal::Principal(QWidget *parent) :
     connect(ui->restaurerDB,SIGNAL(clicked(bool)),this,SLOT(Restaurer_DB()));
     connect(ui->Add_BC_Fictif,SIGNAL(clicked(bool)),this,SLOT(DBG_Select_Frn_Fictif()));
     connect(ui->sav_Unknown_Fab,SIGNAL(clicked(bool)),this,SLOT(Sav_Unknown_Fab()));
+    connect(ui->bUnknownMB,SIGNAL(clicked(bool)),this,SLOT(Sav_Unknown_MB()));
 
     qApp->setQuitOnLastWindowClosed(false);
 
@@ -306,6 +311,7 @@ void Principal::Init_Config()
     ui->listLastUpdate->addItems(lastUpdate);
 
     Show_List_Sav();
+    Load_Unknown_MB();
 }
 
 //Config//////////////////////////////
@@ -469,7 +475,6 @@ void Principal::PurgeError()
 {
     ui->e_Erreur2->setText("0");
     ui->eArgErreurs->clear();
-    ui->aff_Erreur->clear();
     ui->tabWidget->setTabText(1,"Information");
 }
 
@@ -1259,6 +1264,81 @@ void Principal::Tri_TNomFichier_Ref()
     Afficher_tNomFichier(ui->tNomFichier->currentRow(),ui->tNomFichier->currentColumn(),2);
 }
 
+//Unknown MB/////////////////////
+void Principal::Load_Unknown_MB()
+{
+    while(ui->tableUnknownMB->rowCount() > 0)
+        ui->tableUnknownMB->removeRow(0);
+
+    QDir d;
+    d.setPath(m_Lien_Work + "/Temp");
+    QStringList list = d.entryList(QDir::NoDotAndDotDot | QDir::Files);
+    for(int i=0;i<list.count();i++)
+    {
+        QImage img;
+        DEBUG << m_Lien_Work + "/Temp/" + list.at(i) << img.load(m_Lien_Work + "/Temp/" + list.at(i),"JPG");
+
+        ui->tableUnknownMB->insertRow(0);
+        ui->tableUnknownMB->setItem(0,1,new QTableWidgetItem());
+        ui->tableUnknownMB->item(0,1)->setData(Qt::DecorationRole,QPixmap::fromImage(img));
+        ui->tableUnknownMB->item(0,1)->setData(Qt::UserRole,list.at(i));
+        QComboBox* combo = new QComboBox();
+        combo->setObjectName(list.at(i));
+        combo->addItem("");
+        combo->setItemData(0,0);
+        combo->addItem("Connexion");
+        combo->setItemData(1,1);
+        combo->addItem("Sauvegarder");
+        combo->setItemData(2,2);
+        combo->addItem("Tout Réceptionner");
+        combo->setItemData(3,3);
+        combo->addItem("Erreur : Aucun acticle à réceptionner");
+        combo->setItemData(4,4);
+        combo->addItem("Transférer commande");
+        combo->setItemData(5,5);
+        combo->addItem("Erreur");
+        combo->setItemData(6,6);
+        combo->addItem("Quitter sans sauvegarder");
+        combo->setItemData(7,7);
+        combo->addItem("Code non répertorié");
+        combo->setItemData(8,8);
+        combo->addItem("Interlocuteur non répertorié");
+        combo->setItemData(9,9);
+        combo->addItem("Chantier non répertorié");
+        combo->setItemData(10,10);
+        ui->tableUnknownMB->setCellWidget(0,0,combo);
+    }
+    ui->tableUnknownMB->resizeColumnsToContents();
+    ui->tableUnknownMB->resizeRowsToContents();
+}
+
+void Principal::Sav_Unknown_MB()
+{
+    for(int i = 0;i < ui->tableUnknownMB->rowCount();i++)
+    {
+        QString filename = ui->tableUnknownMB->item(i,1)->data(Qt::UserRole).toString();
+        QComboBox *box = ui->tableUnknownMB->findChild<QComboBox*>(filename);
+        if(box)
+            if(!box->currentText().isEmpty())
+            {
+                QSqlQuery req = m_DB->Requete("SELECT MAX(ID) FROM Options");
+                req.next();
+                bool ret = QFile::copy(m_Lien_Work + "/Temp/" + filename,m_Lien_Work + "/Screen/" + QString::number(req.value(0).toInt()+1));
+                if(ret)
+                {
+                    QFile f(m_Lien_Work + "/Temp/" + filename);
+                    ret = f.remove();
+                }
+                if(ret)
+                    m_DB->Requete("INSERT INTO Options VALUES('" + QString::number(req.value(0).toInt()+1) +
+                                  "','MBText_" + QString::number(req.value(0).toInt()+1) + "','" + box->itemData(box->currentIndex()).toString() + "')");
+
+                DEBUG << "Enregistrement screen " + filename + " = " << ret;
+            }
+    }
+    Load_Unknown_MB();
+}
+
 //Fenêtre login//////////////////
 void Principal::Login()
 {
@@ -1326,43 +1406,47 @@ void Principal::Login_True()
 //Recherche de mise à jour//////
 void Principal::MAJ()
 {
+    DEBUG << "start MAJ";
     QTimer *timer = new QTimer;
     QNetworkAccessManager manager;
-    QNetworkReply *reply = manager.get(QNetworkRequest(QUrl(MAJLINK))); // Url vers le fichier version.txt
+    QNetworkReply *reply = manager.get(QNetworkRequest(QUrl("https://github.com/firedream89/AutoBL/commits/master")));
     QEventLoop loop;
     QObject::connect(reply, SIGNAL(finished()), &loop, SLOT(quit()));
     timer->start(10000);
     QObject::connect(timer,SIGNAL(timeout()), timer, SLOT(stop()));
     QObject::connect(timer, SIGNAL(timeout()), &loop, SLOT(quit()));
     loop.exec();
-    qDebug() << reply->errorString();
-    timer->stop();
-    QString retour1 = reply->readAll();
-    QStringList retour = retour1.split("\n");
-    qDebug() << "MAJ - Dernière version = " << retour;
-    QStringList MAJDispo;
-    for(int cpt=0;cpt<retour.count();cpt++)
-    {
-        if(retour.at(cpt).toDouble() > ver.toDouble())
+    qDebug() << "MAJ : " + reply->errorString();
+    QFile f(m_Lien_Work + "/web_Temp.txt");
+    f.resize(0);
+    f.open(QIODevice::WriteOnly);
+    f.write(reply->readAll());
+    f.close();
+    f.open(QIODevice::ReadOnly);
+    f.seek(0);
+    QTextStream flux(&f);
+
+    QString retour;
+    while(!flux.atEnd())
+        if(flux.readLine().contains("<span class=\"select-menu-item-text css-truncate-target\" title=\""))
         {
-            MAJDispo.append("ver=" + retour.at(cpt));
+            retour = flux.readLine();
+            retour.replace(" ","");
+            break;
         }
-    }
-    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='21'");
-    req.next();
-    if(MAJDispo.count() == 1 && MAJDispo.at(0) != req.value("Valeur").toString())
+
+    qDebug() << "MAJ - Dernière version = " << retour;
+
+    if(retour.count() > version.count())
+        version = version + "0";
+    else if(retour.count() < version.count())
+        retour = retour + "0";
+    if(retour.toDouble() > version.toDouble())
     {
         qDebug() << "MAJ - Une mise à jour est disponible !";
-        m_DB->Requete("UPDATE Options SET Valeur='" + MAJDispo.at(0) + "' WHERE ID='21'");
-        MAJDispo.append("API=" + QCoreApplication::applicationDirPath() + "/" + "AutoBL.exe");
-        MAJDispo.append("ftp=" + QString(MAJLINK));
-        MAJDispo.append("RA=oui");
-        MAJDispo.append("name=AutoBL");
-        MAJDispo.append("icon=");
-        MAJDispo.append("webSite=https://github.com/firedream89/AutoBL/releases");
-        QProcess MAJ;
-        MAJ.start(QCoreApplication::applicationDirPath() + "/" + "MAJ.exe",MAJDispo);
-        exit(0);
+        QLabel *lbl = new QLabel("<strong>Une mise à jour est disponible <a href='https://github.com/firedream89/AutoBL/releases'>ici</a> !(version " + retour + ")</strong>");
+        lbl->setOpenExternalLinks(true);
+        ui->statusBar->insertWidget(0,lbl);
     }
 }
 
@@ -1462,10 +1546,10 @@ bool Principal::Post_Report()
     while(end == false)
     {
         cnt++;
-        if(text.count() > 524288)
+        if(text.count() > 500000)
         {
-            rest = text.mid(524287);
-            text.remove(524287,text.count()-1);
+            rest = text.mid(499999);
+            text.remove(499999,text.count()-1);
         }
         w.page()->runJavaScript("document.getElementById('sj').value='" + rapport.fileName().split(".").at(0) + " - " + QString::number(cnt) + "';",[&l](const QVariant r){l.quit();});
         l.exec();
@@ -1491,22 +1575,6 @@ bool Principal::Post_Report()
         this->findChildren<QDialog *>().at(0)->findChildren<QPushButton *>().at(0)->setText("Rapport envoyé !");
     }
 
-    bool finish(false);
-    while(finish == false)
-    {
-        QString text;
-        bool end(false);
-        w.page()->toPlainText([&text,&end](const QString result){text = result;end = true;});
-        while(end == false)
-        {
-            t.start(500);
-            l.exec();
-        }
-        if(text.contains("Envoie mail"))
-        {
-            finish = true;
-        }
-    }
     l.exec();
     m_Logs.resize(0);
     m_Errors.resize(0);
@@ -1543,30 +1611,16 @@ void Principal::Get_Tableau_Matos(QString Numero_Commande)
 
 void Principal::Init_Fournisseur()
 {
-    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='24'");
-    req.next();
-    if(req.value(0).toString() != m_Frn->List_Frn())
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
+
+    QStringList list = m_Frn->List_Frn().split("|");
+    while(req.next())
     {
-        m_DB->Requete("UPDATE Options SET Valeur='" + m_Frn->List_Frn() + "', Nom='Fournisseurs' WHERE ID='24'");
+        list.removeOne(req.value(0).toString());
+        ui->listFrnAjouter->addItem(req.value(0).toString());
     }
-
-    req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs' OR Nom='FrnADD'");
-
-    req.next();
-    DEBUG << req.value("Valeur");
-    if(req.value("Valeur").toString().split("|").count() > 1)
-    {
-        QStringList list = req.value("Valeur").toString().split("|");
-        while(req.next())
-        {
-            list.removeOne(req.value("Valeur").toString());
-            ui->listFrnAjouter->addItem(req.value("Valeur").toString());
-        }
-        if(list.last().isEmpty() && list.count() > 0) { list.removeLast(); }
+    if(list.last().isEmpty() && list.count() > 0) { list.removeLast(); }
         ui->listFrnDispo->addItems(list);
-    }
-    else
-        DEBUG << "Erreur Liste Fournisseurs non trouvé !";
     DEBUG << "FIN Init_Fournisseurs";
 }
 
@@ -1662,7 +1716,7 @@ void Principal::Save_Param_Fournisseur()
     }
     else
     {
-        m_Frn->Add(ui->lFrn->text(),ui->eFrnMail->text(),ui->eFrnMDP->text(),ui->eFrnUserName->text());
+        m_Frn->Add(ui->lFrn->text(),ui->eFrnUserName->text(),ui->eFrnMail->text(),ui->eFrnMDP->text());
         Affichage_Info("Informations " + ui->listFrnAjouter->currentItem()->text() + " mise à jour",true);
     }
 }

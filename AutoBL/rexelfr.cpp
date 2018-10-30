@@ -20,7 +20,7 @@ bool RexelFr::Start()
         }
 
         //Vérification état BC
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Etat!='" + QString::number(Close) + "' AND Fournisseur='" + QString(REXEL) + "'");
+        req = m_DB->Get_No_Closed_Invoice(REXEL);
         while(req.next())
         {
             m_Fct->Info(tr("Mise à jour état commande %1").arg(req.value("Numero_Commande").toString()));
@@ -30,7 +30,7 @@ bool RexelFr::Start()
             }
         }
         //Récupération des BL
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Etat='" + QString::number(Close) + "' AND Fournisseur='" + QString(REXEL) + "'");
+        req = m_DB->Get_Delivery_Invoice(REXEL);
         qDebug() << "BOUCLE Récupération des BL";
         while(req.next())
         {
@@ -101,8 +101,6 @@ bool RexelFr::Create_List_Invoice()
 
     ///Récupération du texte de page de commandes et placement en fichier
     QTimer t;
-    QSqlQuery r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='19'");
-    r.next();
     connect(&t,SIGNAL(timeout()),&t,SLOT(stop()));
     int nbPage(0),tPage(6);
     bool fin = false;
@@ -110,7 +108,7 @@ bool RexelFr::Create_List_Invoice()
     do
     {
         //Chargement de la page suivante
-        t.start(r.value(0).toInt()*2000);
+        t.start(m_Fct->Get_Pause_Cmd()*2000);
         m_Fct->InsertJavaScript("ACC.orderHistoryPage.ajaxOrderHistoryReq(" + QString::number(nbPage+1) + ",ACC.orderHistoryPage.sortCriteria,ACC.orderHistoryPage.isAscendingVal);");
         m_Fct->InsertJavaScript("ACC.orderHistoryPage.loadMoreResults(parseInt(" + QString::number(nbPage+1) + "),ACC.orderHistoryPage.sortCriteria,ACC.orderHistoryPage.isAscendingVal,'header');");
 
@@ -133,8 +131,6 @@ bool RexelFr::Create_List_Invoice()
         m_Fct->SaveText();
 
         ///Traitement des données contenu dans le fichier web_Temp.txt
-        QSqlQuery req;
-        bool premierDemarrage(false);
         QString nomChantier, lienChantier, numeroCommande, etat, date, infoChantier;
         QFile fichier(m_WorkLink + "/web_Temp.txt");
         QTextStream flux(&fichier);
@@ -144,17 +140,9 @@ bool RexelFr::Create_List_Invoice()
         }
 
         DEBUG << "Navigation - Début du traitement des informations";
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='Rexel.fr'");
-        if(req.next() == false) { premierDemarrage = true; }
 
         while(flux.atEnd() == false && fin == false)
         {
-            int id = 0;
-            req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
-            req.next();
-            id = req.value(0).toInt();
-            id++;
-
             infoChantier = "";
             bool skip(false);
             QString ligne = flux.readLine();
@@ -207,7 +195,8 @@ bool RexelFr::Create_List_Invoice()
                 ligne = flux.readLine();
                 if(ligne.contains("Date"))
                 {
-                    date = flux.readLine().replace(".","/");
+                    date = flux.readLine();
+                    date = QString("%0-%1-%2").arg(date.split(".").at(2),date.split(".").at(1),date.split(".").at(0));
                 }
                 else
                 {
@@ -233,53 +222,19 @@ bool RexelFr::Create_List_Invoice()
                     nomChantier = flux.readLine();
                 }
 
-                //Contrôle
-                if(etat.isEmpty())
+                if(!skip)
                 {
-                    m_Fct->FrnError(variable,REXEL,"Etat");
-                    error = true;
-                }
-                else if(numeroCommande.isEmpty())
-                {
-                    m_Fct->FrnError(variable,REXEL,"Numéro de commande");
-                    error = true;
-                }
-                else if(nomChantier.isEmpty())
-                {
-                    m_Fct->FrnError(variable,REXEL,"Numéro de chantier");
-                    error = true;
-                }
-                DEBUG << etat << numeroCommande << nomChantier << date;
-
-                req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + numeroCommande + "' AND Fournisseur='" + REXEL + "'");
-                req.next();
-
-                if(req.value("Numero_Commande").isNull() && error == false && skip == false)
-                {
-                    if(date.split("/").count() != 3)///Si la date n'a pas été trouvé
-                    {
-                        m_Fct->FrnError(variable,REXEL,"date");
-                        return false;
-                    }
-                    QStringList l = date.split("/");
-                    date = l.at(2) + "-" + l.at(1) + "-" + l.at(0);
-                    DEBUG << "Navigation - Ajout nouveau BC dans la DB : " << req.prepare("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + nomChantier + "','" + numeroCommande + "','','" + lienChantier + "','" + etat + "','','" + infoChantier + "','0','','Rexel.fr')");
-                    if(req.exec() == false)
-                    {
-                        m_Fct->FrnError(requete,REXEL,"Création BC");
-                        DEBUG << "Navigation - Echec Ajout";
-                        return false;
-                    }
-                    else if(premierDemarrage)
-                    {
-                        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE ID='" + QString::number(id) + "'");
+                    DEBUG << "ADD invoice " + numeroCommande;
+                    QStringList invoice;
+                    invoice.append(numeroCommande);
+                    invoice.append(date);
+                    invoice.append(lienChantier);
+                    invoice.append(etat);
+                    invoice.append(nomChantier);
+                    invoice.append(infoChantier);
+                    invoice.append(REXEL);
+                    if(!m_Fct->Add_Invoice(invoice))
                         fin = true;
-                    }
-                }
-                else
-                {
-                    DEBUG << "Navigation - Fin d'ajout";
-                    fin = true;
                 }
             }
         }
@@ -396,7 +351,7 @@ bool RexelFr::Check_Delivery(const QString InvoiceNumber)
         m_Fct->FrnError(too_many,REXEL,QString(bl.split(" ").count()));
         return false;
     }
-    m_DB->Requete("UPDATE En_Cours SET Numero_Livraison='" + bl + "' WHERE Numero_Commande='" + InvoiceNumber + "' AND Fournisseur='" + REXEL + "'");
+    m_DB->Update_En_Cours(InvoiceNumber,REXEL,"Numero_Livraison",bl);
     DEBUG << "Recuperation_BL - DB mise à jour";
     DEBUG << "Fin Rexel::Recuperation_BL()";
     return true;
@@ -422,17 +377,18 @@ bool RexelFr::Check_State(const QString InvoiceNumber)
         DEBUG << "VerificationEtatBC - Echec chargement de la page";
         return false;
     }
-
+    int state(0);
     if(m_Fct->FindTexte("Livrée En Totalité") || m_Fct->FindTexte("Livrée Et Facturée"))
     {
-        DEBUG << "VerificationEtatBC - Mise à jour de l'état du BC " + InvoiceNumber + "=" + "Livrée en totalité";
-        m_DB->Requete("UPDATE En_Cours SET Etat='" + QString::number(Close) + "' WHERE Numero_Commande='" + InvoiceNumber + "' AND Fournisseur='" + REXEL + "'");
+        DEBUG << "VerificationEtatBC - Mise à jour de l'état du BC " + InvoiceNumber + "=" + "Livrée en totalité";  
+        state = Close;
     }
     else if(m_Fct->FindTexte("Partiellement Livrée"))
     {
         DEBUG << "VerificationEtatBC - Mise à jour de l'état du BC " + InvoiceNumber + "=" + "Partiellement livrée";
-        m_DB->Requete("UPDATE En_Cours SET Etat='" + QString::number(partial) + "' WHERE Numero_Commande='" + InvoiceNumber + "' AND Fournisseur='" + REXEL + "'");
+        state = partial;
     }
+    m_DB->Update_En_Cours(InvoiceNumber,REXEL,"Etat",QString::number(state));
     DEBUG << "Fin Rexel::VerificationEtatBC()";
     return true;
 }

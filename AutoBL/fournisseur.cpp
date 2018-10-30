@@ -13,7 +13,7 @@ Fournisseur::Fournisseur(QString lien_Travail, DB *db, Error *err):
     m_Lien_Travail(lien_Travail),m_DB(db),m_Error(err)
 {
     DEBUG << "Fournisseur | Init de la classe";
-    m_fct = new FctFournisseur(m_Lien_Travail,m_Error);
+    m_fct = new FctFournisseur(m_Lien_Travail,m_Error,m_DB);
     connect(m_fct,SIGNAL(info(QString)),this,SIGNAL(Info(QString)));
     connect(m_fct,SIGNAL(LoadProgress(int)),this,SIGNAL(LoadProgress(int)));
     connect(m_fct,SIGNAL(change_Load_Window(QString)),this,SIGNAL(Change_Load_Window(QString)));
@@ -62,11 +62,13 @@ bool Fournisseur::Start()
             {
                 RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
                 frn->Start();
+                m_fct->Add_Invoices_To_DB();
             }
             else if(nom == FRN2)
             {
                 SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
                 frn->Start();
+                m_fct->Add_Invoices_To_DB();
             }
             else
                 m_Error->Err(failFrn,nom,FRN);
@@ -74,50 +76,6 @@ bool Fournisseur::Start()
         else
             m_Error->Err(failData,"",FRN);
     }
-
-
-    //Controle nouveau BC
-    /*QSqlQuery req = m_DB->Get_Download_Invoice();
-    while(req.next())
-    {
-        QStringList list;
-        if(req.value("Fournisseur").toString() == FRN1)
-        {
-            QStringList var = Find_Fournisseur(FRN1);
-            QString login, mdp, comp;
-            if(var.count() != 3)
-            {
-                login = var.at(0);
-                mdp = var.at(1);
-                comp = var.at(2);
-            }
-
-            RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);;
-            list = frn->Get_Invoice(req.value("Numero_Commande").toString());
-        }
-        else if(req.value("Fournisseur").toString() == FRN2)
-        {
-            QStringList var = Find_Fournisseur(FRN2);
-            QString login, mdp, comp;
-            if(var.count() != 3)
-            {
-                login = var.at(0);
-                mdp = var.at(1);
-                comp = var.at(2);
-            }
-
-            SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
-            list = frn->Get_Invoice(req.value("Numero_Commande").toString());
-        }
-        if(list.isEmpty())
-        {
-            m_Error->Err(variable,"Liste matériels vide",FRN);
-        }
-        else
-        {
-            m_fct->Control_Fab(list);
-        }
-    }*/
     return true;
 }
 
@@ -135,18 +93,24 @@ QStringList Fournisseur::Get_Invoice_List(const QString& frn,const QString& invo
     QString mdp = f.at(1);
     QString comp = f.at(2);
 
+    QSqlQuery req = m_DB->Requete("SELECT Lien_Commande FROM En_Cours WHERE Numero_Commande='" + invoiceNumber + "' AND Fournisseur='" + frn + "'");
+    if(!req.next())
+    {
+        m_Error->Err(requete,"invoice not found",FRN);
+        return QStringList(0);
+    }
+    QString link = req.value(0).toString();
+
     QStringList final;
     if(frn == FRN1)
     {
         RexelFr *frn = new RexelFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
-        //final = m_fct->Control_Fab(frn->Get_Invoice(invoiceNumber));
         final = frn->Get_Invoice(invoiceNumber);
     }
     else if(frn == FRN2)
     {
         SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
-        //final = m_fct->Control_Fab(frn->Get_Invoice(invoiceNumber));
-        final = frn->Get_Invoice(invoiceNumber);
+        final = frn->Get_Invoice(invoiceNumber,link);
     }
     return final;
 }

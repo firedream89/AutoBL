@@ -11,38 +11,32 @@ bool SocolecFr::Start()
 {
     DEBUG << "Start " << FRN;
 
-    bool firstInit(false);
     bool error(false);
-
-    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "'");
-    if(req.next() == false)
-    {
-        firstInit = true;
-    }
+    QSqlQuery req;
 
     if(Connexion())
     {
         m_Fct->Info("Chargement des commandes...");
         DEBUG << "Socolec | Connected";
-        if(Create_List_Invoice(firstInit) == false) { error = true; }
+        if(Create_List_Invoice() == false) { error = true; }
 
         //Update State
         DEBUG << "Socolec | Update State";
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "' AND (Etat='" + QString::number(open) + "' OR "
-                                                                                                 "Etat='" + QString::number(partial) + "')");
+        req = m_DB->Get_No_Closed_Invoice(FRN);
+
         while(req.next())
         {
             m_Fct->Info(tr("Mise à jour état commande %0").arg(req.value("Numero_Commande").toString()));
-            Update_State(req.value("Numero_Commande").toString());
+            Update_State(req.value("Numero_Commande").toString(),req.value("Lien_Commande").toString());
         }
 
         //Update Delivery
         DEBUG << "Socolec | Update Delivery";
-        req = m_DB->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + QString(FRN) + "' AND Numero_Livraison='' AND Etat ='" + QString::number(Close) + "'");
+        req = m_DB->Get_Delivery_Invoice(FRN);
         while(req.next())
         {
             m_Fct->Info(tr("Récupération des bons de livraison commande %1").arg(req.value("Numero_Commande").toString()));
-            Update_Delivery(req.value("Numero_COmmande").toString());
+            Update_Delivery(req.value("Numero_Commande").toString(),req.value("Lien_Commande").toString());
         }
     }
     else
@@ -85,7 +79,7 @@ bool SocolecFr::Connexion()
     return false;
 }
 
-bool SocolecFr::Create_List_Invoice(bool firstInit)
+bool SocolecFr::Create_List_Invoice()
 {
     //Chargement de la page
     //https://socolec.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-SOCOLEC-Site/fr_FR/-/EUR/ViewPurchaseOrderList-Start?SortAttribute=CreationDate&AttributeType=DATE&SortOrder=false&ListAllOrders=1&PageNumber=1
@@ -115,7 +109,7 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
         }
         QTextStream flux(&f);
 
-        while(f.atEnd() == false)
+        while(f.atEnd() == false && endScan == false)
         {
             bool skip = false;
             text = flux.readLine();
@@ -206,33 +200,29 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
                     m_Fct->FrnError(variable,FRN,"Etat");
                     return false;
                 }
-                QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + invoice_Number + "' AND Fournisseur='" + FRN + "'");
-                bool exist = req.next();
-                if(skip == false && exist == false)
+                if(!skip)
                 {
-                    int ID(0);
-                    req = m_DB->Requete("SELECT MAX(ID) FROM En_Cours");
-                    req.next();
-                    ID = req.value(0).toInt();
-                    ID++;
-                    m_DB->Requete("INSERT INTO En_Cours VALUES('" + QString::number(ID) + "','" + date + "','" + ref + "','" + invoice_Number + "','','" + link + "','" + etat + "','','" + name + "','0','','" + FRN + "')");
-                    if(firstInit)
-                    {
-                        m_DB->Requete("UPDATE En_Cours SET Ajout='"+QString::number(endAdd)+"' WHERE ID='" + QString::number(ID) + "'");
-                        return true;
-                    }
-                }
-                else if(exist == true)
-                {
-                    endScan = true;
-                    break;
+                    QStringList invoice;
+                    invoice.append(invoice_Number);
+                    invoice.append(date);
+                    invoice.append(link);
+                    invoice.append(etat);
+                    invoice.append(ref);
+                    invoice.append(name);
+                    invoice.append(FRN);
+                    if(!m_Fct->Add_Invoice(invoice))
+                        endScan = true;
                 }
             }
-            else if(text.contains("Suivant"))
+            else if(text.contains("<span class=\"pagecursoritem bold\">"))
             {
-                if(text.split("\"").count() > 1)
+                if(text.split("<span class=\"pagecursoritem bold\">").count() == 4)
                 {
-                    nextPage = text.split("\"").at(1);
+                    int actual(QString(text.split("<span class=\"pagecursoritem bold\">").at(2).at(0)).toInt());
+                    int total(QString(text.split("<span class=\"pagecursoritem bold\">").at(3).at(0)).toInt());
+                    m_Fct->Info("Commande " + QString::number(actual) + "/" + QString::number(total));
+                    if(actual >= total)
+                        endScan = true;
                 }
             }
         }
@@ -254,115 +244,98 @@ bool SocolecFr::Create_List_Invoice(bool firstInit)
     return false;
 }
 
-bool SocolecFr::Update_Delivery(QString invoice)
+bool SocolecFr::Update_Delivery(QString invoice,QString link)
 {
-    //Récup info dans DB
-    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + invoice + "' AND Fournisseur='" + FRN + "'");
-    if(req.next() == false)
+
+    link.replace("Start","ViewBL");
+    link = link + "&CodeCommande=" + invoice;
+    if(m_Fct->WebLoad(link) == false)
     {
-        m_Fct->FrnError(requete,FRN,"Update_Delivery");
+        m_Fct->FrnError(load,FRN);
     }
     else
     {
-        QString link = req.value("Lien_Commande").toString();
-        link.replace("Start","ViewBL");
-        link = link + "&CodeCommande=" + invoice;
-        if(m_Fct->WebLoad(link) == false)
+        if(m_Fct->FindTexte(invoice) == false || m_Fct->FindTexte("BL N") == false)
         {
-            m_Fct->FrnError(load,FRN);
+            m_Fct->FrnError(fail_check,FRN,"Page non chargée");
         }
         else
         {
-            if(m_Fct->FindTexte(invoice) == false || m_Fct->FindTexte("BL N") == false)
+            if(m_Fct->SaveHtml() == false)
             {
-                m_Fct->FrnError(fail_check,FRN,"Page non chargée");
+                m_Fct->FrnError(save_file,FRN,"Html");
             }
             else
             {
-                if(m_Fct->SaveHtml() == false)
+                QString bl;
+
+                QFile f(m_WorkLink + "/web_Temp.txt");
+                if(f.open(QIODevice::ReadOnly) == false)
                 {
-                    m_Fct->FrnError(save_file,FRN,"Html");
+                    m_Fct->FrnError(open_File,FRN,"web_Temp");
                 }
                 else
                 {
-                    QString bl;
-
-                    QFile f(m_WorkLink + "/web_Temp.txt");
-                    if(f.open(QIODevice::ReadOnly) == false)
+                    QTextStream flux(&f);
+                    while(flux.atEnd() == false)
                     {
-                        m_Fct->FrnError(open_File,FRN,"web_Temp");
-                    }
-                    else
-                    {
-                        QTextStream flux(&f);
-                        while(flux.atEnd() == false)
+                        bl = flux.readLine();
+                        if(bl.contains("BL N<sup>o</sup>"))
                         {
-                            bl = flux.readLine();
-                            if(bl.contains("BL N<sup>o</sup>"))
-                            {
-                                bl = bl.split(">").last().split(" ").at(1);
-                                break;
-                            }
+                            bl = bl.split(">").last().split(" ").at(1);
+                            break;
                         }
-                        m_DB->Requete("UPDATE En_Cours SET Numero_Livraison='" + bl + "' WHERE Numero_Commande='" + invoice + "' AND Fournisseur='" + FRN + "'");
-                        return true;
                     }
+                    m_DB->Update_En_Cours(invoice,FRN,"Numero_Livraison",bl);
+                    return true;
                 }
             }
         }
     }
+
     return false;
 }
 
-bool SocolecFr::Update_State(QString invoice)
+bool SocolecFr::Update_State(QString invoice,QString link)
 {
-    //Récup info dans DB
-    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + invoice + "' AND Fournisseur='" + FRN + "'");
-    if(req.next() == false)
+    if(m_Fct->WebLoad(link) == false)
     {
-        m_Fct->FrnError(requete,FRN,"Update_Delivery");
+        m_Fct->FrnError(load,FRN);
     }
     else
     {
-        if(m_Fct->WebLoad(req.value("Lien_Commande").toString()) == false)
+        if(m_Fct->FindTexte(invoice) == false)
         {
-            m_Fct->FrnError(load,FRN);
+            m_Fct->FrnError(fail_check,FRN,"Page non chargée");
         }
         else
         {
-            if(m_Fct->FindTexte(invoice) == false)
-            {
-                m_Fct->FrnError(fail_check,FRN,"Page non chargée");
-            }
-            else
-            {
-                int state(0);
+            int state(0);
 
-                if(m_Fct->FindTexte("En attente")) { state = open; }
-                else if(m_Fct->FindTexte("En traitement")) { state = open; }
-                else if(m_Fct->FindTexte("En préparation")) { state = open; }
-                else if(m_Fct->FindTexte("Livrée")) { state = Close; }
-                else if(m_Fct->FindTexte("Partiellement livrée")) { state = partial; }
-                else if(m_Fct->FindTexte("Partiellement facturée")) { state = partial; }
-                else if(m_Fct->FindTexte("Facturée")) { state = Close; }
-                else if(m_Fct->FindTexte("Terminée")) { state = Close; }
-                else if(m_Fct->FindTexte("Annulée"))
-                {
-                    m_DB->Requete("DELETE FROM En_Cours WHERE Numero_Commande='" + invoice + "' AND Fournisseur='" + FRN + "'");
-                }
-
-                if(state != 0)
-                {
-                    m_DB->Requete("UPDATE En_Cours SET Etat='" + QString::number(state) + "' WHERE Numero_Commande='" + invoice + "' AND Fournisseur='" + FRN + "'");
-                }
-                return true;
+            if(m_Fct->FindTexte("En attente")) { state = open; }
+            else if(m_Fct->FindTexte("En traitement")) { state = open; }
+            else if(m_Fct->FindTexte("En préparation")) { state = open; }
+            else if(m_Fct->FindTexte("Livrée")) { state = Close; }
+            else if(m_Fct->FindTexte("Partiellement livrée")) { state = partial; }
+            else if(m_Fct->FindTexte("Partiellement facturée")) { state = partial; }
+            else if(m_Fct->FindTexte("Facturée")) { state = Close; }
+            else if(m_Fct->FindTexte("Terminée")) { state = Close; }
+            else if(m_Fct->FindTexte("Annulée"))
+            {
+                m_DB->Remove_En_Cours(invoice,FRN,"commande Annulée");
             }
+
+            if(state != 0)
+            {
+                m_DB->Update_En_Cours(invoice,FRN,"Etat",QString::number(state));
+            }
+            return true;
         }
     }
     return false;
 }
 
-QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
+QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber,QString link)
 {
     //Retourne une liste d'un tableau de commande
     //0 = nb commande
@@ -373,121 +346,115 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber)
     if(Connexion() == false) { return QStringList(0); }
 
     m_Fct->Change_Load_Window(tr("Chargement de la commande..."));
-    DEBUG << "Socolec.fr | Récupération du lien";
-    QSqlQuery req = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + InvoiceNumber + "' AND Fournisseur='" + FRN + "'");
-    if(req.next() == false)
+
+    DEBUG << "Socolec.fr | Chargement de la page";
+    if(m_Fct->WebLoad(link) == false)
     {
-        m_Fct->FrnError(requete,FRN,InvoiceNumber);
+        m_Fct->FrnError(load,FRN,link);
     }
     else
     {
-        DEBUG << "Socolec.fr | Chargement de la page";
-        if(m_Fct->WebLoad(req.value("Lien_Commande").toString()) == false)
+        DEBUG << "Socolec.fr | Vérification de la page";
+        if(m_Fct->FindTexte(InvoiceNumber) == false)
         {
-            m_Fct->FrnError(load,FRN,req.value("Lien_Commande").toString());
+            m_Fct->FrnError(fail_check,FRN,InvoiceNumber);
         }
         else
         {
-            DEBUG << "Socolec.fr | Vérification de la page";
-            if(m_Fct->FindTexte(InvoiceNumber) == false)
+            DEBUG << "Socolec.fr | Traitement des informations de la page";
+            if(m_Fct->SaveHtml() == false)
             {
-                m_Fct->FrnError(fail_check,FRN,InvoiceNumber);
+                m_Fct->FrnError(save_file,FRN,"Html");
             }
             else
             {
-                DEBUG << "Socolec.fr | Traitement des informations de la page";
-                if(m_Fct->SaveHtml() == false)
+                ///Traitement des données de la page
+                QFile file(m_WorkLink + "/web_Temp.txt");
+                if(file.open(QIODevice::ReadOnly) == false)
                 {
-                    m_Fct->FrnError(save_file,FRN,"Html");
+                    m_Fct->FrnError(open_File,FRN,"web_Temp.txt");
                 }
                 else
                 {
-                    ///Traitement des données de la page
-                    QFile file(m_WorkLink + "/web_Temp.txt");
-                    if(file.open(QIODevice::ReadOnly) == false)
+                    QTextStream flux(&file);
+                    int etat(0);
+                    QStringList list;
+                    while(flux.atEnd() == false)
                     {
-                        m_Fct->FrnError(open_File,FRN,"web_Temp.txt");
-                    }
-                    else
-                    {
-                        QTextStream flux(&file);
-                        int etat(0);
-                        QStringList list;
-                        while(flux.atEnd() == false)
+                        QString var = flux.readLine();
+                        if(var.contains("obj[CodeEnseigne].LibCourt") && etat == 0)//Désignation
                         {
-                            QString var = flux.readLine();
-                            if(var.contains("obj[CodeEnseigne].LibCourt") && etat == 0)//Désignation
+                            var.replace("&amp;","ET");
+                            list.append(var.split("\"").at(1));
+                            etat = 1;
+                        }
+                        else if(var.contains("obj[CodeEnseigne].ManufacturerName") && etat == 1)//référence + Fabricant
+                        {
+                            QString var2 = flux.readLine();
+                            if(var2.contains("obj[CodeEnseigne].ManufacturerSKU"))
                             {
-                                var.replace("&amp;","ET");
-                                list.append(var.split("\"").at(1));
-                                etat = 1;
-                            }
-                            else if(var.contains("obj[CodeEnseigne].ManufacturerName") && etat == 1)//référence + Fabricant
-                            {
-                                QString var2 = flux.readLine();
-                                if(var2.contains("obj[CodeEnseigne].ManufacturerSKU"))
+                                if(var.split("\"").count() >= 2 && var2.split("\"").count() >= 2)
                                 {
-                                    if(var.split("\"").count() >= 2 && var2.split("\"").count() >= 2)
-                                    {
-                                        var.replace("&amp;","ET");
-                                        var2.replace("&amp;","ET");
-                                        list.append(var2.split("\"").at(1));//Référence
-                                        list.append(var.split("\"").at(1));//Fabricant
-                                        list.append("");//Fab
-                                        etat = 2;
-                                    }
-                                    else
-                                    {
-                                        m_Fct->FrnError(variable,FRN,"Référence");
-                                    }
-                                }
-                            }
-                            else if(var.contains("<input type=\"hidden\" name=\"QuantityList_") && etat == 2)//Prix + quantité + restant
-                            {
-                                QString var2 = var;
-                                flux.readLine();
-                                flux.readLine();
-                                while(flux.readLine().contains("<td style=\"text-align:right;\">") == false) {}
-                                var = flux.readLine();
-                                var.replace(" ","");
-                                var.replace(",",".");
-                                var.replace("&nbsp;","");
-                                var2.replace(",",".");
-                                var = QString::number(var.toDouble() / var2.split("\"").at(5).toDouble());
-                                var.replace(".",",");
-
-                                if(var == "nan")//Si annulé
-                                {
-                                    list.removeLast();
-                                    list.removeLast();
-                                    list.removeLast();
-                                    list.removeLast();
+                                    var.replace("&amp;","ET");
+                                    var2.replace("&amp;","ET");
+                                    list.append(var2.split("\"").at(1));//Référence
+                                    list.append(var.split("\"").at(1));//Fabricant
+                                    list.append("");//Fab
+                                    etat = 2;
                                 }
                                 else
                                 {
-                                    list.append(var);//prix
-                                    if(var2.split("\"").count() >= 6)
-                                    {
-                                        list.append(var2.split("\"").at(5));//Quantité
-                                    }
-                                    else
-                                    {
-                                        m_Fct->FrnError(variable,FRN,"Quantité");
-                                    }
-                                    list.append("NC");//Restant
+                                    m_Fct->FrnError(variable,FRN,"Référence");
                                 }
-                                etat = 0;
                             }
                         }
-                        if(etat != 0)
+                        else if(var.contains("<input type=\"hidden\" name=\"QuantityList_") && etat == 2)//Prix + quantité + restant
                         {
-                            m_Fct->FrnError(variable,FRN,"Création tableau(Etat = " + QString::number(etat) + ")");
+                            QString var2 = var;
+                            flux.readLine();
+                            flux.readLine();
+                            while(flux.readLine().contains("<td style=\"text-align:right;\">") == false) {}
+                            var = flux.readLine();
+                            var.replace(" ","");
+                            var.replace(",",".");
+                            var.replace("&nbsp;","");
+                            var2.replace(",",".");
+                            var2.replace("&nbsp;","");
+                            var2.replace(" ","");
+                            var = QString::number(var.toDouble() / var2.split("\"").at(5).toDouble());
+                            var.replace(".",",");
+
+                            if(var == "nan")//Si annulé
+                            {
+                                list.removeLast();
+                                list.removeLast();
+                                list.removeLast();
+                                list.removeLast();
+                            }
+                            else
+                            {
+                                list.append(var);//prix
+                                if(var2.split("\"").count() >= 6)
+                                {
+                                    list.append(var2.split("\"").at(5));//Quantité
+                                }
+                                else
+                                {
+                                    m_Fct->FrnError(variable,FRN,"Quantité");
+                                }
+                                list.append("NC");//Restant
+                            }
+                            etat = 0;
                         }
-                        else
-                        {
-                            DEBUG << list;
-                            return list;
-                        }
+                    }
+                    if(etat != 0)
+                    {
+                        m_Fct->FrnError(variable,FRN,"Création tableau(Etat = " + QString::number(etat) + ")");
+                    }
+                    else
+                    {
+                        DEBUG << list;
+                        return list;
                     }
                 }
             }
