@@ -401,11 +401,14 @@ bool DB::Insert_Into_En_Cours(QString date,QString Nom_Chantier,QString Numero_C
         Ajout_BL = 1;
     }
     //Fournisseur
-    req = Requete("SELECT Valeur FROM Options WHERE ID='24'");
-    req.next();
-    if(req.value(0).toString().contains(Fournisseur) == false)
+    req = Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
+    bool test = false;
+    while(req.next())
+        if(req.value(0).toString().contains(Fournisseur))
+            test = true;
+    if(!test)
     {
-        m_Error->Err(variable,"Founisseur inconnu","DB");
+        m_Error->Err(variable,"Fournisseur inconnu","DB");
         return false;
     }
     //Get ID

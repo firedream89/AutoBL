@@ -63,9 +63,9 @@ bool RexelFr::Connexion()
     //Vérification si déjà connecté
     if(m_Fct->FindTexte(m_UserName)) { return true; }
 
-    m_Fct->InsertJavaScript("document.getElementById('j_username').value=\"" + m_Login + "\"");
-    m_Fct->InsertJavaScript("document.getElementById('j_password').value=\"" + m_MDP + "\"");
-    m_Fct->InsertJavaScript("document.getElementById('loginFormHeader').submit()");
+    m_Fct->InsertJavaScript("document.getElementById('j_username_login_component').value=\"" + m_Login + "\"");
+    m_Fct->InsertJavaScript("document.getElementById('j_password_login_component').value=\"" + m_MDP + "\"");
+    m_Fct->InsertJavaScript("document.getElementById('loginForm').submit()");
     m_Fct->Loop();
 
     if(m_Fct->FindTexte("Votre compte a été verrouillé, veuillez contacter l'administrateur"))

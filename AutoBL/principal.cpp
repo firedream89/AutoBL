@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-QString version("1.435"); //Version De L'application
-QString ver("1435");
+QString version("1.437"); //Version De L'application
+QString ver("1437");
 /////////////////////////////////
 
 //Chargement de l'application
@@ -14,14 +14,16 @@ Principal::Principal(QWidget *parent) :
     ui->setupUi(this);
 
     //LastUpdated
-    lastUpdate.append("principal : 1.435");
-    lastUpdate.append("DB : 1.435");
+    lastUpdate.append("principal : 1.437");
+    lastUpdate.append("DB : 1.437");
     lastUpdate.append("error : 1.433");
     lastUpdate.append("esabora : 1.435");
     lastUpdate.append("fctFournisseur : 1.435");
     lastUpdate.append("InfoWindow : 1.43");
-    lastUpdate.append("Rexelfr : 1.435");
-    lastUpdate.append("Socolecfr : 1.435");
+    lastUpdate.append("Rexelfr : 1.436");
+    lastUpdate.append("Socolecfr : 1.437");
+    lastUpdate.append("CGED : 1.437");
+    lastUpdate.append("Fournisseur : 1.437");
     lastUpdate.append("tache : 1.43");
 
     //ARG
@@ -1909,14 +1911,10 @@ void Principal::DBG_Select_Frn_Fictif()
     f->setWindowTitle("");
     QFormLayout *l = new QFormLayout(f);
     QListWidget *list = new QListWidget;
-    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs'");
-    req.next();
-    QStringList sl = req.value(0).toString().split("|");
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
     QLineEdit *lineE = new QLineEdit;
-    for(int i=0;i<sl.count();i++)
-    {
-        list->addItem(sl.at(i));
-    }
+    while(req.next())
+        list->addItem(req.value(0).toString());
     QPushButton *b = new QPushButton;
     b->setText("Ajouter");
     connect(b,SIGNAL(clicked(bool)),this,SLOT(DBG_Add_Frn_Fictif()));
@@ -1929,7 +1927,7 @@ void Principal::DBG_Select_Frn_Fictif()
 void Principal::DBG_Add_Frn_Fictif()
 {
     QDialog *f = this->findChild<QDialog*>("Frn_Fictif");
-    if(f != NULL)
+    if(f)
     {
         if(f->findChild<QLineEdit*>()->text().isEmpty())
         {

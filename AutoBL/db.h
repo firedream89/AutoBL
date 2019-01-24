@@ -8,7 +8,7 @@
 #include <QCryptographicHash>
 #include <QDesktopServices>
 
-#include <../../../Cle_AutoBL.cpp>
+#include <../../../../Cle_AutoBL.cpp>
 #include <error.h>
 
 #define DEBUG qDebug()

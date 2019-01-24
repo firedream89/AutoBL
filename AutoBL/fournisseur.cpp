@@ -70,6 +70,12 @@ bool Fournisseur::Start()
                 frn->Start();
                 m_fct->Add_Invoices_To_DB();
             }
+            else if(nom == FRN3)
+            {
+                CGED *frn = new CGED(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
+                frn->Start();
+                m_fct->Add_Invoices_To_DB();
+            }
             else
                 m_Error->Err(failFrn,nom,FRN);
         }
@@ -110,6 +116,11 @@ QStringList Fournisseur::Get_Invoice_List(const QString& frn,const QString& invo
     else if(frn == FRN2)
     {
         SocolecFr *frn = new SocolecFr(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
+        final = frn->Get_Invoice(invoiceNumber,link);
+    }
+    else if(frn == FRN3)
+    {
+        CGED *frn = new CGED(m_fct,login,mdp,m_Lien_Travail,comp,m_DB);
         final = frn->Get_Invoice(invoiceNumber,link);
     }
     return final;
@@ -188,7 +199,31 @@ bool Fournisseur::Test_Connexion(const QString &nom)
             }
             else
             {
-                emit Info(tr("Une erreur unconnue s'est produite"));
+                emit Info(tr("Une erreur inconnue s'est produite"));
+            }
+        }
+        else
+        {
+            emit Info(tr("Connexion à %0 réussie").arg(nom));
+            return true;
+        }
+    }
+    else if(nom == FRN3)
+    {
+        CGED * frn = new CGED(m_fct,f.at(0),f.at(1),m_Lien_Travail,f.at(2),m_DB);
+        if(frn->Test_Connexion() == false)
+        {
+            if(m_fct->FindTexte("Le N° de compte spécifié n'existe pas"))
+            {
+                emit Info(tr("Le numéro de compte est incorrecte"));
+            }
+            else if(m_fct->FindTexte("Email ou mot de passe incorrect"))
+            {
+                emit Info(tr("Email ou mot de passe incorrect"));
+            }
+            else
+            {
+                emit Info(tr("Une erreur inconnue s'est produite"));
             }
         }
         else
@@ -261,6 +296,10 @@ QString Fournisseur::Get_Frn_Inf(QString frn) const
     else if(frn == FRN2)
     {
         return SocolecFr::Get_Inf();
+    }
+    else if(frn == FRN3)
+    {
+        return CGED::Get_Inf();
     }
     else
     {

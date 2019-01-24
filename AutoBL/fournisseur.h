@@ -7,18 +7,19 @@
 #include "fctfournisseur.h"
 #include "rexelfr.h"
 #include "socolecfr.h"
+#include "cged.h"
 #include "error.h"
 
 #define DEBUG qDebug()
 #define FRN1 "Rexel.fr"
 #define FRN2 "Socolec.fr"
-#define FRN3 ""
+#define FRN3 "CGED"
 #define FRN4 ""
 #define FRN5 ""
 #define FRN6 ""
 #define FRN7 ""
 #define FRN "Fournisseur"
-#define FRNLIST "Rexel.fr|Socolec.fr"
+#define FRNLIST "Rexel.fr|Socolec.fr|CGED"
 
 class Fournisseur : public QObject
 {

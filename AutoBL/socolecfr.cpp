@@ -173,7 +173,7 @@ bool SocolecFr::Create_List_Invoice()
                 {
                     text = text.split(">").at(1).split("<").at(0);
                     text.replace("Ã©","é");
-                    if(text == "En attente" || text == "En traitement" || text == "En préparation")
+                    if(text == "En attente" || text == "En traitement" || text == "En préparation" || text == "Enregistrée")
                     {
                         etat = "0";
                     }
@@ -315,6 +315,7 @@ bool SocolecFr::Update_State(QString invoice,QString link)
             if(m_Fct->FindTexte("En attente")) { state = open; }
             else if(m_Fct->FindTexte("En traitement")) { state = open; }
             else if(m_Fct->FindTexte("En préparation")) { state = open; }
+            else if(m_Fct->FindTexte("Enregistrée")) { state = open; }
             else if(m_Fct->FindTexte("Livrée")) { state = Close; }
             else if(m_Fct->FindTexte("Partiellement livrée")) { state = partial; }
             else if(m_Fct->FindTexte("Partiellement facturée")) { state = partial; }
