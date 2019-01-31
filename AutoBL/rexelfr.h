@@ -11,8 +11,6 @@
 #include "fctfournisseur.h"
 
 #define DEBUG qDebug()
-#define REXEL "Rexel.fr"
-#define INF "Nom d'utilisateur|Email|Mot de passe"
 
 class RexelFr: public QObject
 {

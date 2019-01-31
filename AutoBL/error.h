@@ -34,7 +34,7 @@ typedef enum {
     openDB,
     updateDB,
     saveDB,
-    UnknownError
+    internal
 }ERR;
 
 class Error: public QObject

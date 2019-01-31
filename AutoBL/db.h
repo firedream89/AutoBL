@@ -8,7 +8,7 @@
 #include <QCryptographicHash>
 #include <QDesktopServices>
 
-#include <../../../Cle_AutoBL.cpp>
+#include <../../Cle_AutoBL.cpp>
 #include <error.h>
 
 #define DEBUG qDebug()
@@ -43,14 +43,17 @@ public:
     QString Decrypt(QString text);
     QString enum_State(int state);
     QString Get_Last_Invoice(QString frn);
-    bool Insert_Into_En_Cours(int id,QString date,QString Nom_Chantier,QString Numero_Commande,QString Numero_Livraison,QString Lien_Commande,int Etat,
-                                  int Ajout,QString Info_Chantier,int Ajout_BL,QString Numero_BC_Esab,QString Fournisseur);
+    bool Insert_Into_En_Cours(QString date, QString Nom_Chantier, QString Numero_Commande, QString Lien_Commande, int Etat,
+                                  int Ajout, QString Info_Chantier, QString Fournisseur);
     QSqlQuery Get_Download_Invoice();
     QSqlQuery Get_Added_Invoice();
     QSqlQuery Get_No_Closed_Invoice(QString frn);
     QSqlQuery Get_Delivery_Invoice(QString frn);
-    QColor Get_Color_State(int state);
-    bool Reference_Is_Valid(QString ref);
+    bool Update_En_Cours(QString invoice_Number, QString frn, QString column, QString var);
+    bool Remove_En_Cours(QString invoice_Number, QString frn, QString reason);
+
+    //_list_Frn = FRNLIST from Fournisseur
+    void Set_List_Fournisseurs(QString list) { _list_Frn = list; }
 
 public slots:
     void Sav();
@@ -62,6 +65,7 @@ signals:
 
 private:
     Error *m_Error;
+    QString _list_Frn;
 
 };
 

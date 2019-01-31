@@ -1,5 +1,5 @@
-#ifndef SOCOLECFR_H
-#define SOCOLECFR_H
+#ifndef CGED_H
+#define CGED_H
 
 #include "db.h"
 #include "fctfournisseur.h"
@@ -8,12 +8,12 @@
 
 #define DEBUG qDebug()
 
-class SocolecFr: public QObject
+class CGED: public QObject
 {
     Q_OBJECT
 
 public:
-    SocolecFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db);
+    CGED(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db);
     bool Start();
     QStringList Get_Invoice(const QString InvoiceNumber, QString link);
     void Set_Var(const QString login,const QString mdp,const QString comp);
@@ -36,4 +36,4 @@ private:
     DB *m_DB;
 };
 
-#endif // SOCOLECFR_H
+#endif // CGED_H

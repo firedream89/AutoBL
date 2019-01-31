@@ -14,6 +14,7 @@
 
 
 #include "error.h"
+#include "db.h"
 #define DEBUG qDebug()
 #define FCT "WEB"
 
@@ -22,7 +23,7 @@ class FctFournisseur: public QObject
     Q_OBJECT
 
 public:
-    FctFournisseur(QString WorkLink,Error *err);
+    FctFournisseur(QString WorkLink,Error *err,DB *db);
     ~FctFournisseur();
     bool WebLoad(QString lien);
     bool FindTexte(QString texte);
@@ -36,6 +37,10 @@ public:
     void Change_Load_Window(QString text);
     bool Get_Load_Finished();
     QStringList Control_Fab(QStringList list);
+    bool Add_Invoice(QStringList invoice);
+    QList<QStringList> get_Invoices();
+    bool Add_Invoices_To_DB();
+    int Get_Pause_Cmd();
 
 public slots:
     void Stop_Load();
@@ -61,6 +66,9 @@ private:
     Error *m_Error;
     bool m_load;
     QString m_Fab;
+    DB *_db;
+    QList<QStringList> _invoice;
+    int _pauseCmd;
 };
 
 #endif // FCTFOURNISSEUR_H

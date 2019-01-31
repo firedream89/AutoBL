@@ -1,5 +1,6 @@
 #include "infowindow.h"
 
+
 InfoWindow::InfoWindow(QWidget *parent,QString windowTitle, int type)
 {
     if(parent->findChild<QDialog*>("InfoWindow") != NULL)
@@ -16,7 +17,6 @@ InfoWindow::InfoWindow(QWidget *parent,QString windowTitle, int type)
         {
             w = new QDialog(parent);
         }
-        connect(w,SIGNAL(finished(int)),this,SLOT(Close()));
         w->setObjectName("InfoWindow");
         w->setWindowTitle(windowTitle);
         QFormLayout *l = new QFormLayout(w);
@@ -40,31 +40,6 @@ void InfoWindow::Add_Label(QString name, bool row)
     }
     QLabel *lb = new QLabel;
     lb->setObjectName(name);
-    lb->setOpenExternalLinks(true);
-    lb->setTextFormat(Qt::RichText);
-    if(row)
-    {
-        l->addRow(name,lb);
-    }
-    else
-    {
-        l->addWidget(lb);
-    }
-}
-
-void InfoWindow::Add_Label(QString name, QString text, bool row)
-{
-    QFormLayout *l = w->findChild<QFormLayout*>();
-    if(l == NULL)
-    {
-        DEBUG << "InfoWindow | layout non trouvé !";
-        return;
-    }
-    QLabel *lb = new QLabel;
-    lb->setText(text);
-    lb->setObjectName(name);
-    lb->setOpenExternalLinks(true);
-    lb->setTextFormat(Qt::RichText);
     if(row)
     {
         l->addRow(name,lb);
@@ -113,11 +88,6 @@ QString InfoWindow::Get_Label_Text(QString label) const
 void InfoWindow::Show() const
 {
     w->show();
-}
-
-void InfoWindow::Exec() const
-{
-    w->exec();
 }
 
 void InfoWindow::Close() const

@@ -27,6 +27,20 @@
 
 #define DEBUG qDebug()
 
+enum MBName{
+    null,
+    Connexion,
+    Sauvegarder,
+    ToutReceptionner,
+    ErrorAucunArticle,
+    TransfererCommande,
+    ErrorUnknown,
+    ExitWithoutSaving,
+    ErrorCodeNonRepertorie,
+    ErrorInterlocuteurNonRepertorie,
+    ErrorChantierNonRepertorie
+};
+
 namespace Ui {
 class Principal;
 }
@@ -66,10 +80,12 @@ public slots:
     void Login_True();
     void Test_BC();
     void Test_BL();
-    bool MAJ();
+    void MAJ();
     void Bug_Report();
     bool Post_Report();
     void LoadWeb(int valeur);
+    void InfoTraitementBL();
+    void ModifInfoTraitementBL(QString label,QString etat);
     void Get_Tableau_Matos(int l);
     void Get_Tableau_Matos(QString Numero_Commande);
     void menu_TNomFichier(QPoint point);
@@ -103,6 +119,8 @@ public slots:
     void Load_Unknown_Fab();
     void Sav_Unknown_Fab();
     void Reload_Error();
+    void Load_Unknown_MB();
+    void Sav_Unknown_MB();
 
 signals:
     void FinAjout();
@@ -111,6 +129,7 @@ signals:
 private:
     Ui::Principal *ui;
     QFile m_Logs;
+    QFile m_Errors;
     Tache *m_Tache;
     bool login;
     QLineEdit *mdp;
@@ -124,6 +143,7 @@ private:
     bool premierDemarrage;
     Fournisseur *m_Frn;
     Error *m_Error;
+    QStringList lastUpdate;
 };
 
 #endif // PRINCIPAL_H

@@ -19,13 +19,9 @@ public:
     InfoWindow(QWidget *parent, QString windowTitle, int type = 0);
     ~InfoWindow();
     void Add_Label(QString name, bool row = true);
-    void Add_Label(QString name, QString text, bool row = true);
     void Update_Label(QString label, QString text);
     QString Get_Label_Text(QString label) const;
     void Show() const;
-    void Exec() const;
-
-public slots:
     void Close() const;
 
 private:

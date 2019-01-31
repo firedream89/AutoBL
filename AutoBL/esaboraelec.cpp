@@ -450,49 +450,68 @@ bool EsaboraElec::Traitement_Fichier_Config(const QString file, const QString Nu
         }
         else if(temp[0] == '=')
         {
-            QString t;
-            if(bL.split("/").count() > 1)
+            //remplacement des valeurs
+            if(temp.contains("%0"))
             {
-                QSqlQuery r = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
+                r = m_DB->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + NumeroCommande + "'");
                 if(r.next() == false)
                 {
                     err->Err(requete,r.lastError().text(),ESAB);
                 }
-
-                t = r.value("Numero_BC_Esabora").toString();
+                QString t = r.value("Numero_BC_Esabora").toString();
                 temp.replace("%0",t);
             }
-            r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='12'");
-            r.next();
-            temp.replace("%1",r.value("Valeur").toString());
-            r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
-            r.next();
-            temp.replace("%2",r.value("Valeur").toString());
-            qDebug() << temp;
-
+            if(temp.contains("%1"))
+            {
+                r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='12'");
+                if(r.next() == false)
+                {
+                    err->Err(requete,r.lastError().text(),ESAB);
+                }
+                temp.replace("%1",r.value("Valeur").toString());
+            }
+            if(temp.contains("%2"))
+            {
+                r = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
+                if(r.next() == false)
+                {
+                    err->Err(requete,r.lastError().text(),ESAB);
+                }
+                temp.replace("%2",r.value("Valeur").toString());
+            }
+            DEBUG << "Variable '=' = " << temp;
+            
+            
             QString fen = temp.split("=").at(1);
             fen.replace("Focus","");
             if(fen.at(fen.count()-1) == ' ')
             {
                 fen.remove(fen.count()-1,fen.count()-1);
             }
-            emit Info(fen);
-            if(Verification_Fenetre(fen) == false)
+            bool focus(false);
+            if(temp.split(" ").last() == "Focus")
+            {
+                focus = true;
+            }
+            
+            bool find(false),isFocus(false);
+            Control_Window(fen,find,isFocus,focus);
+            //a suivre
+            if(find == false)
             {
                 err->Err(Window,fen,ESAB);
                 return false;
             }
             else
             {
-                bool t = false;
+                bool t(false);
                 if(temp.split(" ").last() == "Focus")
                 {
                     t = true;
                 }
-                if(Verification_Focus(fen,t) == false)
+                if(isFocus != t)
                 {
                     err->Err(Focus,fen,ESAB);
-                    Clavier("Entrée");
                     Abort();
                     if(file == "New_BC")
                     {
@@ -505,10 +524,11 @@ bool EsaboraElec::Traitement_Fichier_Config(const QString file, const QString Nu
         }
         else if(temp.split(" ").at(0) == "Pause" && temp.split(" ").count() == 2)
         {
+            if(temp.split(" ").count() < 2)
+                return false;
             tmp.start(temp.split(" ").at(1).toInt() * 1000);
             loop.exec();
             tmp.stop();
-            m_Tmp = "";
         }
         else if(temp.split(" ").at(0) == "Souris")
         {
@@ -516,15 +536,11 @@ bool EsaboraElec::Traitement_Fichier_Config(const QString file, const QString Nu
             {
                err->Err(Mouse,"",ESAB);
             }
-            m_Tmp = "";
         }
         else if(temp.split(" ").at(0) == "Copier")
         {
-            Clavier("Ctrl+C");
             QClipboard *pP = QApplication::clipboard();
-            tmp.start(1000);
-            loop.exec();
-            tmp.stop();
+            Copy();
             emit Info("Copie de " + pP->text());
             if(pP->text().count() != 7)
             {
@@ -533,11 +549,13 @@ bool EsaboraElec::Traitement_Fichier_Config(const QString file, const QString Nu
             }
             if(temp.split(" ").at(1) == "Numero_BC_Esabora")
             {
-                m_DB->Requete("UPDATE En_Cours SET Numero_BC_Esabora='" + pP->text() + "' WHERE Numero_Commande='" + bL.split("/").last().split(".").at(0) + "'");
+                m_DB->Requete("UPDATE En_Cours SET Numero_BC_Esabora='" + pP->text() + "' WHERE Numero_Commande='" + NumeroCommande + "'");
             }
         }
         else if(temp.at(0) == '|')
         {
+            if(temp.split(" ").count() < 2)
+                return false;
             etat = temp.split(" ").at(1).toInt();
         }
         else if(temp.contains(file)) { return true; }
@@ -789,16 +807,12 @@ void EsaboraElec::Control_Window(QString name, bool &find, bool &focus, bool isF
             return;
         }
         QStringList listWin = Get_Windows_List(name);
-        if(listWin.isEmpty())
-        {
-            err->Err(variable,"listWin is empty",ESAB);
-            find = false;
-        }
         for(int i = 0;i<listWin.count();i++)
         {
             //boucle controle fenetre intermédiaire
             bool bFind(false),bFocus(false);
-            Control_Window(listWin.at(i),bFind,bFocus,true);
+            QStringList t = listWin.at(i).split("|");
+            Control_Window(t.at(0),bFind,bFocus,true);
             if(bFind && bFocus)
             {
                 Clavier("Entrée");
@@ -872,6 +886,25 @@ void EsaboraElec::Control_Window(QString name, bool &find, bool &focus, bool isF
         }
     }
     lvl--;
+}
+
+QStringList EsaboraElec::Get_Windows_List(QString name)
+{
+    QStringList l;
+    QString n = "%2 - SESSION : 1 - REPERTOIRE : %1";
+    QSqlQuery req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='12'");
+    req.next();
+    n.replace("%1",req.value(0));
+    req = m_DB->Requete("SELECT Valeur FROM Options WHERE ID='23'");
+    req.next();
+    n.replace("%2",req.value(0));
+
+    if(name == n)
+    {
+        l.append("AVERTISSEMENT|Entrée");
+        l.append("RX - Agent de Mise à Jour|Stop");
+    }
+    else if(name == "")
 }
 
 void EsaboraElec::Set_Liste_Matos(QStringList liste)

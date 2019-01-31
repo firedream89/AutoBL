@@ -1,16 +1,16 @@
-#include "socolecfr.h"
+#include "cged.h"
 
 
-SocolecFr::SocolecFr(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db):
+CGED::CGED(FctFournisseur *fct, const QString login, const QString mdp, const QString lien_Travail, const QString comp, DB *db):
     m_Login(login),m_MDP(mdp),m_UserName(comp),m_WorkLink(lien_Travail),m_Fct(fct),m_DB(db)
 {
-#define FRN "Socolec.fr"
+#define FRN "CGED"
 #define INF "Numéro de compte|Email|Mot de passe"
 
     DEBUG << "Init Class " << FRN;
 }
 
-bool SocolecFr::Start()
+bool CGED::Start()
 {
     DEBUG << "Start " << FRN;
 
@@ -20,11 +20,11 @@ bool SocolecFr::Start()
     if(Connexion())
     {
         m_Fct->Info("Chargement des commandes...");
-        DEBUG << "Socolec | Connected";
+        DEBUG << "CGED | Connected";
         if(Create_List_Invoice() == false) { error = true; }
 
         //Update State
-        DEBUG << "Socolec | Update State";
+        DEBUG << "CGED | Update State";
         req = m_DB->Get_No_Closed_Invoice(FRN);
 
         while(req.next())
@@ -34,7 +34,7 @@ bool SocolecFr::Start()
         }
 
         //Update Delivery
-        DEBUG << "Socolec | Update Delivery";
+        DEBUG << "CGED | Update Delivery";
         req = m_DB->Get_Delivery_Invoice(FRN);
         while(req.next())
         {
@@ -49,11 +49,11 @@ bool SocolecFr::Start()
     return true;
 }
 
-bool SocolecFr::Connexion()
+bool CGED::Connexion()
 {
     //Chargement de la page
     m_Fct->Info("Connexion...");
-    if(m_Fct->WebLoad("https://socolec.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-SOCOLEC-Site/fr_FR/-/EUR/ViewLogin-Start") == false)
+    if(m_Fct->WebLoad("https://cged.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-CGED-Site/fr_FR/-/EUR/ViewLogin-Start") == false)
     {
         m_Fct->FrnError(load,FRN,"Connexion");
         return false;
@@ -82,11 +82,10 @@ bool SocolecFr::Connexion()
     return false;
 }
 
-bool SocolecFr::Create_List_Invoice()
+bool CGED::Create_List_Invoice()
 {
     //Chargement de la page
-    //https://socolec.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-SOCOLEC-Site/fr_FR/-/EUR/ViewPurchaseOrderList-Start?SortAttribute=CreationDate&AttributeType=DATE&SortOrder=false&ListAllOrders=1&PageNumber=1
-    if(m_Fct->WebLoad("https://socolec.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-SOCOLEC-Site/fr_FR/-/EUR/"
+    if(m_Fct->WebLoad("https://cged.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-CGED-Site/fr_FR/-/EUR/"
                        "ViewPurchaseOrderList-Start?SortAttribute=CreationDate&AttributeType=DATE&SortDirection=DESC&ListAllOrders=1")  == false)
     {
         m_Fct->FrnError(load,FRN,"Liste des commandes");
@@ -235,7 +234,7 @@ bool SocolecFr::Create_List_Invoice()
         if(endScan == false)
         {
             next++;
-            if(m_Fct->WebLoad("https://socolec.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-SOCOLEC-Site/fr_FR/-/EUR/"
+            if(m_Fct->WebLoad("https://cged.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-CGED-Site/fr_FR/-/EUR/"
                                "ViewPurchaseOrderList-Start?SortAttribute=CreationDate&AttributeType=DATE&SortDirection=DESC&ListAllOrders=1&PageNumber=" + QString::number(next))  == false)
             {
                 m_Fct->FrnError(load,FRN,"Liste des commandes");
@@ -247,7 +246,7 @@ bool SocolecFr::Create_List_Invoice()
     return false;
 }
 
-bool SocolecFr::Update_Delivery(QString invoice,QString link)
+bool CGED::Update_Delivery(QString invoice,QString link)
 {
 
     link.replace("Start","ViewBL");
@@ -299,7 +298,7 @@ bool SocolecFr::Update_Delivery(QString invoice,QString link)
     return false;
 }
 
-bool SocolecFr::Update_State(QString invoice,QString link)
+bool CGED::Update_State(QString invoice,QString link)
 {
     if(m_Fct->WebLoad(link) == false)
     {
@@ -339,33 +338,33 @@ bool SocolecFr::Update_State(QString invoice,QString link)
     return false;
 }
 
-QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber,QString link)
+QStringList CGED::Get_Invoice(const QString InvoiceNumber,QString link)
 {
     //Retourne une liste d'un tableau de commande
     //0 = nb commande
     //boucle de 7 strings designation,reference,fabricant,fab,prix unitaire,quantité livré,quantité restante
 
-    DEBUG << "Socolec.fr | Connexion";
+    DEBUG << "CGED | Connexion";
     m_Fct->Change_Load_Window(tr("Connexion..."));
     if(Connexion() == false) { return QStringList(nullptr); }
 
     m_Fct->Change_Load_Window(tr("Chargement de la commande..."));
 
-    DEBUG << "Socolec.fr | Chargement de la page";
+    DEBUG << "CGED | Chargement de la page";
     if(m_Fct->WebLoad(link) == false)
     {
         m_Fct->FrnError(load,FRN,link);
     }
     else
     {
-        DEBUG << "Socolec.fr | Vérification de la page";
+        DEBUG << "CGED | Vérification de la page";
         if(m_Fct->FindTexte(InvoiceNumber) == false)
         {
             m_Fct->FrnError(fail_check,FRN,InvoiceNumber);
         }
         else
         {
-            DEBUG << "Socolec.fr | Traitement des informations de la page";
+            DEBUG << "CGED | Traitement des informations de la page";
             if(m_Fct->SaveHtml() == false)
             {
                 m_Fct->FrnError(save_file,FRN,"Html");
@@ -467,20 +466,20 @@ QStringList SocolecFr::Get_Invoice(const QString InvoiceNumber,QString link)
     return QStringList(nullptr);
 }
 
-void SocolecFr::Set_Var(const QString login, const QString mdp, const QString comp)
+void CGED::Set_Var(const QString login, const QString mdp, const QString comp)
 {
     m_Login = login;
     m_MDP = mdp;
     m_UserName = comp;
 }
 
-bool SocolecFr::Test_Connexion()
+bool CGED::Test_Connexion()
 {
     DEBUG << "TEST CONNEXION " << FRN;
     return Connexion();
 }
 
-QString SocolecFr::Get_Inf()
+QString CGED::Get_Inf()
 {
     return QString(INF);
 }

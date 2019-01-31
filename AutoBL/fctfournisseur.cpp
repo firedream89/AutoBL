@@ -1,12 +1,21 @@
 #include "fctfournisseur.h"
 
-FctFournisseur::FctFournisseur(QString WorkLink, Error *err):
+
+FctFournisseur::FctFournisseur(QString WorkLink, Error *err, DB *db):
     m_WorkLink(WorkLink)
 {
     web = new QWebEngineView;
     timer = new QTimer;
     loop = new QEventLoop;
     m_Error = err;
+    _db = db;
+
+    QSqlQuery req = _db->Requete("SELECT Valeur FROM Options WHERE ID='19'");
+    if(req.next())
+        _pauseCmd = req.value(0).toInt();
+    else
+        m_Error->Err(variable,"_pauseCmd is not defined",FCT);
+
     QObject::connect(timer,SIGNAL(timeout()),loop,SLOT(quit()));
     QObject::connect(web,SIGNAL(loadFinished(bool)),loop,SLOT(quit()));
     QObject::connect(web,SIGNAL(loadProgress(int)),this,SIGNAL(LoadProgress(int)));
@@ -44,12 +53,13 @@ bool FctFournisseur::WebLoad(QString lien)
         {
             if(FindTexte("Aucune connexion Internet") == false) { return true; }
         }
-        else
+            else
         {
-            m_Error->Err(noConnected,"",FCT);
+                m_Error->Err(noConnected,"",FCT);
         }
         web->stop();
     }
+
     return false;
 }
 
@@ -242,74 +252,113 @@ QStringList FctFournisseur::Control_Fab(QStringList list)
     m_Fab.clear();
 
     return final;
-    /*if(list.isEmpty() || list.count() < 7)
-    {
-        DEBUG << "Liste matériels Vide !";
-        return;
-    }
-    connect(this,SIGNAL(Set_Fab(QString)),loop,SLOT(quit()));
-
-    QFile file(m_WorkLink + "/Config/Fab.esab");
-    if(file.open(QIODevice::ReadWrite) == false)
-    {
-        m_Error->Err(open_File,FCT,"Fab.esab");
-    }
-    QTextStream flux(&file);
-
-    for(int i=0;i<list.count();i++)
-    {
-        if(list.at(i+3).isEmpty() && list.at(i+2).isEmpty() == false)//si Fabricant connu mais pas Fab
-        {
-            file.seek(0);
-            while(flux.atEnd() == false)//vérif si Fab déjà connu
-            {
-                QString var = flux.readLine();
-                if(var.contains(list.at(i+2)))
-                {
-                    file.seek(0);
-                    break;
-                }
-            }
-            if(file.atEnd())//Sinon rechercher Fab sur esabora
-            {
-                emit Find_Fab(list.at(i+2));
-                Loop(120000);
-                if(m_Fab.isEmpty() == false && m_Fab.count() == 3)
-                {
-                    file.seek(SEEK_END);
-                    flux << list.at(i+2) + ";" + m_Fab + "\r\n";
-                    file.seek(0);
-                }
-                else
-                {
-                    DEBUG << "Constructeur non trouvé : " << m_Fab;
-                    flux << list.at(i+2) << ";\r\n";
-                }
-            }
-        }
-        else
-        {
-            bool find(false);
-            while(flux.atEnd() == false)
-            {
-                if(flux.readLine().contains(list.at(2)))
-                {
-                    find = true;
-                }
-            }
-            if(find == false)
-            {
-                flux << list.at(i+2) + ";" + list.at(i+3) + "\r\n";
-            }
-        }
-        i += 6;
-    }
-    disconnect(this,SIGNAL(Set_Fab(QString)),loop,SLOT(quit()));
-    m_Fab.clear();*/
 }
 
 void FctFournisseur::Return_Fab(QString fab)
 {
     m_Fab = fab;
     emit Set_Fab();
+}
+
+bool FctFournisseur::Add_Invoice(QStringList invoice)
+{
+    if(invoice.count() != 7)
+    {
+        m_Error->Err(variable,"invoice count = " + QString::number(invoice.count()),FCT);
+        return false;
+    }
+
+    QString nInvoice = invoice.at(0);
+    QString dateInvoice = invoice.at(1);
+    QString linkInvoice = invoice.at(2);
+    QString stateInvoice = invoice.at(3);
+    QString refInvoice = invoice.at(4);
+    QString nameInvoice = invoice.at(5);
+    QString frnInvoice = invoice.at(6);
+    bool test = true;
+
+    if(nInvoice.isEmpty())
+    {
+        m_Error->Err(variable,"empty nInvoice",FCT);
+        test = false;
+    }
+    if(dateInvoice.isEmpty())
+    {
+        m_Error->Err(variable,"empty dateInvoice",FCT);
+        test = false;
+    }
+    else if(dateInvoice.split("-").count() != 3)
+    {
+        m_Error->Err(variable,"invalid format dateInvoice",FCT);
+        test = false;
+    }
+    if(refInvoice.isEmpty())
+    {
+        m_Error->Err(variable,"empty refInvoice",FCT);
+        invoice.replace(4,"NULL");
+    }
+    if(stateInvoice.toInt() < 0 || stateInvoice.toInt() > 2)
+    {
+        m_Error->Err(variable,"stateInvoice is out of range",FCT);
+        stateInvoice = "0";
+    }
+
+    if(!test)
+    {
+        m_Error->Err(Traitement,nInvoice,frnInvoice);
+        _invoice.clear();
+        return false;
+    }
+
+    QSqlQuery req = _db->Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + nInvoice + "'");
+    if(req.next())
+        return false;
+    else
+    {
+        _invoice.append(invoice);
+        return true;
+    }
+}
+
+QList<QStringList> FctFournisseur::get_Invoices()
+{
+    return _invoice;
+}
+
+bool FctFournisseur::Add_Invoices_To_DB()
+{
+    if(!_invoice.isEmpty())
+    {
+        for(int i=0;i<_invoice.count();i++)
+        {
+            QStringList invoice = _invoice.at(i);
+            QString nInvoice = invoice.at(0);
+            QString dateInvoice = invoice.at(1);
+            QString linkInvoice = invoice.at(2);
+            QString stateInvoice = invoice.at(3);
+            QString refInvoice = invoice.at(4);
+            QString nameInvoice = invoice.at(5);
+            QString frnInvoice = invoice.at(6);
+
+            QSqlQuery req = _db->Requete("SELECT * FROM En_Cours WHERE Fournisseur='" + frnInvoice + "'");
+            if(!req.next())
+            {
+                if(!_db->Insert_Into_En_Cours(dateInvoice,refInvoice,nInvoice,linkInvoice,stateInvoice.toInt(),endAdd,nameInvoice,frnInvoice))
+                    m_Error->Err(requete,"add invoice to db",FCT);
+                _invoice.clear();
+            }
+            else
+            {
+                if(!_db->Insert_Into_En_Cours(dateInvoice,refInvoice,nInvoice,linkInvoice,stateInvoice.toInt(),download,nameInvoice,frnInvoice))
+                    m_Error->Err(requete,"add invoice to db",FCT);
+            }
+        }
+        _invoice.clear();
+    }
+    return true;
+}
+
+int FctFournisseur::Get_Pause_Cmd()
+{
+    return _pauseCmd;
 }

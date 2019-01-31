@@ -1,7 +1,8 @@
 #include "error.h"
 
+
 Error::Error()
-{
+{   
     qDebug() << "Error | Erreur Constructeur par défaut initialisé";
 }
 
@@ -14,6 +15,7 @@ Error::Error(QString work_Link)
         Err(open_File,"Log error","Général");
     }
 
+    //Chargement des classes de l'application et fonctions nécéssaires
     Write_Error("--------------------------Run AutoBL-----------------------------");
 }  
 
@@ -106,8 +108,9 @@ QString Error::Err(int code, QString e, QString fromClass)
     case saveDB:
         err = tr("Echec de sauvegarde de la DB");
         break;
-    case UnknownError:
-        err = tr("Une erreur s'est produite : %0").arg(e);
+    case internal:
+        err = tr("%0 est incompatible avec la version d'AutoBL, mise à jour nécéssaire").arg(fromClass);
+        break;
     default:
         err = tr("Erreur inconnue %1").arg(e);
         break;
@@ -127,3 +130,4 @@ void Error::Write_Error(QString e)
     QTextStream flux(&m_Errors);
     flux << e << "\r\n";
 }
+

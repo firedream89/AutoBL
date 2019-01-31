@@ -76,7 +76,6 @@ private:
     QString m_Login;
     QString m_MDP;
     QString m_Lien_Esabora;
-    QString m_Tmp;
     QString m_Lien_Work;
     QStringList liste_Matos;
     QStringList m_List_Cmd;

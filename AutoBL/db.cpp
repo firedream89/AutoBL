@@ -1,5 +1,6 @@
 #include "db.h"
 
+
 /////////////////////////////////
 /// Table En_Cours
 /// ---------------
@@ -157,13 +158,6 @@ void DB::Init()
     {
         emit Info(req.value("Nom").toString() + "=" + req.value("Valeur").toString());
     }
-    req = Requete("SELECT ID FROM Options");
-    if(req.next() == false)
-    {
-        db.close();
-        QDesktopServices::openUrl(QUrl("bin/MAJ_BDD.exe -ForceArg=2"));
-        qApp->exit();
-    }
 
     //Update variable Ajout
     Requete("UPDATE En_Cours SET Ajout='0' WHERE Ajout=''");
@@ -246,10 +240,8 @@ void DB::Purge()
     t = t.currentDate();
     t = t.addMonths(-2);
 
-    QSqlQuery req = Requete("SELECT Valeur FROM Options WHERE Nom='Fournisseurs'");
-    QStringList listFrn;
-    req.next();
-    listFrn = req.value(0).toString().split("|");
+    QSqlQuery req;
+    QStringList listFrn = _list_Frn.split("|");
 
     for(int i = 0;i<listFrn.count();i++)
     {
@@ -347,23 +339,12 @@ QString DB::enum_State(int state)
     else if(state == updateRef) { var = "Modifier"; }
     else if(state == add) { var = "Bon ajouté"; }
     else if(state == endAdd) { var = "Ok"; }
-    else if(state == unknownFab) { var = "Fab inconnue"; }
-    else if(state == badRef) { var = "Référence"; }
     else
     {
         m_Error->Err(variable,"enum_State","DB");
         return QString();
     }
     return var;
-}
-
-QColor DB::Get_Color_State(int state)
-{
-    QColor color;
-    if(state == download || state == updateRef) { color.setRgb(200,200,0); }
-    else if(state == add || state == endAdd) { color.setRgb(0,255,0); }
-    else if(state == error || state == unknownFab || state == badRef) { color.setRgb(255,0,0); }
-    return color;
 }
 
 QString DB::Get_Last_Invoice(QString frn)
@@ -380,13 +361,9 @@ QString DB::Get_Last_Invoice(QString frn)
     return QString();
 }
 
-bool DB::Insert_Into_En_Cours(int id,QString date,QString Nom_Chantier,QString Numero_Commande,QString Numero_Livraison,QString Lien_Commande,int Etat,
-                              int Ajout,QString Info_Chantier,int Ajout_BL,QString Numero_BC_Esab,QString Fournisseur)
+bool DB::Insert_Into_En_Cours(QString date,QString Nom_Chantier,QString Numero_Commande,QString Lien_Commande,int Etat,
+                              int Ajout,QString Info_Chantier,QString Fournisseur)
 {
-    if(id <= 0)//ID
-    {
-        m_Error->Err(variable,"id <= 0","DB");
-    }
     if(date.split("-").count() == 3)//Date
     {
         QStringList var = date.split("-");
@@ -395,7 +372,7 @@ bool DB::Insert_Into_En_Cours(int id,QString date,QString Nom_Chantier,QString N
             m_Error->Err(variable,"Format date invalide: " + date,"DB");
             return false;
         }
-        if(var.at(1).toInt() > 0 && var.at(1).toInt() < 13 && var.at(2).toInt() > 0 && var.at(2).toInt() < 32)
+        if(var.at(1).toInt() < 1 || var.at(1).toInt() > 12 || var.at(2).toInt() < 1 || var.at(2).toInt() > 31)
         {
             m_Error->Err(variable,"Date invalide: " + date,"DB");
             return false;
@@ -406,7 +383,7 @@ bool DB::Insert_Into_En_Cours(int id,QString date,QString Nom_Chantier,QString N
         m_Error->Err(variable,"Format date invalide: " + date,"DB");
         return false;
     }
-    if(Nom_Chantier.count() != 6 || Nom_Chantier.at(0).isNumber() || Nom_Chantier.at(Nom_Chantier.count()-1).isNumber())//Nom_Chantier
+    if(Ajout != endAdd && (Nom_Chantier.count() != 6 || !Nom_Chantier.at(0).isNumber() || !Nom_Chantier.at(Nom_Chantier.count()-1).isNumber()))//Nom_Chantier
     {
         DEBUG << "DB | Nom_Chantier invalide : " << Nom_Chantier;
         Ajout = error;
@@ -418,21 +395,31 @@ bool DB::Insert_Into_En_Cours(int id,QString date,QString Nom_Chantier,QString N
     }
     QSqlQuery req = Requete("SELECT Valeur FROM Options WHERE ID='13'");
     req.next();
+    int Ajout_BL = 0;
     if(req.value(0).toInt() == 1)//Ajout_BL
     {
         Ajout_BL = 1;
     }
     //Fournisseur
-    req = Requete("SELECT Valeur FROM Options WHERE ID='24'");
-    req.next();
-    if(req.value(0).toString().contains(Fournisseur) == false)
+    req = Requete("SELECT Valeur FROM Options WHERE Nom='FrnADD'");
+    bool test = false;
+    while(req.next())
+        if(req.value(0).toString().contains(Fournisseur))
+            test = true;
+    if(!test)
     {
-        m_Error->Err(variable,"Founisseur inconnu","DB");
+        m_Error->Err(variable,"Fournisseur inconnu","DB");
         return false;
     }
-    Requete("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + Nom_Chantier + "','" + Numero_Commande + "','" +
-            Numero_Livraison + "','" + Lien_Commande + "','" + QString::number(Etat) + "','" + QString::number(Ajout) + "','" +
-            Info_Chantier + "','" + QString::number(Ajout_BL) + "','" + Numero_BC_Esab + "','" + Fournisseur + "')");
+    //Get ID
+    req = Requete("SELECT MAX(ID) FROM En_Cours");
+    req.next();
+    int id = req.value(0).toInt();
+    id++;
+
+    Requete("INSERT INTO En_Cours VALUES('" + QString::number(id) + "','" + date + "','" + Nom_Chantier + "','" + Numero_Commande + "','','" +
+            Lien_Commande + "','" + QString::number(Etat) + "','" + QString::number(Ajout) + "','" +
+            Info_Chantier + "','" + QString::number(Ajout_BL) + "','','" + Fournisseur + "')");
     return true;
 }
 
@@ -456,19 +443,54 @@ QSqlQuery DB::Get_Delivery_Invoice(QString frn)
     return Requete("SELECT * FROM En_Cours WHERE Etat='" + QString::number(Close) + "' AND Fournisseur='" + frn + "' AND (Numero_Livraison='' OR Numero_Livraison=' ')");
 }
 
-bool DB::Reference_Is_Valid(QString ref)
+bool DB::Update_En_Cours(QString invoice_Number, QString frn, QString column, QString var)
 {
-    int count(0);
-    bool test(false);
-    for(int i = 0;i<ref.count();i++)
+    QSqlQuery req = Requete("SELECT * FROM En_Cours WHERE Numero_Commande='" + invoice_Number + "' AND Fournisseur='" + frn + "'");
+    if(invoice_Number.contains("\"") && !req.next())
     {
-        if(ref.at(i) >= '0' && ref.at(i) <= '9')
-            count++;
+        m_Error->Err(requete,"invoice not found","DB");
+        return false;
     }
-    DEBUG << count << ref.count();
-    if(count == ref.count())
-        test = true;
+    if(!column.contains("\"") && !var.contains("\""))
+    {
+        if(column == "Numero_Livraison" || column == "Numero_BC_Esabora" || column == "Etat" || column == "Ajout" || column == "Nom_Chantier")
+        {
+            if(column == "Etat" || column == "Ajout" || column == "Nom_Chantier")
+                var = QString::number(var.toInt());
+            Requete("UPDATE En_Cours SET " + column + "='" + var + "' WHERE Numero_Commande='" +invoice_Number + "' AND Fournisseur='" + frn + "'");
+            return true;
+        }
+        else
+            m_Error->Err(variable,"bad column","DB");
+    }
     else
-        test = false;
-    return test;
+        m_Error->Err(variable,"bad char","DB");
+    return false;
+}
+
+bool DB::Remove_En_Cours(QString invoice_Number, QString frn, QString reason)
+{
+    if(invoice_Number.isEmpty())
+    {
+        m_Error->Err(variable,"invoice not found","DB");
+        return false;
+    }
+    if(frn.isEmpty())
+    {
+        m_Error->Err(variable,"fournisseur not found","DB");
+        return false;
+    }
+    if(reason.isEmpty())
+    {
+        m_Error->Err(variable,"reason is empty","DB");
+        return false;
+    }
+    QSqlQuery req;
+    if(!req.exec("DELETE FROM En_Cours WHERE Numero_Commande='" + invoice_Number + "' AND Fournisseur='" + frn + "'"))
+    {
+        m_Error->Err(requete,"DELETE invoice","DB");
+        return false;
+    }
+    DEBUG << "DELETE invoice(" + invoice_Number + ") reason : " + reason;
+    return true;
 }
