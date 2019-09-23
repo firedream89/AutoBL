@@ -430,7 +430,7 @@ QSqlQuery DB::Get_Download_Invoice()
 
 QSqlQuery DB::Get_Added_Invoice()
 {
-    return Requete("SELECT * FROM En_Cours WHERE Ajout_BL='1' AND Ajout='" + QString(add) + "'");
+    return Requete("SELECT * FROM En_Cours WHERE Ajout_BL='1' AND Ajout='" + QString::number(add) + "'");
 }
 
 QSqlQuery DB::Get_No_Closed_Invoice(QString frn)

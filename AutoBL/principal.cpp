@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-#define version QString("1.438") //Version De L'application
-#define ver QString("1438")
+#define version QString("1.439") //Version De L'application
+#define ver QString("1439")
 /////////////////////////////////
 
 //Chargement de l'application
@@ -15,9 +15,9 @@ Principal::Principal(QWidget *parent) :
 
     //LastUpdated
     lastUpdate.append("principal : 1.437");
-    lastUpdate.append("DB : 1.437");
+    lastUpdate.append("DB : 1.439");
     lastUpdate.append("error : 1.433");
-    lastUpdate.append("esabora : 1.435");
+    lastUpdate.append("esabora : 1.439");
     lastUpdate.append("fctFournisseur : 1.438");
     lastUpdate.append("InfoWindow : 1.43");
     lastUpdate.append("Rexelfr : 1.436");
@@ -189,6 +189,8 @@ Principal::Principal(QWidget *parent) :
     connect(ui->Add_BC_Fictif,SIGNAL(clicked(bool)),this,SLOT(DBG_Select_Frn_Fictif()));
     connect(ui->sav_Unknown_Fab,SIGNAL(clicked(bool)),this,SLOT(Sav_Unknown_Fab()));
     connect(ui->bUnknownMB,SIGNAL(clicked(bool)),this,SLOT(Sav_Unknown_MB()));
+    connect(ui->test_Values_BDDEsab,SIGNAL(clicked(bool)),this,SLOT(Test_Values_BDD_Esab()));
+    connect(ui->test_Add_BDDEsab,SIGNAL(clicked(bool)),this,SLOT(Test_Add_BDD_Esab()));
 
     qApp->setQuitOnLastWindowClosed(false);
 
@@ -227,6 +229,56 @@ Principal::Principal(QWidget *parent) :
 Principal::~Principal()
 { 
     delete ui;
+}
+
+void Principal::Test_Values_BDD_Esab()
+{
+    QSqlQuery req = m_DB->Get_Added_Invoice();
+    DEBUG << req.lastQuery();
+    QTableWidget *t = new QTableWidget();
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertRow(0);
+
+    while(req.next()) {
+        t->insertRow(0);
+        t->setItem(0,0,new QTableWidgetItem(req.value(1).toString()));
+        t->setItem(0,1,new QTableWidgetItem(req.value(2).toString()));
+        t->setItem(0,2,new QTableWidgetItem(req.value(3).toString()));
+        t->setItem(0,3,new QTableWidgetItem(req.value(4).toString()));
+        t->setItem(0,4,new QTableWidgetItem(req.value(5).toString()));
+        t->setItem(0,5,new QTableWidgetItem(req.value(6).toString()));
+    }
+    t->show();
+}
+
+void Principal::Test_Add_BDD_Esab()
+{
+    QSqlQuery req = m_DB->Get_Download_Invoice();
+    DEBUG << req.lastQuery();
+    QTableWidget *t = new QTableWidget();
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertColumn(0);
+    t->insertRow(0);
+
+    while(req.next()) {
+        t->insertRow(0);
+        t->setItem(0,0,new QTableWidgetItem(req.value(1).toString()));
+        t->setItem(0,1,new QTableWidgetItem(req.value(2).toString()));
+        t->setItem(0,2,new QTableWidgetItem(req.value(3).toString()));
+        t->setItem(0,3,new QTableWidgetItem(req.value(4).toString()));
+        t->setItem(0,4,new QTableWidgetItem(req.value(5).toString()));
+        t->setItem(0,5,new QTableWidgetItem(req.value(6).toString()));
+    }
+    t->show();
 }
 
 void Principal::Init_Config()

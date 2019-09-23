@@ -121,6 +121,8 @@ public slots:
     void Reload_Error();
     void Load_Unknown_MB();
     void Sav_Unknown_MB();
+    void Test_Values_BDD_Esab();
+    void Test_Add_BDD_Esab();
 
 signals:
     void FinAjout();
