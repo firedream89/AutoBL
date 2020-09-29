@@ -81,7 +81,9 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
     req = m_DB->Get_Added_Invoice();
     while(req.next())
     {
-        m_List_Cmd.append(req.value("Numero_Commande").toString());
+        if(!m_List_Cmd.contains(req.value("Numero_Commande").toString())) {
+            m_List_Cmd.append(req.value("Numero_Commande").toString());
+        }
     }
 
     for(int cpt=0;cpt<m_List_Cmd.count();cpt++)
@@ -955,7 +957,7 @@ bool Esabora::Verification_Focus(QString fen, bool focus)
 {
     qDebug() << "Esabora::Verification_Focus()";
     QString mess;
-    DEBUG << "Détection fenêtre : " << Verification_Message_Box(mess);
+    //DEBUG << "Détection fenêtre : " << Verification_Message_Box(mess);
     QEventLoop loop;
     QTimer t;
     connect(&t,SIGNAL(timeout()),&loop,SLOT(quit()));
@@ -968,14 +970,14 @@ bool Esabora::Verification_Focus(QString fen, bool focus)
     else if(hWnds != h && focus == false)
     {
         QString message;
-        DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
+        //DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
         DEBUG << "La fenêtre '" << fen << "' n'est plus au premier plan(Ok)";
         return true;
     }
     else if(hWnds != h && focus)
     {
         QString message;
-        DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
+        //DEBUG << "Détection fenêtre : " << Verification_Message_Box(message);
         if(Verification_Fenetre("AVERTISSEMENT"))
         {
             DEBUG << "'AVERTISSEMENT' Detected !";

@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>748</width>
-    <height>599</height>
+    <height>613</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -22,7 +22,7 @@
     <item row="1" column="0">
      <widget class="QTabWidget" name="tabWidget">
       <property name="currentIndex">
-       <number>2</number>
+       <number>3</number>
       </property>
       <property name="elideMode">
        <enum>Qt::ElideNone</enum>
@@ -936,10 +936,10 @@
             </property>
            </widget>
           </item>
-          <item row="3" column="0">
-           <widget class="QPushButton" name="bTestBL">
+          <item row="1" column="0">
+           <widget class="QPushButton" name="bPurge">
             <property name="text">
-             <string>Test BL</string>
+             <string>Purge BL</string>
             </property>
            </widget>
           </item>
@@ -950,24 +950,10 @@
             </property>
            </widget>
           </item>
-          <item row="1" column="0">
-           <widget class="QPushButton" name="bPurge">
+          <item row="0" column="1">
+           <widget class="QPushButton" name="Add_BC_Fictif">
             <property name="text">
-             <string>Purge BL</string>
-            </property>
-           </widget>
-          </item>
-          <item row="6" column="0">
-           <widget class="QPushButton" name="bTestBC">
-            <property name="text">
-             <string>Test BC</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <widget class="QPushButton" name="bTestRexel">
-            <property name="text">
-             <string>Test Rexel</string>
+             <string>Ajout BC Fictif</string>
             </property>
            </widget>
           </item>
@@ -985,10 +971,38 @@
             </property>
            </widget>
           </item>
-          <item row="0" column="1">
-           <widget class="QPushButton" name="Add_BC_Fictif">
+          <item row="1" column="1">
+           <widget class="QPushButton" name="test_Values_BDDEsab">
             <property name="text">
-             <string>Ajout BC Fictif</string>
+             <string>Test Validation BDD-&gt;Esabora</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QPushButton" name="bTestBL">
+            <property name="text">
+             <string>Test BL</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QPushButton" name="bTestRexel">
+            <property name="text">
+             <string>Test Rexel</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="0">
+           <widget class="QPushButton" name="bTestBC">
+            <property name="text">
+             <string>Test BC</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QPushButton" name="test_Add_BDDEsab">
+            <property name="text">
+             <string>Test Ajout BDD-&gt;Esabora</string>
             </property>
            </widget>
           </item>
@@ -1056,7 +1070,7 @@
      <x>0</x>
      <y>0</y>
      <width>748</width>
-     <height>25</height>
+     <height>26</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuMenu">
