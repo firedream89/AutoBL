@@ -5,7 +5,7 @@ CGED::CGED(FctFournisseur *fct, const QString login, const QString mdp, const QS
     m_Login(login),m_MDP(mdp),m_UserName(comp),m_WorkLink(lien_Travail),m_Fct(fct),m_DB(db)
 {
 #define FRN "CGED"
-#define INF "Numéro de compte|Email|Mot de passe"
+#define INF "Nom utilisateur|Email|Mot de passe"
 
     DEBUG << "Init Class " << FRN;
 }
@@ -53,31 +53,33 @@ bool CGED::Connexion()
 {
     //Chargement de la page
     m_Fct->Info("Connexion...");
-    if(m_Fct->WebLoad("https://cged.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-CGED-Site/fr_FR/-/EUR/ViewLogin-Start") == false)
+    if(m_Fct->WebLoad("https://www.cged.fr/INTERSHOP/web/WFS/Sonepar-CGED-Site/fr_FR/cged-private/EUR/ViewProfileSettings-ViewProfile") == false)
     {
         m_Fct->FrnError(load,FRN,"Connexion");
         return false;
     }
-
     //Injection des scripts de connexion
-    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm_Login')[0].value = '" + m_Login + "';");
-    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm_Password')[0].value = '" + m_MDP + "';");
-    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm_RegistrationDomain')[0].value = '" + m_UserName + "';");
-    m_Fct->InsertJavaScript("document.getElementsByName('LoginForm')[0].submit();");
+    m_Fct->InsertJavaScript("document.getElementById('ShopLoginForm_Login').value = '" + m_Login + "';");
+    m_Fct->InsertJavaScript("document.getElementById('ShopLoginForm_Password').value = '" + m_MDP + "';");
+    m_Fct->InsertJavaScript("document.getElementsByName('LoginUserForm')[0].submit();");
     m_Fct->Loop(5000);
 
+    m_Fct->SaveHtml();
+
+    QFile f(m_WorkLink + "/web_Temp.txt");
+    if(f.open(QIODevice::ReadOnly) == false)
+    {
+        m_Fct->FrnError(open_File,FRN,f.fileName());
+        return false;
+    }
+    QTextStream flux(&f);
+
     //Contrôle de connexion
-    if(m_Fct->FindTexte("Le N° de compte spécifié n'existe pas"))
-    {
-        m_Fct->FrnError(bad_Login,FRN,"Numéro de compte inconnu");
-    }
-    else if(m_Fct->FindTexte("Email ou mot de passe incorrect"))
-    {
-        m_Fct->FrnError(bad_Login,FRN);
-    }
-    else if(m_Fct->FindTexte("Historique des commandes"))
-    {
-        return true;
+    while(!flux.atEnd()) {
+        QString v = flux.readLine();
+        if(v.contains(m_UserName)) return true;
+        else if(v.contains("Vous allez Ãªtre redirigÃ© vers votre compte.")) return true;
+        else if(v.contains("Aucun compte trouvÃ© avec vos identifiants")) m_Fct->FrnError(bad_Login,FRN);
     }
     return false;
 }
@@ -85,8 +87,7 @@ bool CGED::Connexion()
 bool CGED::Create_List_Invoice()
 {
     //Chargement de la page
-    if(m_Fct->WebLoad("https://cged.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-CGED-Site/fr_FR/-/EUR/"
-                       "ViewPurchaseOrderList-Start?SortAttribute=CreationDate&AttributeType=DATE&SortDirection=DESC&ListAllOrders=1")  == false)
+    if(m_Fct->WebLoad("https://www.cged.fr/INTERSHOP/web/WFS/Sonepar-CGED-Site/fr_FR/cged-private/EUR/ViewOrders-List") == false)
     {
         m_Fct->FrnError(load,FRN,"Liste des commandes");
         return false;
@@ -95,169 +96,156 @@ bool CGED::Create_List_Invoice()
     //Enregistrement de la page
     m_Fct->SaveHtml();
 
-    //Traitement des informations    
-    bool endScan(false);
-    int next(0);
-    while(endScan == false)
+    //Ouverture de la page
+    QFile f(m_WorkLink + "/web_Temp.txt");
+    if(f.open(QIODevice::ReadOnly) == false)
     {
-        QString text,link,name,ref,date,etat,invoice_Number,nextPage;
+        m_Fct->FrnError(open_File,FRN,f.fileName());
+        return false;
+    }
+    QTextStream flux(&f);
 
-        //Ouverture de la page
-        QFile f(m_WorkLink + "/web_Temp.txt");
-        if(f.open(QIODevice::ReadOnly) == false)
-        {
-            m_Fct->FrnError(open_File,FRN,f.fileName());
-            return false;
-        }
-        QTextStream flux(&f);
-
-        while(f.atEnd() == false && endScan == false)
-        {
-            bool skip = false;
-            text = flux.readLine();
-            if(text.contains("tr style=\"cursor: pointer;\""))//Point de départ d'une ligne du tableau
-            {
-                if(text.split("'").count() > 1)
-                {
-                    link = text.split("'").at(1);
-                }
-                else
-                {
-                    m_Fct->FrnError(variable,FRN,"link");
-                    return false;
-                }
-                text = flux.readLine();
-                if(text.split(">").count() > 1)
-                {
-                    text = text.split(">").at(1).split("<").at(0).split("&").at(0);
-                    date = text.split("/").at(2) + "-" + text.split("/").at(1) + "-" + text.split("/").at(0);
-                }
-                else
-                {
-                    m_Fct->FrnError(variable,FRN,"date");
-                    return false;
-                }
-
-                flux.readLine();
-                flux.readLine();
-                flux.readLine();
-                flux.readLine();
-                flux.readLine();
-                text = flux.readLine();
-                if(text.split(">").count() > 3)//Ref chantier
-                {
-                    ref = text.split(">").at(2).split("<").at(0);
-                }
-                else
-                {
-                    m_Fct->FrnError(variable,FRN,"Référence chantier");
-                    return false;
-                }
-                text = flux.readLine();
-                if(text.split(">").count() > 3)//Nom chantier
-                {
-                    name = text.split(">").at(2).split("<").at(0);
-                }
-                else
-                {
-                    DEBUG << "Pas de nom de chantier";
-                }
-                flux.readLine();
-                flux.readLine();
-                text = flux.readLine();
-                text.replace("\t","");
-                DEBUG << "Ajout commande " << text;
-                invoice_Number = text;
-                flux.readLine();
-                flux.readLine();
-                text = flux.readLine();
-                if(text.split(">").count() > 1 && text.split("<").count() > 1)
-                {
-                    text = text.split(">").at(1).split("<").at(0);
-                    text.replace("Ã©","é");
-                    if(text == "En attente" || text == "En traitement" || text == "En préparation" || text == "Enregistrée")
-                    {
-                        etat = "0";
-                    }
-                    else if(text == "Partiellement livrée" || text == "Partiellement facturée")
-                    {
-                        etat = "1";
-                    }
-                    else if(text == "Livrée" || text == "Facturée" || text == "Terminée")
-                    {
-                        etat = "2";
-                    }
-                    else if(text == "Annulée")
-                    {
-                        skip = true;
-                    }
-                    else
-                    {
-                        m_Fct->FrnError(variable,FRN,"Valeur Etat=" + text);
-                        etat = "0";
-                    }
-                }
-                else
-                {
-                    m_Fct->FrnError(variable,FRN,"Etat");
-                    return false;
-                }
-                if(!skip)
-                {
-                    QStringList invoice;
-                    invoice.append(invoice_Number);
-                    invoice.append(date);
-                    invoice.append(link);
-                    invoice.append(etat);
-                    invoice.append(ref);
-                    invoice.append(name);
-                    invoice.append(FRN);
-                    if(!m_Fct->Add_Invoice(invoice))
-                        endScan = true;
-                }
-            }
-            else if(text.contains("<span class=\"pagecursoritem bold\">"))
-            {
-                if(text.split("<span class=\"pagecursoritem bold\">").count() == 4)
-                {
-                    int actual(QString(text.split("<span class=\"pagecursoritem bold\">").at(2).at(0)).toInt());
-                    int total(QString(text.split("<span class=\"pagecursoritem bold\">").at(3).at(0)).toInt());
-                    m_Fct->Info("Commande " + QString::number(actual) + "/" + QString::number(total));
-                    if(actual >= total)
-                        endScan = true;
-                }
-            }
-        }
-
-        //Next Page
-        f.close();
-        if(endScan == false)
-        {
-            next++;
-            if(m_Fct->WebLoad("https://cged.sonepar.fr/is-bin/INTERSHOP.enfinity/WFS/Sonepar-CGED-Site/fr_FR/-/EUR/"
-                               "ViewPurchaseOrderList-Start?SortAttribute=CreationDate&AttributeType=DATE&SortDirection=DESC&ListAllOrders=1&PageNumber=" + QString::number(next))  == false)
-            {
-                m_Fct->FrnError(load,FRN,"Liste des commandes");
-                return false;
-            }
-            m_Fct->SaveHtml();
+    //Extraction lien data
+    QString url;
+    while (!flux.atEnd()) {
+        QString v = flux.readLine();
+        if(v.contains("data-datatables-url")) {
+            qDebug() << v;
+            url = v.split("\"").at(7);
+            url = url.replace("&amp;","&");
         }
     }
-    return false;
+    f.close();
+
+    //Chargement de la page data
+    qDebug() << "URL : " << url;
+    if(m_Fct->WebLoad(url) == false)
+    {
+        m_Fct->FrnError(load,FRN,"Liste des commandes");
+        return false;
+    }
+
+    //Enregistrement de la page
+    m_Fct->SaveHtml();
+
+    //Traitement des informations
+
+    //Ouverture de la page
+    if(f.open(QIODevice::ReadOnly) == false)
+    {
+        m_Fct->FrnError(open_File,FRN,f.fileName());
+        return false;
+    }
+    f.seek(0);
+    QStringList invoiceNumber;
+    while(!flux.atEnd()) {
+        QString v = flux.readLine();
+        if(v.contains("ordernumber")) {
+            invoiceNumber += v.split("\"").at(3);
+        }
+    }
+
+    //DESC
+    QStringList tmp;
+    for(int i = 0;i < invoiceNumber.count();i++) {
+        bool insert = false;
+        for(int i2 = 0;i2 < tmp.count();i2++) {
+            if(invoiceNumber.at(i) > tmp.at(i2)) {
+                tmp.insert(i2, invoiceNumber.at(i));
+                insert = true;
+                break;
+            }
+        }
+        if(tmp.isEmpty() || !insert) {
+            tmp.append(invoiceNumber.at(i));
+        }
+    }
+    invoiceNumber = tmp;
+
+    flux.seek(0);
+
+    bool end = false;
+    for(int i = 0;i < invoiceNumber.count();i++) {
+        while(!flux.atEnd()) {
+            if(flux.readLine() == "{") {
+                QString date = flux.readLine().split("\"").at(3);
+                QString reference = flux.readLine().split("\"").at(3);
+                QString name = flux.readLine().split("\"").at(3);
+                flux.readLine();
+                QString order = flux.readLine().split("\"").at(3);
+                QString status = flux.readLine().split("\"").at(3);
+                flux.readLine();
+                flux.readLine();
+                flux.readLine();
+                QString link = flux.readLine().split("\"").at(4);
+
+                //status
+                status.replace("Ã©","é");
+                if(status == "En attente" || status == "En traitement" || status == "En préparation" || status == "Enregistrée" || status == "Partiellement Annulée")
+                {
+                    status = "0";
+                }
+                else if(status == "Partiellement livrée" || status == "Partiellement facturée")
+                {
+                    status = "1";
+                }
+                else if(status == "Livrée" || status == "Facturée" || status == "Terminée")
+                {
+                    status = "2";
+                }
+                else if(status == "Annulée")
+                {
+                    status = -1;
+                }
+                else
+                {
+                    m_Fct->FrnError(variable,FRN,"Valeur Etat=" + status);
+                    status = "0";
+                }
+
+                //date
+                int day = date.split("\\/").at(0).toInt();
+                int month = date.split("\\/").at(1).toInt();
+                int year = date.split("\\/").at(2).toInt();
+                date = QString("%0-%1-%2").arg(year).arg(month).arg(day);
+
+                if(order == invoiceNumber.at(i)) {
+                    if(status == -1)
+                        break;
+
+                    QStringList invoice;
+                    invoice.append(order);
+                    invoice.append(date);
+                    invoice.append(link);
+                    invoice.append(status);
+                    invoice.append(reference);
+                    invoice.append(name);
+                    invoice.append(FRN);
+
+                    if(!m_Fct->Add_Invoice(invoice))
+                        end = true;
+                    break;
+                }
+            }
+        }
+        flux.seek(0);
+        if(end)
+            break;
+    }
+    return true;
 }
 
 bool CGED::Update_Delivery(QString invoice,QString link)
 {
 
-    link.replace("Start","ViewBL");
-    link = link + "&CodeCommande=" + invoice;
+    link.replace("Detail","Shipping");
     if(m_Fct->WebLoad(link) == false)
     {
         m_Fct->FrnError(load,FRN);
     }
     else
     {
-        if(m_Fct->FindTexte(invoice) == false || m_Fct->FindTexte("BL N") == false)
+        if(m_Fct->FindTexte(invoice) == false || m_Fct->FindTexte("Bon de livraison") == false)
         {
             m_Fct->FrnError(fail_check,FRN,"Page non chargée");
         }
@@ -282,9 +270,9 @@ bool CGED::Update_Delivery(QString invoice,QString link)
                     while(flux.atEnd() == false)
                     {
                         bl = flux.readLine();
-                        if(bl.contains("BL N<sup>o</sup>"))
+                        if(bl.contains("Bon de livraison"))
                         {
-                            bl = bl.split(">").last().split(" ").at(1);
+                            bl = bl.split(" ").last().split("<").first();
                             break;
                         }
                     }
@@ -379,85 +367,76 @@ QStringList CGED::Get_Invoice(const QString InvoiceNumber,QString link)
                 }
                 else
                 {
-                    QTextStream flux(&file);
-                    int etat(0);
+                    QTextStream flux(&file);    
+                    bool skip = false;
                     QStringList list;
+                    QString fab, ref, desc, prix,qt;
+
                     while(flux.atEnd() == false)
                     {
                         QString var = flux.readLine();
-                        if(var.contains("obj[CodeEnseigne].LibCourt") && etat == 0)//Désignation
-                        {
-                            var.replace("&amp;","ET");
-                            list.append(var.split("\"").at(1));
-                            etat = 1;
+                        if(var.contains("Fabricant :")) {//Fabriquant
+                            fab = var.split(">").at(1).split("<").first();
                         }
-                        else if(var.contains("obj[CodeEnseigne].ManufacturerName") && etat == 1)//référence + Fabricant
-                        {
-                            QString var2 = flux.readLine();
-                            if(var2.contains("obj[CodeEnseigne].ManufacturerSKU"))
-                            {
-                                if(var.split("\"").count() >= 2 && var2.split("\"").count() >= 2)
-                                {
-                                    var.replace("&amp;","ET");
-                                    var2.replace("&amp;","ET");
-                                    list.append(var2.split("\"").at(1));//Référence
-                                    list.append(var.split("\"").at(1));//Fabricant
-                                    list.append("");//Fab
-                                    etat = 2;
-                                }
-                                else
-                                {
-                                    m_Fct->FrnError(variable,FRN,"Référence");
-                                }
-                            }
+                        else if(var.contains("Ref fabricant")) {//référence
+                            ref = var.split(" ").last().split("<").first();
                         }
-                        else if(var.contains("<input type=\"hidden\" name=\"QuantityList_") && etat == 2)//Prix + quantité + restant
-                        {
-                            QString var2 = var;
-                            flux.readLine();
-                            flux.readLine();
-                            while(flux.readLine().contains("<td style=\"text-align:right;\">") == false) {}
+                        else if(var.contains("i class=\"desc\"")) {//description
+                            desc = var.split(">").at(2).split("<").first();
+                        }
+                        else if(var.contains("alcenter")) {//quantité
+                            DEBUG << "quantity";
+                            qt = var.split(">").at(1).split("<").first();
                             var = flux.readLine();
-                            var.replace(" ","");
-                            var.replace(",",".");
-                            var.replace("&nbsp;","");
-                            var2.replace(",",".");
-                            var2.replace("&nbsp;","");
-                            var2.replace(" ","");
-                            var = QString::number(var.toDouble() / var2.split("\"").at(5).toDouble());
-                            var.replace(".",",");
+                            prix = QString::number(var.split(" ").first().split(">").last().replace(",",".").toDouble());
+                            DEBUG << "prix" << prix << var;
+                            if(qt > 1)
+                                prix = QString::number(prix.toDouble() / qt.toDouble());
+                        }
+                        else if(var.contains("Annul&eacute;e")) {//si annulée
+                            skip = true;
+                        }
+                        else if(var.contains("infos pointer")) {
+                            DEBUG << fab << ref << desc << qt << prix;
+                            if(!skip && !fab.isEmpty() && ! ref.isEmpty() && !prix.isEmpty() && !qt.isEmpty()) {
+                                list.append(desc);
+                                list.append(ref);
+                                list.append(fab);
+                                list.append("");
+                                list.append(prix);
+                                list.append(qt);
+                                list.append("NC");
 
-                            if(var == "nan")//Si annulé
-                            {
-                                list.removeLast();
-                                list.removeLast();
-                                list.removeLast();
-                                list.removeLast();
+                                desc.clear();
+                                ref.clear();
+                                fab.clear();
+                                prix.clear();
+                                qt.clear();
                             }
-                            else
-                            {
-                                list.append(var);//prix
-                                if(var2.split("\"").count() >= 6)
-                                {
-                                    list.append(var2.split("\"").at(5));//Quantité
-                                }
-                                else
-                                {
-                                    m_Fct->FrnError(variable,FRN,"Quantité");
-                                }
-                                list.append("NC");//Restant
-                            }
-                            etat = 0;
+                            desc.clear();
+                            ref.clear();
+                            fab.clear();
+                            prix.clear();
+                            qt.clear();
+                            skip = false;
                         }
                     }
-                    if(etat != 0)
-                    {
-                        m_Fct->FrnError(variable,FRN,"Création tableau(Etat = " + QString::number(etat) + ")");
+                    DEBUG << fab << ref << desc << qt << prix;
+                    if(!skip && !fab.isEmpty() && ! ref.isEmpty() && !prix.isEmpty() && !qt.isEmpty()) {
+                        list.append(desc);
+                        list.append(ref);
+                        list.append(fab);
+                        list.append("");
+                        list.append(prix);
+                        list.append(qt);
+                        list.append("NC");
                     }
-                    else
-                    {
-                        DEBUG << list;
+                    DEBUG << list.count() % 7;
+                    if(!list.isEmpty() && list.count() % 7 == 0) {
                         return list;
+                    }
+                    else {
+                        m_Fct->FrnError(variable,FRN,"Création tableau(liste incomplète)");
                     }
                 }
             }

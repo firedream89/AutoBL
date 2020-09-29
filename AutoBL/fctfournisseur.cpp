@@ -5,6 +5,7 @@ FctFournisseur::FctFournisseur(QString WorkLink, Error *err, DB *db):
     m_WorkLink(WorkLink)
 {
     web = new QWebEngineView;
+    web->resize(1500,1000);
     timer = new QTimer;
     loop = new QEventLoop;
     m_Error = err;
@@ -77,8 +78,6 @@ bool FctFournisseur::FindTexte(QString texte)
     {
         test = true;
     }
-
-    DEBUG << "find " << test;
     return test;
 }
 

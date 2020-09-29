@@ -2,8 +2,8 @@
 #include "ui_principal.h"
 
 /////////////////////////////////
-#define version QString("1.438") //Version De L'application
-#define ver QString("1438")
+#define version QString("1.44") //Version De L'application
+#define ver QString("1440")
 /////////////////////////////////
 
 //Chargement de l'application
@@ -18,11 +18,11 @@ Principal::Principal(QWidget *parent) :
     lastUpdate.append("DB : 1.437");
     lastUpdate.append("error : 1.433");
     lastUpdate.append("esabora : 1.435");
-    lastUpdate.append("fctFournisseur : 1.438");
+    lastUpdate.append("fctFournisseur : 1.44");
     lastUpdate.append("InfoWindow : 1.43");
     lastUpdate.append("Rexelfr : 1.436");
     lastUpdate.append("Socolecfr : 1.437");
-    lastUpdate.append("CGED : 1.437");
+    lastUpdate.append("CGED : 1.44");
     lastUpdate.append("Fournisseur : 1.437");
     lastUpdate.append("tache : 1.43");
 
