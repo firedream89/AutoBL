@@ -6,6 +6,7 @@ FctFournisseur::FctFournisseur(QString WorkLink, Error *err, DB *db):
 {
     web = new QWebEngineView;
     web->resize(1500,1000);
+    web->show();
     timer = new QTimer;
     loop = new QEventLoop;
     m_Error = err;
@@ -23,6 +24,7 @@ FctFournisseur::FctFournisseur(QString WorkLink, Error *err, DB *db):
     QObject::connect(web,SIGNAL(loadFinished(bool)),this,SLOT(Set_Load(bool)));
 
     web->setEnabled(false);
+    web->hide();
 }
 
 FctFournisseur::~FctFournisseur()

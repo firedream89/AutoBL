@@ -5,6 +5,8 @@
 #include "fctfournisseur.h"
 #include <QDebug>
 #include <QObject>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #define DEBUG qDebug()
 

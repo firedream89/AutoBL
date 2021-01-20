@@ -58,12 +58,8 @@ bool CGED::Connexion()
         m_Fct->FrnError(load,FRN,"Connexion");
         return false;
     }
-    //Injection des scripts de connexion
-    m_Fct->InsertJavaScript("document.getElementById('ShopLoginForm_Login').value = '" + m_Login + "';");
-    m_Fct->InsertJavaScript("document.getElementById('ShopLoginForm_Password').value = '" + m_MDP + "';");
-    m_Fct->InsertJavaScript("document.getElementsByName('LoginUserForm')[0].submit();");
-    m_Fct->Loop(5000);
 
+    //Déjà connecté ?
     m_Fct->SaveHtml();
 
     QFile f(m_WorkLink + "/web_Temp.txt");
@@ -73,12 +69,31 @@ bool CGED::Connexion()
         return false;
     }
     QTextStream flux(&f);
+    while(!flux.atEnd()) {
+        QString v = flux.readLine();
+        if(v.contains(m_UserName)) {  DEBUG << "Username found !"; return true;}
+    }
+    f.close();
+
+    //Injection des scripts de connexion
+    m_Fct->InsertJavaScript("document.getElementById('ShopLoginForm_Login').value = '" + m_Login + "';");
+    m_Fct->InsertJavaScript("document.getElementById('ShopLoginForm_Password').value = '" + m_MDP + "';");
+    m_Fct->InsertJavaScript("document.getElementsByName('LoginUserForm')[0].submit();");
+    m_Fct->Loop();
+
+    m_Fct->SaveHtml();
+
+    if(f.open(QIODevice::ReadOnly) == false)
+    {
+        m_Fct->FrnError(open_File,FRN,f.fileName());
+        return false;
+    }
 
     //Contrôle de connexion
     while(!flux.atEnd()) {
         QString v = flux.readLine();
-        if(v.contains(m_UserName)) return true;
-        else if(v.contains("Vous allez Ãªtre redirigÃ© vers votre compte.")) return true;
+        if(v.contains(m_UserName)) {  DEBUG << "Username found !"; return true;}
+        else if(v.contains("Vous allez Ãªtre redirigÃ© vers votre compte.")) { DEBUG << "Redirection found !"; m_Fct->Loop(); return true; }
         else if(v.contains("Aucun compte trouvÃ© avec vos identifiants")) m_Fct->FrnError(bad_Login,FRN);
     }
     return false;
@@ -110,9 +125,14 @@ bool CGED::Create_List_Invoice()
     while (!flux.atEnd()) {
         QString v = flux.readLine();
         if(v.contains("data-datatables-url")) {
-            qDebug() << v;
-            url = v.split("\"").at(7);
-            url = url.replace("&amp;","&");
+            QStringList list = v.split("\"");
+            DEBUG << list;
+            for(QString result : list) {
+                if(result.contains("https:")) {
+                    url = result;
+                    url = url.replace("&amp;","&");
+                }
+            }
         }
     }
     f.close();
@@ -170,10 +190,14 @@ bool CGED::Create_List_Invoice()
             if(flux.readLine() == "{") {
                 QString date = flux.readLine().split("\"").at(3);
                 QString reference = flux.readLine().split("\"").at(3);
-                QString name = flux.readLine().split("\"").at(3);
                 flux.readLine();
+                QString name = flux.readLine().split("\"").at(3);
                 QString order = flux.readLine().split("\"").at(3);
-                QString status = flux.readLine().split("\"").at(3);
+                flux.readLine();
+                QString status = flux.readLine().split(">").at(1).split("<").first();
+                qDebug() << status;
+                flux.readLine();
+                flux.readLine();
                 flux.readLine();
                 flux.readLine();
                 flux.readLine();
@@ -189,7 +213,7 @@ bool CGED::Create_List_Invoice()
                 {
                     status = "1";
                 }
-                else if(status == "Livrée" || status == "Facturée" || status == "Terminée")
+                else if(status == "Livrée" || status == "Facturée" || status == "Terminée" || status == "Traitée")
                 {
                     status = "2";
                 }
@@ -207,7 +231,8 @@ bool CGED::Create_List_Invoice()
                 int day = date.split("\\/").at(0).toInt();
                 int month = date.split("\\/").at(1).toInt();
                 int year = date.split("\\/").at(2).toInt();
-                date = QString("%0-%1-%2").arg(year).arg(month).arg(day);
+                QDate qdate(year,month,day);
+                date = qdate.toString("yyyy-MM-dd");
 
                 if(order == invoiceNumber.at(i)) {
                     if(status == -1)
@@ -383,10 +408,13 @@ QStringList CGED::Get_Invoice(const QString InvoiceNumber,QString link)
                         }
                         else if(var.contains("i class=\"desc\"")) {//description
                             desc = var.split(">").at(2).split("<").first();
+                            desc.replace("Ã¢","â");
+                            desc.replace("Ã©","é");
                         }
                         else if(var.contains("alcenter")) {//quantité
                             DEBUG << "quantity";
                             qt = var.split(">").at(1).split("<").first();
+                            flux.readLine();
                             var = flux.readLine();
                             prix = QString::number(var.split(" ").first().split(">").last().replace(",",".").toDouble());
                             DEBUG << "prix" << prix << var;
