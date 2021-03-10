@@ -85,7 +85,7 @@ bool Esabora::Start(bool automatic,int &nbBC,int &nbBL)
             m_List_Cmd.append(req.value("Numero_Commande").toString());
         }
     }
-
+    DEBUG << m_List_Cmd;
     for(int cpt=0;cpt<m_List_Cmd.count();cpt++)
     {
         if(m_Arret)

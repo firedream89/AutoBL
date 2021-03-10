@@ -202,6 +202,7 @@ bool CGED::Create_List_Invoice()
                 flux.readLine();
                 flux.readLine();
                 QString link = flux.readLine().split("\"").at(4);
+                link.replace("ParcelTracking","");
 
                 //status
                 status.replace("Ã©","é");
@@ -331,9 +332,11 @@ bool CGED::Update_State(QString invoice,QString link)
             else if(m_Fct->FindTexte("En traitement")) { state = open; }
             else if(m_Fct->FindTexte("En préparation")) { state = open; }
             else if(m_Fct->FindTexte("Enregistrée")) { state = open; }
+            else if(m_Fct->FindTexte("Traitée")) { state = open; }
             else if(m_Fct->FindTexte("Livrée")) { state = Close; }
             else if(m_Fct->FindTexte("Partiellement livrée")) { state = partial; }
             else if(m_Fct->FindTexte("Partiellement facturée")) { state = partial; }
+            else if(m_Fct->FindTexte("Partiellement Annulée")) { state = partial; }
             else if(m_Fct->FindTexte("Facturée")) { state = Close; }
             else if(m_Fct->FindTexte("Terminée")) { state = Close; }
             else if(m_Fct->FindTexte("Annulée"))
@@ -371,12 +374,23 @@ QStringList CGED::Get_Invoice(const QString InvoiceNumber,QString link)
     else
     {
         DEBUG << "CGED | Vérification de la page";
-        if(m_Fct->FindTexte(InvoiceNumber) == false)
-        {
-            m_Fct->FrnError(fail_check,FRN,InvoiceNumber);
+        m_Fct->SaveHtml();
+
+        QFile f(m_WorkLink + "/web_Temp.txt");
+        if(f.open(QIODevice::ReadOnly)) {
+            QTextStream txt(&f);
+            while(!f.atEnd()) {
+                if(f.readLine().contains(InvoiceNumber.toLatin1())) {
+                    break;
+                }
+            }
+            if(f.atEnd()) {
+                m_Fct->FrnError(fail_check,FRN,InvoiceNumber);
+                return QStringList(nullptr);
+            }
+            f.close();
         }
-        else
-        {
+
             DEBUG << "CGED | Traitement des informations de la page";
             if(m_Fct->SaveHtml() == false)
             {
@@ -397,36 +411,52 @@ QStringList CGED::Get_Invoice(const QString InvoiceNumber,QString link)
                     QStringList list;
                     QString fab, ref, desc, prix,qt;
 
-                    while(flux.atEnd() == false)
+                    while(!flux.readLine().contains("infos pointer"));
+                    while(!flux.atEnd())
                     {
                         QString var = flux.readLine();
+
+                        DEBUG << var;
                         if(var.contains("Fabricant :")) {//Fabriquant
                             fab = var.split(">").at(1).split("<").first();
+                            fab.replace("&amp;","&");
                         }
                         else if(var.contains("Ref fabricant")) {//référence
                             ref = var.split(" ").last().split("<").first();
                         }
-                        else if(var.contains("i class=\"desc\"")) {//description
-                            desc = var.split(">").at(2).split("<").first();
+                        else if(var.contains("<h3>")) {//description
+                            desc = var.split(">").at(2).split("<").first().split(" - ").last();
                             desc.replace("Ã¢","â");
                             desc.replace("Ã©","é");
+                            desc.replace("&amp;","&");
                         }
                         else if(var.contains("alcenter")) {//quantité
                             DEBUG << "quantity";
                             qt = var.split(">").at(1).split("<").first();
-                            flux.readLine();
                             var = flux.readLine();
-                            prix = QString::number(var.split(" ").first().split(">").last().replace(",",".").toDouble());
-                            DEBUG << "prix" << prix << var;
-                            if(qt > 1)
-                                prix = QString::number(prix.toDouble() / qt.toDouble());
+                            if(var.contains(",")) {//Test prix
+                                prix = var.split(">").at(1).split(" ").first().replace(",",".");
+                                prix = QString::number(prix.replace("&nbsp;","").toDouble());
+                                DEBUG << "prix" << prix << var;
+                                if(!var.contains("td class=\"alright\"")) {
+                                    prix = QString::number(prix.toDouble() / qt.toInt());
+                                }
+                            }
                         }
-                        else if(var.contains("Annul&eacute;e")) {//si annulée
+                        else if(var.contains("td class=\"alright\"") || var.contains("€")) {//prix
+                            if(prix.isEmpty()) {
+                                prix = var.split(">").at(1).split(" ").first().replace(",",".");
+                                prix = QString::number(prix.replace("&nbsp;","").toDouble());
+                                DEBUG << "prix" << prix << var;
+                            }
+                        }
+                        else if(var.contains("Annul")) {//si annulée
                             skip = true;
                         }
                         else if(var.contains("infos pointer")) {
                             DEBUG << fab << ref << desc << qt << prix;
-                            if(!skip && !fab.isEmpty() && ! ref.isEmpty() && !prix.isEmpty() && !qt.isEmpty()) {
+                            if(fab.isEmpty()) fab = "NC";
+                            if(!skip && !ref.isEmpty() && !prix.isEmpty() && !qt.isEmpty()) {
                                 list.append(desc);
                                 list.append(ref);
                                 list.append(fab);
@@ -450,7 +480,9 @@ QStringList CGED::Get_Invoice(const QString InvoiceNumber,QString link)
                         }
                     }
                     DEBUG << fab << ref << desc << qt << prix;
-                    if(!skip && !fab.isEmpty() && ! ref.isEmpty() && !prix.isEmpty() && !qt.isEmpty()) {
+                    DEBUG << "list : " << list;
+                    if(fab.isEmpty()) fab = "NC";
+                    if(!skip && ! ref.isEmpty() && !prix.isEmpty() && !qt.isEmpty()) {
                         list.append(desc);
                         list.append(ref);
                         list.append(fab);
@@ -468,7 +500,6 @@ QStringList CGED::Get_Invoice(const QString InvoiceNumber,QString link)
                     }
                 }
             }
-        }
     }
     return QStringList(nullptr);
 }
